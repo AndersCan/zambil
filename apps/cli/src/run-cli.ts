@@ -2,7 +2,9 @@ import type { Command, CommandAudience, CommandRunOptions, ExitCode } from "./co
 import type { CliConfig } from "./config.ts";
 import { closestMatch } from "@zambil/core/closest-match";
 import { commands } from "./commands.ts";
+import { describeVersion } from "./version/describe-version.ts";
 import { quoteArgument } from "@zambil/core/quote-argument";
+import { resolve } from "node:path";
 import { userConfigPath } from "@zambil/core/locate-repo";
 
 /** Everything a command gets except its arguments. A new field here reaches every command unchanged. */
@@ -194,7 +196,9 @@ export async function runCli(args: string[], options: RunCliOptions): Promise<Ex
   if (help !== undefined) return printHelp(help, options);
   if (asksForVersion(args)) {
     const { default: cliPackage } = await import("../package.json", { with: { type: "json" } });
-    options.output.write(`zambil ${cliPackage.version}\n`);
+    const root = resolve(import.meta.dirname, "../../..");
+    const version = await describeVersion(cliPackage.version, { root });
+    options.output.write(`zambil ${version}\n`);
     return 0;
   }
   const [name = "", ...rest] = args;

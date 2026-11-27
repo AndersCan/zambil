@@ -31,11 +31,12 @@ interface CommitOptions {
   upstream: string;
 }
 
-/** The folders of one test machine: a home, a PATH and the repo to install from. */
+/** The folders of one test machine: a home, a PATH and the repo to install from, and more variables for the script. */
 interface Machine {
   home: string;
   path: string;
   upstream: string;
+  variables?: Record<string, string>;
 }
 
 const repoRoot = resolve(import.meta.dirname, "..");
@@ -73,6 +74,7 @@ function runInstall(machine: Machine): RunResult {
     PATH: machine.path,
     SHELL: "/bin/bash",
     ZAMBIL_GIT_URL: machine.upstream,
+    ...machine.variables,
   };
   const result = spawnSync("sh", [], { input: script, env: environment, encoding: "utf8" });
   return { status: result.status ?? undefined, stdout: result.stdout, stderr: result.stderr };
@@ -279,11 +281,101 @@ function checkLocalCommit(machine: Machine): void {
   );
 }
 
+/** The repo to read and the release to tag at its last commit. */
+interface TagOptions {
+  upstream: string;
+  tag: string;
+}
+
+function tagRelease(options: TagOptions): string {
+  git(["-C", options.upstream, "tag", options.tag]);
+  return git(["-C", options.upstream, "rev-parse", "HEAD"]).trim();
+}
+
+/** Where a clone is: its commit, and its branch or `detached`. */
+function position(clone: string): string {
+  const commit = git(["-C", clone, "rev-parse", "HEAD"]).trim();
+  const branch = spawnSync("git", ["-C", clone, "symbolic-ref", "--quiet", "--short", "HEAD"], {
+    encoding: "utf8",
+  });
+  const where = branch.status === 0 ? branch.stdout.trim() : "detached";
+  return `${commit} ${where}`;
+}
+
+function checkReleases(machine: Machine): void {
+  const mainClone = join(machine.home, ".local/share/zambil");
+  const releaseClone = join(machine.home, ".local/share/zambil-release");
+  const first = tagRelease({ upstream: machine.upstream, tag: "v0.1.0" });
+  const onMain = runInstall(machine);
+  const [, onMainBranch] = position(mainClone).split(" ");
+  const releaseMachine = {
+    ...machine,
+    variables: { ZAMBIL_HOME: releaseClone, ZAMBIL_BIN_DIR: join(machine.home, "release-bin") },
+  };
+  const fresh = runInstall(releaseMachine);
+  const freshAt = position(releaseClone);
+  commitFile("smoke-release-10.txt", machine);
+  const tenth = tagRelease({ upstream: machine.upstream, tag: "v0.10.0" });
+  commitFile("smoke-release-9.txt", machine);
+  tagRelease({ upstream: machine.upstream, tag: "v0.9.0" });
+  const newer = runInstall(releaseMachine);
+  const newerAt = position(releaseClone);
+  const again = runInstall(releaseMachine);
+  const pinVariables = { ...releaseMachine.variables, ZAMBIL_GIT_REF: "v0.1.0" };
+  const pinned = runInstall({ ...releaseMachine, variables: pinVariables });
+  const pinnedAt = position(releaseClone);
+  writeFileSync(join(releaseClone, "README.md"), "my release commit\n");
+  git(["-C", releaseClone, "commit", "--quiet", "--all", "-m", "my release commit"]);
+  const refused = runInstall(releaseMachine);
+  runPrinted(refused.stderr);
+  const afterAdvice = runInstall(releaseMachine);
+  const kept = git(["-C", releaseClone, "log", "-1", "--format=%s", "my-zambil-changes"]);
+  const switchVariables = { ZAMBIL_GIT_REF: "v0.10.0" };
+  const switched = runInstall({ ...machine, variables: switchVariables });
+  const followsReleases = runInstall(machine);
+  deepEqual(
+    {
+      onMain: {
+        status: onMain.status,
+        at: onMainBranch,
+        hint: onMain.stdout.includes("| ZAMBIL_GIT_REF=v0.1.0 sh\n"),
+      },
+      fresh: { status: fresh.status, at: freshAt },
+      newer: {
+        status: newer.status,
+        at: newerAt,
+        said: newer.stdout.includes("Updated zambil to v0.10.0."),
+      },
+      again: again.stdout.includes("zambil is up to date: v0.10.0."),
+      pinned: { status: pinned.status, at: pinnedAt },
+      refused: { status: refused.status, commands: printedCommands(refused.stderr).length },
+      afterAdvice: { status: afterAdvice.status, at: position(releaseClone), kept },
+      switched: { status: switched.status, at: position(mainClone) },
+      followsReleases: followsReleases.stdout.includes("zambil is up to date: v0.10.0."),
+    },
+    {
+      onMain: { status: 0, at: "main", hint: true },
+      fresh: { status: 0, at: `${first} detached` },
+      newer: { status: 0, at: `${tenth} detached`, said: true },
+      again: true,
+      pinned: { status: 0, at: `${first} detached` },
+      refused: { status: 1, commands: 1 },
+      afterAdvice: { status: 0, at: `${tenth} detached`, kept: "my release commit\n" },
+      switched: { status: 0, at: `${tenth} detached` },
+      followsReleases: true,
+    },
+    `${refused.stderr}${afterAdvice.stderr}${switched.stderr}`,
+  );
+}
+
 function main(): void {
   const work = realpathSync(mkdtempSync(join(tmpdir(), "zambil-smoke-")));
   const upstream = join(work, "upstream");
   git(["clone", "--quiet", "--no-hardlinks", repoRoot, upstream]);
   git(["-C", upstream, "switch", "--quiet", "--force-create", "main"]);
+  for (const tag of git(["-C", upstream, "tag", "--list"]).split("\n")) {
+    if (tag !== "") git(["-C", upstream, "tag", "--delete", tag]);
+  }
   const machine = { home: join(work, "home"), path: makeTools(join(work, "tools")), upstream };
   const checks = [
     { name: "an old Node stops the script", run: () => checkOldNode({ work, upstream }) },
@@ -300,6 +392,10 @@ function main(): void {
     {
       name: "the advice for local commits keeps them in two rounds",
       run: () => checkLocalCommit(machine),
+    },
+    {
+      name: "a fresh install takes the newest release, and a clone on main stays on main",
+      run: () => checkReleases(machine),
     },
   ];
   for (const check of checks) {

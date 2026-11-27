@@ -291,7 +291,7 @@ describe("runCli", () => {
     );
     const shown = results.map((result) => ({
       ...result,
-      stdout: result.stdout.replace(/\d+\.\d+\.\d+/, "<version>"),
+      stdout: result.stdout.replace(/\d+\.\d+\.\d+(?: \(commit [0-9a-f]+\))?/, "<version>"),
     }));
     const version = { code: 0, stdout: "zambil <version>\n", stderr: "" };
     expect(shown).toEqual([version, version, version]);

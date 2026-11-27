@@ -83,6 +83,8 @@ If a rebase stops on a conflict in these files, do not edit `pnpm-lock.yaml` by 
 
 ## Before you push
 
+If your change is one that a user of zambil sees, add one line for it under `## Unreleased` in `CHANGELOG.md`. `docs/releases.md` tells how a release is made.
+
 Run `pnpm run ready`. CI runs `pnpm run check` and `pnpm test` on each pull request and on each push to `main`. If CI fails, the PR does not land.
 
 CI also runs `node scripts/install-smoke.ts` on Linux and macOS. It runs `install.sh` from your working tree in a temporary home folder, and installs the code of your last commit. Run it after you change `install.sh`. It downloads about 120 MB the first time.

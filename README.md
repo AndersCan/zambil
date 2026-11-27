@@ -137,6 +137,8 @@ curl -fsSL https://raw.githubusercontent.com/AndersCan/zambil/main/install.sh | 
 
 It updates the clone of zambil in `~/.local/share/zambil` and installs the new dependencies. If you changed files in the clone, it stops and tells you how to keep your changes. If you moved zambil, set the same `ZAMBIL_HOME` as in [Move zambil](#move-zambil). After the update, run `zambil doctor`. If the new version writes other hooks, `zambil doctor` tells you to run `zambil install`.
 
+The install command installs the newest release, a tag such as `v0.1.0`. Until the first release exists, it installs the newest commit of `main`. [`CHANGELOG.md`](CHANGELOG.md) lists what each release changed, and `zambil --version` prints the version that runs. To install one release, add its tag, for example `| ZAMBIL_GIT_REF=v0.1.0 sh`. A clone that follows `main` stays on `main`. If a release exists, the install command prints the command that moves the clone to releases.
+
 ## Move the notes folder
 
 1. Move the folder, for example `mv ~/zambil-notes ~/notes`.
