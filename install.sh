@@ -89,7 +89,7 @@ newest_release() {
   node -e '
     const versions = [];
     for (const line of process.argv[1].split("\n")) {
-      const match = /\srefs\/tags\/v(\d+)\.(\d+)\.(\d+)$/.exec(line);
+      const match = /\srefs\/tags\/v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(line);
       if (match !== null) versions.push(match.slice(1).map(Number));
     }
     versions.sort((first, second) => first[0] - second[0] || first[1] - second[1] || first[2] - second[2]);
@@ -157,7 +157,7 @@ pick_release() {
 remember_choice() {
   if [ -z "$git_ref" ]; then return; fi
   if [ "$kind" = branch ]; then
-    git -C "$install_dir" config zambil.follow branch
+    git -C "$install_dir" config zambil.follow "$target"
   else
     git -C "$install_dir" config --unset zambil.follow || true
   fi
@@ -216,8 +216,8 @@ update() {
   follow=$(git -C "$install_dir" config --get zambil.follow || true)
   if [ -n "$git_ref" ]; then
     resolve_ref "$source_url"
-  elif [ -n "$branch" ] && [ "$follow" = branch ]; then
-    target=$branch
+  elif [ -n "$follow" ]; then
+    target=$follow
     kind=branch
   else
     pick_release "$source_url"
@@ -285,6 +285,14 @@ update_branch() {
 # Moves a clone at a release to the branch $target that ZAMBIL_GIT_REF names. The tree is clean already.
 switch_to_branch() {
   keep_detached_commits "$fetched"
+  if git -C "$install_dir" show-ref --verify --quiet "refs/heads/$target" &&
+    ! git -C "$install_dir" merge-base --is-ancestor "refs/heads/$target" "$fetched"; then
+    keep_branch=$(free_branch_name)
+    fail "zambil did not update, because the branch $target in $(tilde "$install_dir") has commits that $source_url does not have." \
+      "To keep them on the new branch $keep_branch and update, run:" "" \
+      "  git -C \"$install_dir\" branch $keep_branch $target && git -C \"$install_dir\" branch --force $target $fetched" "" \
+      "$(rerun_line)"
+  fi
   if git -C "$install_dir" show-ref --verify --quiet "refs/heads/$target"; then
     switched=$(git -C "$install_dir" switch --quiet "$target" < /dev/null 2>&1) || is_named=failed
   else
