@@ -12,8 +12,11 @@ export interface CheckSimilarOptions {
 }
 
 /** Whether the model and the index for similar notes are ready, without loading the model. */
-export function checkSimilar(repo: ConfigurationRepo, options: CheckSimilarOptions): CheckResult {
-  const files = checkSearchFiles(repo, options);
+export async function checkSimilar(
+  repo: ConfigurationRepo,
+  options: CheckSimilarOptions,
+): Promise<CheckResult> {
+  const files = await checkSearchFiles(repo, options);
   const index = zambilCommand("index", options);
   if (files.descriptions === 0) {
     return {

@@ -35,14 +35,15 @@ export async function runChecks(
   const { repo } = folder;
   const notes =
     repo === undefined ? needsRepo("zambil check") : checkNotes(repo, { hookList: list, repoFlag });
-  const similar =
+  const similarCheck =
     repo === undefined
-      ? needsRepo("Similar notes")
+      ? Promise.resolve(needsRepo("Similar notes"))
       : checkSimilar(repo, { environment: config.environment, repoFlag });
-  const [link, hooks, skill] = await Promise.all([
+  const [link, hooks, skill, similar] = await Promise.all([
     checkZambilLink(zambilPath, { config }),
     checkHooks({ config, repo, zambilPath, hookList: list, repoFlag }),
     checkSkill({ config, repo, repoFlag }),
+    similarCheck,
   ]);
   return [
     checkNode(options.nodeVersion),
@@ -78,9 +79,9 @@ function countLevel(results: CheckResult[], options: CountOptions): number {
 function summary(results: CheckResult[]): string {
   const fails = countLevel(results, { level: "fail" });
   const warns = countLevel(results, { level: "warn" });
-  if (fails > 0) {
-    const problems = fails === 1 ? "1 problem" : `${fails} problems`;
-    return `${problems} to fix. Fix them from the top down, because a later problem can come from an earlier one. Then run zambil doctor again.`;
+  if (fails === 1) return "1 problem to fix. Run its Fix line, then run zambil doctor again.";
+  if (fails > 1) {
+    return `${fails} problems to fix. Fix them from the top down, because a later problem can come from an earlier one. Then run zambil doctor again.`;
   }
   if (warns > 0) {
     const warnings = warns === 1 ? "1 warning" : `${warns} warnings`;

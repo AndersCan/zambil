@@ -25,7 +25,7 @@ function sourceFixes(source: RepoSource): string[] {
         "zambil init   # to create the folder again",
       ];
     case "environment":
-      return ["unset ZAMBIL_REPO   # to use the user config file"];
+      return ["unset ZAMBIL_REPO   # then zambil reads the user config file, or run zambil init"];
     case "flag":
       return [];
     default:

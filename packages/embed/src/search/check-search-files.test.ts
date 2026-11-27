@@ -19,14 +19,14 @@ describe("checkSearchFiles", () => {
     if (!repo.ok) throw new Error(repo.error.kind);
     const cacheHome = await mkdtemp(join(tmpdir(), "zambil-cache-"));
     const environment = { home: "/home/ada", workingFolder: "/", cacheHome };
-    const before = checkSearchFiles(repo.value, { environment });
+    const before = await checkSearchFiles(repo.value, { environment });
     const written = await writeTestSearchFiles(environment, {
       root,
       descriptions: ["Pay with a card"],
     });
     if (!written.ok) throw new Error(written.error);
     const indexPath = written.value;
-    const after = checkSearchFiles(repo.value, { environment });
+    const after = await checkSearchFiles(repo.value, { environment });
     const cacheFolder = join(cacheHome, "zambil");
     const weights = modelFilePath(searchModel, { file: searchModel.weights, cacheFolder });
     const modelFolder = join(weights, "..");

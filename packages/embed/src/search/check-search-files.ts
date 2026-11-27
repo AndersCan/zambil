@@ -7,8 +7,9 @@ import { modelKeyOf } from "../model/embedding-model.ts";
 import { noteIndexPath } from "../index/note-index-file.ts";
 import { readNoteIndex } from "../index/note-index-file.ts";
 import { searchModel } from "../model/search-model.ts";
-import { statSync } from "node:fs";
+import { stat } from "node:fs/promises";
 import type { UserEnvironment } from "@zambil/core/locate-repo";
+import { wrap } from "@zambil/core/either";
 
 /** `ready`: each file of the search model is in the cache with its pinned size. */
 export type ModelState = "ready" | "missing";
@@ -29,17 +30,21 @@ export interface CheckSearchFilesOptions {
 
 /**
  * Whether similar notes can work: the model is in the cache, and how many descriptions the index
- * lacks. It reads two file sizes and the index, and never loads the model.
+ * lacks. It reads two file sizes and the index, and never loads the model. A file that it cannot
+ * read counts as missing.
  */
-export function checkSearchFiles(
+export async function checkSearchFiles(
   repo: ConfigurationRepo,
   options: CheckSearchFilesOptions,
-): SearchFiles {
+): Promise<SearchFiles> {
   const folder = cacheFolder(options.environment);
   const files = [searchModel.weights, searchModel.vocabulary];
-  const isReady = files.every((file) => {
-    const path = modelFilePath(searchModel, { file, cacheFolder: folder });
-    return statSync(path, { throwIfNoEntry: false })?.size === file.bytes;
+  const sizes = await Promise.all(
+    files.map((file) => wrap(stat(modelFilePath(searchModel, { file, cacheFolder: folder })))),
+  );
+  const isReady = files.every((file, position) => {
+    const size = sizes[position];
+    return size?.ok === true && size.value.size === file.bytes;
   });
   const weights = modelFilePath(searchModel, { file: searchModel.weights, cacheFolder: folder });
   const modelKey = modelKeyOf(searchModel);

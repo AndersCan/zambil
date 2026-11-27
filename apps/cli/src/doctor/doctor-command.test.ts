@@ -1,9 +1,10 @@
 import { describe, expect, test } from "vite-plus/test";
-import { mkdir, mkdtemp, rename, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from "node:fs/promises";
 import type { CliConfig } from "../config.ts";
 import { doctorCommand } from "./doctor-command.ts";
 import { installCommand } from "../install/install-command.ts";
 import { join } from "node:path";
+import { localBinPathLine } from "../install/link-hint.ts";
 import { mainPath } from "../install/link-hint.ts";
 import { runChecks } from "./doctor-command.ts";
 import { tmpdir } from "node:os";
@@ -187,6 +188,39 @@ describe("zambil doctor", () => {
           "      The hook embeds them on each prompt, which makes it slower.",
           "      Fix: zambil index",
         ],
+      },
+    });
+  });
+
+  test("gives the PATH line once the link exists, and explains a hook command that changed", async () => {
+    const setup = await installedSetup();
+    const withoutBin = await runChecks(
+      { ...setup.config, searchPath: [] },
+      { repoFlag: undefined, nodeVersion: "24.1.0" },
+    );
+    const text = await readFile(setup.settings, "utf8");
+    const installed = /"command": "([^"]+)"/u.exec(text)?.[1] ?? "";
+    const oldCache = installed.replace("node-compile-cache", "old-cache");
+    await writeFile(setup.settings, text.replaceAll(installed, oldCache));
+    const changed = await runChecks(setup.config, { repoFlag: undefined, nodeVersion: "24.1.0" });
+    expect({ link: withoutBin[1], hooks: changed[5] }).toEqual({
+      link: {
+        level: "fail",
+        text: `${setup.link} exists, but ~/.local/bin is not on your PATH.`,
+        details: [
+          "Also add the export line to ~/.zshrc or ~/.bashrc, so that each new terminal and Claude Code get it.",
+        ],
+        fixes: [localBinPathLine],
+      },
+      hooks: {
+        level: "fail",
+        text: `The zambil hooks in ${setup.settings} do not match what zambil install writes now.`,
+        details: [
+          "The hooks run another command than zambil install writes now, for example for another Node.",
+          `Now: ${oldCache}`,
+          `Install writes: ${installed}`,
+        ],
+        fixes: ["zambil install"],
       },
     });
   });

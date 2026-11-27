@@ -15,20 +15,34 @@ export interface CheckZambilLinkOptions {
   config: CliConfig;
 }
 
-/** How to put `~/.local/bin` on the `PATH`, when it is not there. */
-function pathAdvice(config: CliConfig): string[] {
-  if (hasLocalBinOnPath(config)) return [];
-  return [
-    `~/.local/bin is not on your PATH. After the link, add this line to ~/.zshrc or ~/.bashrc and open a new terminal: ${localBinPathLine}`,
-  ];
-}
+const profileAdvice =
+  "Also add the export line to ~/.zshrc or ~/.bashrc, so that each new terminal and Claude Code get it.";
 
 /** Why `~/.local/bin/zambil` does not run, when it is a link to a file that is gone. */
-async function brokenLink(config: CliConfig): Promise<string[]> {
-  const link = join(config.environment.home, ".local", "bin", "zambil");
+async function brokenLink(link: string): Promise<string[]> {
   const [target, resolved] = await Promise.all([wrap(readlink(link)), wrap(realpath(link))]);
   if (!target.ok || resolved.ok) return [];
   return [`${link} links to ${target.value}, which does not exist. The clone moved or is gone.`];
+}
+
+/** The link is missing or broken: link this clone, and put `~/.local/bin` on the `PATH` if needed. */
+async function notOnPath(config: CliConfig): Promise<CheckResult> {
+  const link = join(config.environment.home, ".local", "bin", "zambil");
+  const text = "zambil is not on your PATH. Claude Code and the agent run zambil by name.";
+  const isLinked = (await wrap(realpath(link))).ok;
+  if (hasLocalBinOnPath(config)) {
+    return { level: "fail", text, details: await brokenLink(link), fixes: [linkCommand()] };
+  }
+  if (isLinked) {
+    const linked = `${link} exists, but ~/.local/bin is not on your PATH.`;
+    return { level: "fail", text: linked, details: [profileAdvice], fixes: [localBinPathLine] };
+  }
+  return {
+    level: "fail",
+    text,
+    details: [...(await brokenLink(link)), profileAdvice],
+    fixes: [linkCommand(), localBinPathLine],
+  };
 }
 
 /** Whether `zambil` is on the `PATH`, and whether it runs this clone. */
@@ -37,14 +51,7 @@ export async function checkZambilLink(
   options: CheckZambilLinkOptions,
 ): Promise<CheckResult> {
   const { config } = options;
-  if (zambilPath === undefined) {
-    return {
-      level: "fail",
-      text: "zambil is not on your PATH. Claude Code and the agent run zambil by name.",
-      details: [...(await brokenLink(config)), ...pathAdvice(config)],
-      fixes: [linkCommand()],
-    };
-  }
+  if (zambilPath === undefined) return notOnPath(config);
   const [onPath, running] = await Promise.all([
     wrap(realpath(zambilPath)),
     wrap(realpath(mainPath())),
