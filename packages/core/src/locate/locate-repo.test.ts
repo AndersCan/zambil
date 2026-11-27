@@ -18,6 +18,13 @@ describe("locateRepo", () => {
     ]);
   });
 
+  test("rejects a blank flag instead of using the working folder", () => {
+    expect(locateRepo({ flag: " ", environment: base })).toEqual({
+      ok: false,
+      error: { kind: "empty-flag" },
+    });
+  });
+
   test("reads the user config file, relative to its folder", async () => {
     const folder = await configHome('{ "repo": "../my-notes" }');
     const located = locateRepo({ environment: { ...base, configHome: folder } });

@@ -27,8 +27,9 @@ export interface RepoLocation {
   source: RepoSource;
 }
 
-/** No source names a repo, or the user config file cannot be used. */
+/** The flag is blank, no source names a repo, or the user config file cannot be used. */
 export type LocateRepoError =
+  | { kind: "empty-flag" }
   | { kind: "not-configured"; configPath: string }
   | { kind: "invalid-config"; configPath: string; message: string };
 
@@ -54,6 +55,7 @@ function isMissingFile(error: unknown): boolean {
  */
 export function locateRepo(options: LocateRepoOptions): Either<LocateRepoError, RepoLocation> {
   const { environment } = options;
+  if (options.flag?.trim() === "") return left({ kind: "empty-flag" });
   if (options.flag !== undefined) {
     return right({
       root: resolve(environment.workingFolder, expandHome(options.flag, environment)),
