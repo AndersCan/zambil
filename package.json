@@ -6,7 +6,8 @@
   "scripts": {
     "check": "vp check",
     "test": "vp test run",
-    "ready": "vp check && vp test run",
+    "fix": "vp check --fix",
+    "ready": "pnpm run check && pnpm test",
     "prepare": "vp config"
   },
   "devDependencies": {

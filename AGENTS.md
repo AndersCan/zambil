@@ -2,6 +2,8 @@
 
 zambil has no product code yet. This file tells you how to set up, test and change the repo. It is written for a task that has no other context.
 
+`vision.md` says what zambil is for and how to make trade-offs. Read it before you make a design decision. If a section of it is still empty, the maintainer did not decide that part yet.
+
 ## Set up
 
 You need Node 24 or later. The repo pins pnpm 11.22.0 in `package.json`. If your pnpm has a different version, pnpm downloads the pinned version for you.
@@ -15,12 +17,12 @@ The install also points git at the hooks in `.vite-hooks/`. The pre-commit hook 
 
 Run each command from the root of the repo.
 
-| Command          | What it does                                                                                         |
-| ---------------- | ---------------------------------------------------------------------------------------------------- |
-| `pnpm test`      | Runs every `*.test.ts` file in the repo, in all packages. This is the test command for landing a PR. |
-| `pnpm run check` | Checks the format, lints, and typechecks the whole repo.                                             |
-| `pnpm run ready` | Runs `check` and then `test`. CI runs the same steps.                                                |
-| `vp check --fix` | Formats the files and fixes the lint findings that have a fix.                                       |
+| Command          | What it does                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------- |
+| `pnpm test`      | Runs every `*.test.ts` file in all packages and in `scripts/`. It is the test command for landing a PR. |
+| `pnpm run check` | Checks the format, lints, and typechecks the whole repo.                                                |
+| `pnpm run fix`   | Formats the files and fixes the lint findings that have a fix.                                          |
+| `pnpm run ready` | Runs `check` and then `test`. CI runs the same steps.                                                   |
 
 The tools come from Vite+ (`vp`), one CLI for format (Oxfmt), lint (Oxlint), typecheck and tests (Vitest). Import test functions from `vite-plus/test`, not from `vitest`. The Vite+ docs are in `node_modules/vite-plus/docs` after the install.
 
@@ -34,13 +36,21 @@ The repo is a pnpm workspace (one repo with many packages).
 
 Each package has its own `package.json`. Its name is `@zambil/<name>`. It has `"private": true` and `"type": "module"`. Put each test next to its code: `parse-order.test.ts` beside `parse-order.ts`. The root `pnpm test` finds it. You do not add a test script to the package.
 
+Each folder in `apps/` and `packages/` is its own Vitest project. A package can need its own test configuration, for example a DOM environment or a setup file. Then put a `vite.config.ts` in the folder of that package. The root `pnpm test` uses it for the tests in that folder.
+
 Write TypeScript only. Import local files with the `.ts` extension. Node runs `.ts` files directly, so a script does not need a build step.
+
+To use one package in another:
+
+1. In the library, list each file that other packages can import in `exports`, for example `"exports": { "./parse-order": "./src/parse-order.ts" }`. Do not add an `index.ts` that re-exports other files.
+2. In the package that imports it, add `"@zambil/<name>": "workspace:*"` to `dependencies`.
+3. Run `pnpm install`.
 
 ## Dependencies
 
 All versions live in the `catalog` in `pnpm-workspace.yaml`. To add a dependency:
 
-1. Add the name and version to the `catalog` in `pnpm-workspace.yaml`.
+1. Add the name and version to the `catalog` in `pnpm-workspace.yaml`. This is a shared file, but a new catalog line is an expected change.
 2. In the `package.json` of your package, write the version as `"catalog:"`.
 3. Run `pnpm install`, and commit `pnpm-lock.yaml`.
 
@@ -54,17 +64,18 @@ These files are shared by all tasks:
 
 - `package.json` and `pnpm-lock.yaml` in the root
 - `pnpm-workspace.yaml`
-- `vite.config.ts` and `tsconfig.json`
+- `vite.config.ts` and `tsconfig.json` in the root
 - `.github/workflows/ci.yml`
 - `AGENTS.md`
 
-If you must change a shared file, keep the change small and say so in the PR.
+If you must change a shared file, keep the change small and say so in the PR. A new package always changes `pnpm-lock.yaml`. This is true for a package with no dependencies too. Commit that change.
 
-If a rebase stops on a conflict in `pnpm-lock.yaml`, do not edit the file by hand:
+If a rebase stops on a conflict in these files, do not edit `pnpm-lock.yaml` by hand:
 
-1. Run `git checkout origin/main -- pnpm-lock.yaml` to take the version from the default branch.
-2. Run `pnpm install`. pnpm adds the dependencies of your branch to the lockfile again.
-3. Run `git add pnpm-lock.yaml` and continue the rebase.
+1. If `pnpm-workspace.yaml` has a conflict in the `catalog`, keep the lines from both sides. Then run `git add pnpm-workspace.yaml`.
+2. Run `git checkout origin/main -- pnpm-lock.yaml` to take the lockfile from the default branch.
+3. Run `pnpm install`. pnpm adds the dependencies of your branch to the lockfile again.
+4. Run `git add pnpm-lock.yaml` and continue the rebase.
 
 ## Before you push
 

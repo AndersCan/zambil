@@ -16,6 +16,10 @@ export default defineConfig({
     cache: true,
   },
   test: {
-    exclude: ["**/node_modules/**", "**/.git/**", "**/dist/**"],
+    projects: [
+      "apps/*",
+      "packages/*",
+      { test: { name: "scripts", include: ["scripts/**/*.test.ts"] } },
+    ],
   },
 });
