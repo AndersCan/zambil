@@ -34,7 +34,7 @@ describe("scoreNotes", () => {
     const repo = loadRepo(root);
     if (!repo.ok) throw new Error(repo.error.message);
     const cacheFolder = await mkdtemp(join(tmpdir(), "zambil-cache-"));
-    await indexNotes(repo.value, { embedder: topicEmbedder, cacheFolder });
+    await indexNotes(repo.value, { embedder: topicEmbedder, cacheFolder, removedTexts: "drop" });
     const options = { text: "a loop", embedder: topicEmbedder, cacheFolder };
     const before = await scoreNotes(repo.value, { ...options, now: new Date(2026, 10, 30) });
     const after = await scoreNotes(repo.value, { ...options, now: new Date(2026, 11, 1) });

@@ -39,7 +39,7 @@ export async function findDuplicateNotes(
   );
   const noteSearch = opened.ok ? opened.value : opened;
   if (!noteSearch.ok) return [];
-  if (files.unindexed > 0) await wrap(noteSearch.value.index(repo));
+  if (files.unindexed > 0) await wrap(noteSearch.value.index(repo, { removedTexts: "keep" }));
   const descriptionsOnly = {
     ...repo,
     notes: repo.notes.map((note) => ({ ...note, triggers: [] })),
