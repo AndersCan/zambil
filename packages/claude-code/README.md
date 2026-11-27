@@ -78,7 +78,7 @@ A note that a hook added stays in the context of the agent. So zambil adds each 
 
 zambil keeps one small file for each context in `$XDG_CACHE_HOME/zambil/sessions/`, or in `~/.cache/zambil/sessions/`. The file has the name of the `session_id` of the hook input, and the `agent_id` in a subagent. It lists the name and a hash of each note that a hook added in full. At the next hook, zambil leaves out each note with the same name and the same hash. These rules apply:
 
-- A note that you change gets a new hash, so it comes again.
+- A note that you change gets a new hash, so it comes again at its hook. A note in the context, in any version, takes no place among the similar notes, so a lower match can take that place.
 - A note that you name with `z:<name>` always comes, because you asked for it.
 - A note at `Stop` or `SubagentStop` comes at each stop, because it makes the agent continue so that it acts on the note. `stop_hook_active` still stops a loop.
 - A note that did not fit, and became one line in the list at the end, is not in the file. It can come in full at a later hook.

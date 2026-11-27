@@ -63,10 +63,11 @@ describe("searchableNotes", () => {
       "Deploy.md": "---\ndescription: How to deploy.\n---\nRun make deploy.\n",
       "rebase.md": "---\ndescription: How to rebase.\n---\nRun git rebase.\n",
       "welcome.md": "---\ndescription: Welcome.\nhooks: SessionStart\n---\nHi.\n",
+      "constructor.md": "---\ndescription: How to build a class.\n---\nUse functions.\n",
     });
     const repo = loadRepo(root);
     if (!repo.ok) throw new Error(repo.error.message);
     const notes = searchableNotes(repo.value.notes, { inContext: { deploy: "an older version" } });
-    expect(notes.map((note) => note.name)).toEqual(["rebase"]);
+    expect(notes.map((note) => note.name)).toEqual(["constructor", "rebase"]);
   });
 });

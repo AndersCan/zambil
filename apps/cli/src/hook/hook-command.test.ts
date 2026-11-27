@@ -61,6 +61,11 @@ function prompt(text: string): string {
   return JSON.stringify({ ...ids, hook_event_name: "UserPromptSubmit", prompt: text });
 }
 
+function noteNames(stdout: string): string[] {
+  const matches = stdout.matchAll(/<note name=\\"(?<name>\w+)\\"/g);
+  return [...matches].map((match) => match.groups?.name ?? "");
+}
+
 const userPrompt = JSON.stringify({ hook_event_name: "UserPromptSubmit", prompt: "Hi" });
 
 const sessionStart = JSON.stringify({
@@ -245,12 +250,27 @@ describe("hookCommand", () => {
     // Each hook reads the file that the hook before it wrote, so they run in order.
     for (const stdin of payloads) {
       const result = await runHook([], { stdin, repo, claudeConfigFolder, cacheHome });
-      names.push(
-        [...result.stdout.matchAll(/<note name=\\"(?<name>\w+)\\"/g)].map(
-          (match) => match.groups?.name ?? "",
-        ),
-      );
+      names.push(noteNames(result.stdout));
     }
-    expect(names).toEqual([["a"], [], ["b"], ["b"], ["a"], [], ["f"], ["f"], ["s"], ["a"]]);
+    const withoutSession = JSON.stringify({ hook_event_name: "UserPromptSubmit", prompt: "Hi" });
+    // Both hooks share one cache folder, and the second must not read what the first wrote.
+    for (const stdin of [withoutSession, withoutSession]) {
+      const result = await runHook([], { stdin, repo, claudeConfigFolder, cacheHome });
+      names.push(noteNames(result.stdout));
+    }
+    expect(names).toEqual([
+      ["a"],
+      [],
+      ["b"],
+      ["b"],
+      ["a"],
+      [],
+      ["f"],
+      ["f"],
+      ["s"],
+      ["a"],
+      ["a"],
+      ["a"],
+    ]);
   });
 });

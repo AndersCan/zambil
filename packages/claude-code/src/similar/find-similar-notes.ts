@@ -67,7 +67,7 @@ export interface SearchableNotesOptions {
 export function searchableNotes(notes: Note[], options: SearchableNotesOptions): Note[] {
   return notes.filter((note) => {
     const isInContext =
-      note.hooks.includes("SessionStart") || nameKey(note.name) in options.inContext;
+      note.hooks.includes("SessionStart") || Object.hasOwn(options.inContext, nameKey(note.name));
     return !isInContext;
   });
 }
