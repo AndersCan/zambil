@@ -46,6 +46,7 @@ describe("listCommand", () => {
       run(["DEPLOY", "--repo", root]),
       run(["release", "shop", "--repo", root]),
       run(["commit", "blog", "--repo", root]),
+      run(["publish", "--repo", root]),
     ]);
     expect(results).toEqual([
       {
@@ -70,8 +71,17 @@ describe("listCommand", () => {
       {
         code: 0,
         stdout: [
-          'No note has "commit blog" in its name, an alias or its description.',
+          'No note has each word of "commit blog" in its name, an alias or its description.',
           `To find notes with a similar description, run \`zambil search 'commit blog' --repo ${root}\`.`,
+          "",
+        ].join("\n"),
+        stderr: "",
+      },
+      {
+        code: 0,
+        stdout: [
+          "NAME         KIND  PATH            DESCRIPTION",
+          "deploy-blog  note  deploy-blog.md  How to publish the blog.",
           "",
         ].join("\n"),
         stderr: "",
@@ -87,9 +97,11 @@ describe("listCommand", () => {
     const root = await writeTestRepo(files);
     const limited = await run(["--repo", root]);
     const all = await run(["--all", "--repo", root]);
+    const filtered = await run(["note", "--repo", root]);
     expect({
       limited: { code: limited.code, last: lines(limited.stdout).at(-1), stderr: limited.stderr },
       all: { code: all.code, count: lines(all.stdout).length, stderr: all.stderr },
+      filtered: filtered.stderr,
     }).toEqual({
       limited: {
         code: 0,
@@ -101,6 +113,11 @@ describe("listCommand", () => {
         ].join("\n"),
       },
       all: { code: 0, count: 106, stderr: "" },
+      filtered: [
+        'zambil listed 100 of the 105 notes that have each word of "note".',
+        "To narrow the list, add a word. To list every match, add --all.",
+        "",
+      ].join("\n"),
     });
   });
 });

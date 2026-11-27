@@ -5,8 +5,9 @@ import type { NoteScore } from "@zambil/embed/score-notes";
 import { wrap } from "@zambil/core/either";
 
 /**
- * The lowest score at which a new description repeats a current note. Paraphrases of one note score
- * 0.85 to 0.95 with the search model. Notes on another subject of the same field mostly score under 0.65.
+ * The lowest score at which a new description repeats a current note, measured with `searchModel`
+ * (multi-qa-minilm-l6-cos-v1): paraphrases of one note score 0.85 to 0.95, and most notes on another
+ * subject score under 0.65. Measure it again when the model changes.
  */
 export const duplicateScore = 0.8;
 
@@ -37,7 +38,6 @@ export async function findSimilarNotes(
     download: "never",
   });
   if (!noteSearch.ok) return [];
-  if (files.unindexed > 0) await noteSearch.value.index(repo);
   const result = await noteSearch.value.search(repo, { text: description, now });
   if (!result.ok) return [];
   return result.value.matches.filter((match) => match.score >= duplicateScore);

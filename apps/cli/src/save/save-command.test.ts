@@ -227,7 +227,15 @@ describe("saveCommand and notes with a similar description", () => {
     { timeout: 120_000 },
     async () => {
       const config = await machineWithModel();
-      const blog = "---\ndescription: How to deploy the blog.\n---\nRun `make blog`.\n";
+      const blog = [
+        "---",
+        "description: How to deploy the blog.",
+        "expires: 2027-06-01",
+        'when-expired: "[[deploy-blog]]"',
+        "---",
+        "Run `make blog`.",
+        "",
+      ].join("\n");
       const root = await writeTestRepo({ "ops/deploy-blog.md": blog });
       const repeat = "---\ndescription: Steps to deploy the blog.\n---\nRun `make blog`.\n";
       const other = "---\ndescription: How to write a commit message.\n---\nShort.\n";
@@ -236,6 +244,12 @@ describe("saveCommand and notes with a similar description", () => {
         config,
       });
       const isRefusedSaved = existsSync(join(root, "publish-blog.md"));
+      const merged = "---\ndescription: How to deploy the blog.\n---\nRun `make blog` from main.\n";
+      const rewrite = await run(
+        ["deploy-blog", "--rewrite", "--expires", "2027-06-01", "--repo", root],
+        { input: merged, config },
+      );
+      const rewritten = await readFile(join(root, "ops/deploy-blog.md"), "utf8");
       const allowed = await run(
         ["publish-blog", "--repo", root, "--no-expires", "--allow-similar"],
         {
@@ -252,22 +266,25 @@ describe("saveCommand and notes with a similar description", () => {
         stdout: refused.stdout,
         lines: refused.stderr.split("\n"),
       };
-      expect({ refusal, isRefusedSaved, allowed, distinct }).toEqual({
+      expect({ refusal, isRefusedSaved, rewrite, rewritten, allowed, distinct }).toEqual({
         refusal: {
           code: 1,
           stdout: "",
           lines: [
             'zambil did not save "publish-blog". A current note has a very similar description:',
+            "  SCORE  NAME         PATH                DESCRIPTION",
             expect.stringMatching(
-              /^ {2}0\.9\d {2}deploy-blog {2}ops\/deploy-blog\.md {2}How to deploy the blog\.$/,
+              /^ {2}0\.9\d {3}deploy-blog {2}ops\/deploy-blog\.md {2}How to deploy the blog\.$/,
             ),
-            "If the new note says the same, put its text into that note instead:",
-            `  zambil save deploy-blog --rewrite --no-expires --repo ${root} < merged-text.md`,
+            "If the new note says the same, put its text into that note instead. This command keeps the expiry of that note:",
+            `  zambil save deploy-blog --rewrite --expires 2027-06-01 --repo ${root} < merged-text.md`,
             "If it is about something else, run the same save again with --allow-similar.",
             "",
           ],
         },
         isRefusedSaved: false,
+        rewrite: { code: 0, stdout: "Rewrote ops/deploy-blog.md.\n", stderr: "" },
+        rewritten: blog.replace("Run `make blog`.", "\nRun `make blog` from main."),
         allowed: { code: 0, stdout: "Created publish-blog.md.\n", stderr: "" },
         distinct: { code: 0, stdout: "Created commit-messages.md.\n", stderr: "" },
       });

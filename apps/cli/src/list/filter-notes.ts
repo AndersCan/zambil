@@ -1,3 +1,4 @@
+import { nameKey } from "@zambil/core/index-names";
 import type { Note } from "@zambil/core/note";
 
 /** The text to look for. Empty text keeps every note. */
@@ -6,13 +7,13 @@ export interface FilterNotesOptions {
 }
 
 function searchableText(note: Note): string {
-  return [note.name, ...note.aliases, note.description ?? ""].join("\n").toLowerCase();
+  const text = [note.name, ...note.aliases, note.description ?? ""].join("\n");
+  return nameKey(text);
 }
 
 /** The notes that have each word of the text in the name, an alias or the description, in any case. */
 export function filterNotes(notes: Note[], options: FilterNotesOptions): Note[] {
-  const words = options.text
-    .toLowerCase()
+  const words = nameKey(options.text)
     .split(/\s+/)
     .filter((word) => word !== "");
   if (words.length === 0) return notes;

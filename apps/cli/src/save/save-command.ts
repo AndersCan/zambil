@@ -1,15 +1,10 @@
 import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
-import type {
-  ExpiryChoice,
-  SavedNote,
-  SaveRefusal,
-  SaveRequest,
-  WriteRequest,
-} from "@zambil/core/save-note";
+import type { ExpiryChoice, SavedNote, SaveRefusal, SaveRequest } from "@zambil/core/save-note";
 import { left, right } from "@zambil/core/either";
 import type { CliConfig } from "../config.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import type { Either } from "@zambil/core/either";
+import { findNote } from "@zambil/core/find-note";
 import { findRecalls } from "@zambil/claude-code/find-recalls";
 import { findSimilarNotes } from "./find-similar-notes.ts";
 import { formatColumns } from "../list/format-columns.ts";
@@ -18,6 +13,7 @@ import { installHint } from "./install-hint.ts";
 import { isNever } from "@zambil/core/is-never";
 import { loadRepo } from "@zambil/core/load-repo";
 import { nameKey } from "@zambil/core/index-names";
+import type { Note } from "@zambil/core/note";
 import type { NoteFile } from "@zambil/core/note-file";
 import type { NoteScore } from "@zambil/embed/score-notes";
 import { openRepo } from "../open-repo.ts";
@@ -79,7 +75,8 @@ function planVerify(name: string, flags: SaveFlags): Either<string, PlannedSave>
   const hasOtherFlag =
     flags["no-expires"] === true ||
     flags["when-expired"] !== undefined ||
-    flags.folder !== undefined;
+    flags.folder !== undefined ||
+    flags["allow-similar"] === true;
   if (hasOtherFlag) {
     return left("--verified sets a new expires date only. Use --rewrite to change more.");
   }
@@ -103,6 +100,9 @@ function planSave(positionals: string[], options: PlanOptions): Either<string, P
   const mode = flags.rewrite === true ? "rewrite" : "create";
   if (mode === "rewrite" && flags.folder !== undefined) {
     return left("--folder is only for a new note. zambil does not move notes.");
+  }
+  if (mode === "rewrite" && flags["allow-similar"] === true) {
+    return left("--allow-similar is only for a new note.");
   }
   const expiry = expiryChoice(flags);
   if (!expiry.ok) return expiry;
@@ -206,38 +206,41 @@ function whenExpiredReminder(saved: SavedNote, options: ReminderOptions): string
   ].join("\n");
 }
 
-function expiryFlags(expiry: ExpiryChoice): string {
+/** The expiry option that a rewrite needs to keep the expiry of the note as it is. */
+function keptExpiryFlag(note: Note): string {
+  const { expiry } = note;
   switch (expiry.kind) {
-    case "none":
+    case "never":
       return "--no-expires";
-    case "expires":
-      return `--expires ${quoteArgument(expiry.text)}`;
+    case "at":
+    case "unreadable":
+      return `--expires ${quoteArgument(String(note.properties.expires))}`;
     default:
       return isNever(expiry);
   }
 }
 
 interface SimilarMessageOptions {
-  request: WriteRequest;
+  name: string;
   repoFlag: string | undefined;
 }
 
 function describeSimilar(similar: NoteScore[], options: SimilarMessageOptions): string {
-  const { request } = options;
-  const rows: string[][] = [];
+  const rows = [["", "SCORE", "NAME", "PATH", "DESCRIPTION"]];
   for (const { note, score } of similar) {
     const description = (note.description ?? "").replaceAll(/\s*\n\s*/g, " ");
     rows.push(["", score.toFixed(2), note.name, note.path, description]);
   }
   const [best] = similar;
   const repo = options.repoFlag === undefined ? "" : ` --repo ${quoteArgument(options.repoFlag)}`;
-  const name = quoteArgument(best?.note.name ?? "");
-  const expiry = expiryFlags(request.expiry);
+  if (best === undefined) return "";
+  const name = quoteArgument(best.note.name);
+  const expiry = keptExpiryFlag(best.note);
   const subject = similar.length === 1 ? "A current note has" : "Current notes have";
   return [
-    `zambil did not save "${request.name}". ${subject} a very similar description:`,
+    `zambil did not save "${options.name}". ${subject} a very similar description:`,
     formatColumns(rows),
-    "If the new note says the same, put its text into that note instead:",
+    "If the new note says the same, put its text into that note instead. This command keeps the expiry of that note:",
     `  zambil save ${name} --rewrite ${expiry}${repo} < merged-text.md`,
     "If it is about something else, run the same save again with --allow-similar.",
   ].join("\n");
@@ -258,12 +261,14 @@ async function similarRefusal(
   const { flags } = options;
   const isChecked = request.mode === "create" && flags["allow-similar"] !== true;
   if (!isChecked) return undefined;
+  const isNameTaken = findNote(options.repo, { name: request.name }).kind !== "missing";
+  if (isNameTaken) return undefined;
   const file: NoteFile = { name: request.name, path: `${request.name}.md`, kind: "note" };
   const { description } = parseNote(request.text, { file }).note;
   if (description === undefined) return undefined;
   const similar = await findSimilarNotes(description, options);
   if (similar.length === 0) return undefined;
-  return describeSimilar(similar, { request, repoFlag: flags.repo });
+  return describeSimilar(similar, { name: request.name, repoFlag: flags.repo });
 }
 
 /** The repo folder, the startup config, and the `--repo` flag as the user typed it. */

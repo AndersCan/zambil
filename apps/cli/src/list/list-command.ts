@@ -1,5 +1,4 @@
 import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
-import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import { filterNotes } from "./filter-notes.ts";
 import { firstNoteHint } from "../save/first-note-hint.ts";
 import { formatColumns } from "./format-columns.ts";
@@ -41,10 +40,17 @@ function commandLine(words: string, options: CommandLineOptions): string {
 
 interface MoreNotesOptions {
   shown: number;
+  text: string;
   repoFlag: string | undefined;
 }
 
 function moreNotesHint(total: number, options: MoreNotesOptions): string {
+  if (options.text !== "") {
+    return [
+      `zambil listed ${options.shown} of the ${total} notes that have each word of "${options.text}".`,
+      "To narrow the list, add a word. To list every match, add --all.",
+    ].join("\n");
+  }
   const filter = commandLine("zambil list <word>", options);
   const search = commandLine('zambil search "<what the note is about>"', options);
   return [
@@ -53,15 +59,15 @@ function moreNotesHint(total: number, options: MoreNotesOptions): string {
   ].join("\n");
 }
 
-interface ListedOptions {
-  repo: ConfigurationRepo;
+interface NoMatchOptions {
   text: string;
+  repoFlag: string | undefined;
 }
 
-function noMatch(options: ListedOptions & CommandLineOptions): string {
+function noMatch(options: NoMatchOptions): string {
   const search = commandLine(`zambil search ${quoteArgument(options.text)}`, options);
   return [
-    `No note has "${options.text}" in its name, an alias or its description.`,
+    `No note has each word of "${options.text}" in its name, an alias or its description.`,
     `To find notes with a similar description, run \`${search}\`.`,
   ].join("\n");
 }
@@ -93,10 +99,10 @@ function runList(options: CommandRunOptions): ExitCode {
   const notes = filterNotes(repo.value.notes, { text });
   const shown = values.all === true ? notes : notes.slice(0, listLimit);
   const hasNoMatch = notes.length === 0 && text !== "";
-  if (hasNoMatch) output.write(`${noMatch({ repo: repo.value, text, repoFlag })}\n`);
+  if (hasNoMatch) output.write(`${noMatch({ text, repoFlag })}\n`);
   if (shown.length > 0) output.write(`${formatList(shown, { now: options.now })}\n`);
   if (shown.length < notes.length) {
-    output.error(`${moreNotesHint(notes.length, { shown: shown.length, repoFlag })}\n`);
+    output.error(`${moreNotesHint(notes.length, { shown: shown.length, text, repoFlag })}\n`);
   }
   if (repo.value.problems.length > 0) {
     const check = commandLine("zambil check", { repoFlag });
