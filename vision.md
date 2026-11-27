@@ -43,9 +43,10 @@ small, visible steps.
    vectors, so that similar meanings are close) matches the prompt against
    note descriptions. A question about iterating can find a note about for
    loops. `zambil search <text>` runs the same match from the CLI.
-4. **Skills and scripts are offered, not forced.** A skill can match by name
-   or by similarity. Then the agent is told that the user opted in, and how to
-   load the skill. A hook cannot load a skill itself. For a script, the agent
+4. **Skills and scripts are offered, not forced.** For a skill named with
+   `z:<name>`, the agent is told that the user opted in. For a skill that
+   matches by similarity, it is told that the skill matched. In both cases it
+   is told how to load the skill. A hook cannot load a skill itself. For a script, the agent
    is told what it does, where it is and how to run it.
 5. **Notes can be a cache.** A note can expire. Example: a note holds today's
    date and expires tomorrow, so the agent knows the day without work. A note
@@ -102,9 +103,9 @@ Ranked for trade-offs, highest first. For a design review, use these.
 3. **Neutral core, thin adapters.** The core does not depend on one agent
    tool. A thin adapter connects it to Claude Code. For now, notes use Claude
    Code's hook names.
-   _If this conflicts with a Claude Code feature, the adapter gets it._
-4. **Plain properties before smart ones.** A note's properties say when it
-   applies: `description`, `hooks`, `tools`, `expires`. Search matches the
+   _A Claude Code feature that conflicts with this goes in the adapter._
+4. **Plain properties before smart ones.** A note's properties tell zambil
+   where the note applies: `description`, `hooks`, `tools`, `expires`. Search matches the
    description. A second description for the LLM can come later.
    _If this conflicts with match quality, a test decides._ A new property
    comes only after the plain description fails that test.
