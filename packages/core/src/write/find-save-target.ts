@@ -8,15 +8,7 @@ import { isNever } from "../is-never.ts";
 import { nameKey } from "../repo/index-names.ts";
 import type { NoteFile } from "../note/note-file.ts";
 import { readTextFile } from "../repo/read-text-file.ts";
-
-/** `taken` and `missing` mean that the writer picked the wrong mode. `invalid` is any other refusal. */
-export type SaveRefusalReason = "taken" | "missing" | "invalid";
-
-/** Why zambil did not save a note. The note file is unchanged. */
-export interface SaveRefusal {
-  reason: SaveRefusalReason;
-  message: string;
-}
+import type { SaveRefusal } from "./save-note.ts";
 
 /** The file to write, and its current text when the note exists. */
 export interface SaveTarget {

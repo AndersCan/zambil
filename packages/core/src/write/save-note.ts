@@ -1,6 +1,5 @@
 import { findExistingTarget, findNewTarget } from "./find-save-target.ts";
 import { left, right } from "../either.ts";
-import type { SaveRefusal, SaveTarget } from "./find-save-target.ts";
 import type { ConfigurationRepo } from "../repo/configuration-repo.ts";
 import { editFrontmatter } from "./edit-frontmatter.ts";
 import type { Either } from "../either.ts";
@@ -16,6 +15,7 @@ import { parseFrontmatter } from "../properties/parse-frontmatter.ts";
 import { parseLinkTarget } from "../properties/parse-link-target.ts";
 import { parseNote } from "../note/parse-note.ts";
 import type { PropertyEdit } from "./edit-frontmatter.ts";
+import type { SaveTarget } from "./find-save-target.ts";
 import { splitFrontmatter } from "../properties/split-frontmatter.ts";
 import { splitYamlBlocks } from "./edit-frontmatter.ts";
 import { writeNoteFile } from "./write-note-file.ts";
@@ -39,6 +39,15 @@ export type SaveRequest =
   | ({ mode: "create"; folder?: string } & WriteRequest)
   | ({ mode: "rewrite" } & WriteRequest)
   | { mode: "verify"; name: string; expires: string };
+
+/** `taken` and `missing` mean that the writer picked the wrong mode. `invalid` is any other refusal. */
+export type SaveRefusalReason = "taken" | "missing" | "invalid";
+
+/** Why zambil did not save a note. The note file is unchanged. */
+export interface SaveRefusal {
+  reason: SaveRefusalReason;
+  message: string;
+}
 
 /** The loaded repo to write into, and the moment that a new `expires` date must be after. */
 export interface SaveNoteOptions {

@@ -10,7 +10,9 @@ async function main(): Promise<void> {
     write: (text: string) => process.stdout.write(text),
     error: (text: string) => process.stderr.write(text),
   };
-  const input = { readAll: () => readStream(process.stdin) };
+  const input = {
+    readAll: () => (process.stdin.isTTY ? Promise.resolve("") : readStream(process.stdin)),
+  };
   const options = { config: readCliConfig(), input, output, now: new Date() };
   process.exitCode = await runCli(process.argv.slice(2), options);
 }

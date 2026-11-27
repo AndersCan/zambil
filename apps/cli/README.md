@@ -23,6 +23,8 @@ The commands are:
 
 - `zambil list` prints one line per note: the name, the kind, the path and the description.
 - `zambil check` prints each problem with its path. An error sets the exit code to 1.
+- `zambil save <name>` creates or rewrites a note from standard input, or records with `--verified` that its claims still hold. It is the one way to write a note. See "Write a note" in `docs/notes.md`.
+- `zambil save-guide` prints what an agent must know before it writes a note.
 - `zambil help` prints the commands. `zambil help <command>` or `zambil <command> --help` prints the usage of one command.
 
 Each command takes `--repo <path>`. Without it, zambil reads `ZAMBIL_REPO`, then `$XDG_CONFIG_HOME/zambil/config.json`. If `XDG_CONFIG_HOME` is not set, the file is `~/.config/zambil/config.json`.
@@ -30,7 +32,7 @@ Each command takes `--repo <path>`. Without it, zambil reads `ZAMBIL_REPO`, then
 The exit codes are:
 
 - 0: the command worked.
-- 1: `zambil check` found an error.
+- 1: `zambil check` found an error, or `zambil save` refused to save the note.
 - 2: the usage is wrong, or zambil cannot find the repo.
 
 ## Add a command

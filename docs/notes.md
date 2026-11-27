@@ -73,8 +73,8 @@ zambil reads the properties in the table. The `properties` field of the note hol
 | `tags`         | list of text      | Obsidian tags. zambil also reads the `#tags` in the text of the note.                                                        |
 | `hooks`        | list of text      | The hooks where the note applies, with the hook names of Claude Code, for example `SessionStart` or `PreToolUse`.            |
 | `tools`        | list of text      | The tools that a tool hook applies to, for example `Bash` or `Edit`.                                                         |
-| `expires`      | date or date-time | The note is current until this moment. See [Expiry](#expiry).                                                                |
-| `when-expired` | link or name      | The note that tells how to refresh this note, for example `"[[refresh-today]]"`.                                             |
+| `expires`      | date or date-time | The claims of the note hold until this moment. See [Expiry](#expiry).                                                        |
+| `when-expired` | link or name      | The note that tells how to update this note or verify its claims, for example `"[[refresh-today]]"`.                         |
 | `script`       | path              | Makes the note a script note. The path of the script, relative to the folder of the note. See [Scripts](#scripts).           |
 | `run-with`     | text              | The program that runs the script, for example `bash`, `node` or `uv run`. Without it, the agent runs the script file itself. |
 | `name`         | text              | Only in a `SKILL.md`. Claude Code reads it. It must be the name of the skill folder.                                         |
@@ -141,7 +141,13 @@ zambil never reads the script, and the source of the script never goes into the 
 
 ## Expiry
 
-A note with `expires` is a cache. For example, a note holds the date of today and expires tomorrow. zambil reads these forms:
+A note that makes claims goes out of date. For example, a note says how a module works, but the code changes after that. The note is then false and confuses the agent. So a note can have an `expires` date and a `when-expired` note. The `when-expired` note tells how to update the note or verify its claims. It helps before the date too, because a note can become false early. If the claims still hold, the result is a new `expires` date with the same content. See [Write a note](#write-a-note).
+
+A cache is one use of `expires`. For example, a note holds the date of today and expires tomorrow, so the agent knows the day without work.
+
+zambil never gives a note a new `expires` date on its own, before or after the date. An expiry warning can offer an update. The agent saves it only when the user asks.
+
+zambil reads these forms:
 
 | Value                  | Meaning                                             |
 | ---------------------- | --------------------------------------------------- |
@@ -165,6 +171,39 @@ Each feature that shows notes follows these rules:
 3. If the expired note has `when-expired`, `resolveNote` also returns the lookup of that note, and the warning links to it.
 
 If the `when-expired` note does not exist, `zambil check` gives an error.
+
+## Write a note
+
+Writing a note is a deliberate act. zambil, a hook or a background process never writes a note on its own. A note changes only when the user edits it, or when the user asks the agent to run `zambil save`. Most often, the agent writes the first version and rewrites it when the user asks. Then the user fine-tunes it by hand in Obsidian. `zambil save-guide` prints these rules for the agent.
+
+`zambil save <name>` has three modes:
+
+| Mode    | Command                                          | What it does                                                    |
+| ------- | ------------------------------------------------ | --------------------------------------------------------------- |
+| create  | `zambil save <name>`                             | Writes a new note. Its name and its aliases must be free.       |
+| rewrite | `zambil save <name> --rewrite`                   | Changes an existing note. zambil finds it by its name.          |
+| verify  | `zambil save <name> --verified --expires <date>` | Sets a new `expires` date. The rest of the note stays the same. |
+
+The text of the note comes on standard input. It is Markdown, with optional frontmatter. Each property in that frontmatter replaces the same property of the note. The other properties stay line for line, with their comments and their format. The content of the text replaces the old content. In a rewrite, text without content keeps the old content.
+
+A create and a rewrite need a choice about expiry:
+
+- `--expires <date>` sets a date in the future, in a form from [Expiry](#expiry).
+- `--no-expires` removes `expires`, for a note that makes no claims that go out of date.
+
+`--when-expired <name>` links the note that tells how to update this note or verify its claims. That note must exist, or it must be the note itself. If a saved note expires and has no `when-expired` note, zambil prints a reminder. Set `expires` and `when-expired` with these options, not in the frontmatter of the text, so that zambil can check them. `--folder <path>` puts a new note in a folder of the repo. The default is the root.
+
+zambil refuses to save, and changes no file, in these cases:
+
+- A create uses a name or an alias that another note uses. A rewrite or a verify uses a name that no note has, or an alias in place of the name.
+- The new note has a name that a filename or an Obsidian link cannot have, a name that starts with `.`, or the name `SKILL`.
+- The folder of a new note is outside the repo, starts with `.`, is in `node_modules`, is a symbolic link, or is in a skill folder. zambil does not read notes in these folders.
+- The new text gives the note an alias that another note uses.
+- The `expires` date is not a date, or it is not in the future. The `when-expired` note does not exist.
+- The frontmatter of the note does not parse. Or zambil cannot change it line by line without changes to other properties.
+- The saved note has an error that the old note did not have.
+
+A refusal exits with 1. A wrong usage, such as no choice about expiry, exits with 2.
 
 ## Problems
 
@@ -207,6 +246,7 @@ Later features import from `@zambil/core`. Each export is one file. A new export
 - `@zambil/core/parse-link-target`. `parseLinkTarget` returns the note name in a link such as `[[folder/name#heading]]`, or in a plain name.
 - `@zambil/core/parse-note`. `parseNote` reads one note from its text.
 - `@zambil/core/resolve-note`. `resolveNote` looks up a name and returns `expired`, with the `when-expired` note, for an expired note.
+- `@zambil/core/save-note`. `saveNote` creates, rewrites or verifies one note. Only `zambil save` calls it, so that a note is always written on purpose.
 - `@zambil/core/split-frontmatter`. `splitFrontmatter` splits the frontmatter from the text, for a feature that rewrites a note.
 - `@zambil/core/write-test-repo`. `writeTestRepo` writes a repo into a temporary folder for a test.
 
