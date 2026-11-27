@@ -9,8 +9,8 @@ zambil reads that repo and adds the matching notes to the agent's context. A
 note matches at a hook that it names. A note that you name in a prompt also
 matches. So does a note that is similar to what you ask.
 
-zambil stores notes, not memories. A note is a Markdown file that you wrote
-and can read.
+zambil stores notes, not memories. A note is a Markdown file that you wrote,
+or that you asked the agent to write. You can read and edit it.
 
 ## Who it is for
 
@@ -18,6 +18,12 @@ A person who uses Claude Code and wants their own setup in every session. They
 want to write a note once and see it show up at the right time. They do not
 want to copy text into prompts. They want to read and organize their notes in a
 normal editor, and Obsidian in particular.
+
+Writing a note is a deliberate act and never automatic. Most often, the user
+asks the agent to write the note and then asks it for changes. If the text
+must be very specific, the user edits the note by hand in Obsidian. So the
+order is: the agent writes, the agent rewrites, and the user rewrites when
+needed.
 
 Claude Code comes first. Other agent tools must be able to use zambil too.
 
@@ -48,10 +54,17 @@ small, visible steps.
    matches by similarity, it is told that the skill matched. In both cases it
    is told how to load the skill. A hook cannot load a skill itself. For a script, the agent
    is told what it does, where it is and how to run it.
-5. **Notes can be a cache.** A note can expire. Example: a note holds today's
-   date and expires tomorrow, so the agent knows the day without work. A note
-   can name a "when expired" note that tells how to rebuild it. A command
-   saves the refreshed content.
+5. **Notes expire and say how to check them.** A note that makes a claim
+   will probably go out of date. Example: a note says how a module works, but
+   the code changed since. The note is then false and confuses the agent. So
+   a note can have an `expires` date and a "when expired" note. The "when
+   expired" note tells how to update the note or verify its claims. It helps
+   before the date too, because a note can become false early. If a claim
+   still holds, the result is a new `expires` date with the same content. An
+   agent that writes a note decides on its expiry and its "when expired"
+   note. A cache is one use: a note holds today's date and expires tomorrow,
+   so the agent knows the day without work. An expiry warning can offer an
+   update. The agent saves the new content only when the user asks.
 6. **The repo opens in Obsidian.** A user opens their configuration repo in
    Obsidian and gets its features. They search for every note on a given hook,
    see the options, and follow links.
@@ -67,8 +80,13 @@ the Obsidian rule below. Obsidian allows the same name in two folders.
 **Expired content is never shown as current.** An expired note is left out of
 search, hook injection and similarity matches. A link, an embed or a
 `z:<name>` that points to it gives a warning in place of the content. The
-agent can read it anyway or skip it. A note can have a "when expired" note.
-Then the warning links to it.
+agent can read it anyway or skip it. A note can have a "when expired" note
+that tells how to update or verify it. Then the warning links to it.
+
+**Notes are written on purpose.** Writing a note is never automatic. zambil,
+a hook or a background process never writes a note on its own. This includes
+an update to an expired note. The user writes the note, or asks the agent to
+write it.
 
 **Nothing runs because it matched.** A match adds text to the context. It
 never runs a script. Script source is not added to the context.
@@ -117,6 +135,8 @@ Ranked for trade-offs, highest first. For a design review, use these.
 - `![[name]]` includes the full content of the note, with the same expiry rules.
 - A note that points to an expired note gets the expiry warning, not the old
   content.
+- A note's "when expired" link points to the note that tells how to update it
+  or verify its claims.
 
 ## Hooks
 
@@ -136,8 +156,10 @@ from the current documentation, not from this file.
 
 ## Direction of travel / success
 
-- A user writes a note and opens the repo in Obsidian. The note shows up in
-  the next session where it applies.
+- A user writes a note, or asks the agent to write it, and opens the repo in
+  Obsidian. The note shows up in the next session where it applies.
+- A note that went out of date is caught by its expiry. Its "when expired"
+  note tells the agent how to update it or verify it.
 - `z:<name>` and similarity matches feel instant, and the time they take is
   measured.
 - A test on prose picks the embedder. Example: "iterating" finds a note about
@@ -151,13 +173,13 @@ depends on no other repo.
 
 ## Open questions
 
-- Who writes notes? Is it only the user, or also the agent on request? The agent
-  refreshing an expired cache note is the one case that is decided.
+None.
 
 ## What we will not do
 
 **No memory store.** zambil does not record what the agent learns on its own.
-It serves notes.
+It serves notes. A note is written only when the user writes it or asks for
+it.
 
 **No shared names.** Two notes with the same name are an error, not a choice.
 
