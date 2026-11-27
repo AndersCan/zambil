@@ -1,0 +1,14 @@
+{
+  "name": "@zambil/claude-code",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./answer-hook": "./src/answer-hook.ts",
+    "./context-hooks": "./src/hook-input/context-hooks.ts",
+    "./parse-hook-input": "./src/hook-input/parse-hook-input.ts"
+  },
+  "dependencies": {
+    "@zambil/core": "workspace:*"
+  }
+}

@@ -237,12 +237,21 @@ importers:
 
   apps/cli:
     dependencies:
+      '@zambil/claude-code':
+        specifier: workspace:*
+        version: link:../../packages/claude-code
       '@zambil/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@zambil/embed':
         specifier: workspace:*
         version: link:../../packages/embed
+
+  packages/claude-code:
+    dependencies:
+      '@zambil/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/core:
     dependencies:
