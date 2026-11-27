@@ -64,7 +64,7 @@ zambil reads the YAML with the YAML 1.2 core schema. Dates stay text, so `expire
 
 ## Properties
 
-zambil reads the properties in the table. Each other property stays in the `properties` field of the note, and zambil does not use it.
+zambil reads the properties in the table. The `properties` field of the note holds every raw frontmatter value, the known ones too. zambil does not use the other properties.
 
 | Property       | Value             | Meaning                                                                                                                      |
 | -------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -160,7 +160,7 @@ Expired content is never shown as current.
 
 Each feature that shows notes follows these rules:
 
-1. Search, hook injection and similarity matches leave out each note for which `isExpired` is true.
+1. Search, hook injection and similarity matches leave out each note for which `isExpired` is true. The feature checks `isExpired` with the current time each time it runs a query or a hook, never when it builds an index.
 2. A link, an embed or a `z:<name>` resolves the name with `resolveNote`, not with `findNote`. For an expired note, `resolveNote` returns `expired`, never `found`. The feature then shows a warning in place of the content.
 3. If the expired note has `when-expired`, `resolveNote` also returns the lookup of that note, and the warning links to it.
 

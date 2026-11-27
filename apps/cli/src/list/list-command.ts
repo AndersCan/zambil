@@ -4,6 +4,7 @@ import { formatColumns } from "./format-columns.ts";
 import { isExpired } from "@zambil/core/is-expired";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
+import { quoteArgument } from "../quote-argument.ts";
 import { sharedOptions } from "../parse-command-args.ts";
 
 interface FormatListOptions {
@@ -38,7 +39,10 @@ function runList(options: CommandRunOptions): ExitCode {
   }
   output.write(`${formatList(repo.value, { now: options.now })}\n`);
   if (repo.value.problems.length > 0) {
-    output.error("The repo has problems. Run `zambil check` to see them.\n");
+    const flag = parsed.value.values.repo;
+    const check =
+      flag === undefined ? "zambil check" : `zambil check --repo ${quoteArgument(flag)}`;
+    output.error(`The repo has problems. Run \`${check}\` to see them.\n`);
   }
   return 0;
 }

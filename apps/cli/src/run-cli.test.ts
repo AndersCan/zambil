@@ -113,17 +113,17 @@ describe("runCli", () => {
 
   test("rejects an unknown command, a flag before the command and an unknown option", async () => {
     const command = await run(["lst"]);
-    const flagFirst = await run(["--repo", sampleRepo, "list"]);
+    const flagFirst = await run(["--repo", "/my notes", "list"]);
+    const unknownFlag = await run(["--version"]);
     const option = await run(["list", "--bogus"]);
-    expect([
-      command.code,
-      command.stderr.split("\n")[0],
-      flagFirst.stderr.split("\n")[0],
-      option,
-    ]).toEqual([
+    const firstLines = [command, flagFirst, unknownFlag].map(
+      (result) => result.stderr.split("\n")[0],
+    );
+    expect([command.code, ...firstLines, option]).toEqual([
       2,
       'zambil has no command "lst".',
-      "Put the command first, for example: zambil list --repo",
+      "Put the command first: zambil list --repo '/my notes'",
+      'zambil has no option "--version".',
       {
         code: 2,
         stdout: "",
