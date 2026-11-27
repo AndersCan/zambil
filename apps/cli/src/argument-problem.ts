@@ -51,7 +51,9 @@ function unknownOption(token: OptionToken, options: KnownOptions): string {
   const takes = joinWords(optionNames(options.options));
   const lines = [`${first} It takes ${takes}.`];
   if (options.allowPositionals) {
-    lines.push(`If "${typed}" is not meant as an option, write -- before it.`);
+    lines.push(
+      `If "${typed}" is not meant as an option, write -- before it, after the other options.`,
+    );
   }
   return lines.join("\n");
 }
@@ -61,12 +63,22 @@ function isOptionLike(value: string): boolean {
   return value.length > 1 && value.startsWith("-");
 }
 
+/** `--` or an option of this command, long or short: the user forgot the value before it. */
+function isKnownOption(word: string, options: KnownOptions): boolean {
+  if (word === "--") return true;
+  const name = word.replace(/^-+/, "").split("=")[0] ?? "";
+  if (word.startsWith("--")) return Object.hasOwn(options.options, name);
+  for (const descriptor of Object.values(options.options)) {
+    if (descriptor.short === name) return true;
+  }
+  return false;
+}
+
 function missingValue(token: OptionToken, options: KnownOptions): string | undefined {
   const { rawName, value = "" } = token;
   const needs = `The option "${rawName}" needs a value.`;
   if (token.inlineValue === true || !isOptionLike(value)) return undefined;
-  const nextName = value.replace(/^-+/, "").split("=")[0] ?? "";
-  if (Object.hasOwn(options.options, nextName)) return needs;
+  if (isKnownOption(value, options)) return needs;
   return `${needs} If the value is "${value}", write ${rawName}=${value}.`;
 }
 
@@ -85,12 +97,12 @@ function valueProblem(token: OptionToken, options: KnownOptions): string | undef
 
 /**
  * The first argument that a strict parse of `config` rejects, said in plain words, or `undefined` when
- * the parse accepts them all. An unknown option gets a "did you mean" over the long option names.
+ * it finds none. An unknown option gets a "did you mean" over the long option names.
  */
 export function argumentProblem(config: ParseArgsConfig): string | undefined {
   const allowPositionals = config.allowPositionals === true;
   const known = { options: config.options ?? {}, allowPositionals, args: config.args ?? [] };
-  const { tokens } = parseArgs({ ...config, strict: false, tokens: true });
+  const { tokens } = parseArgs({ ...config, strict: false, allowPositionals: true, tokens: true });
   for (const token of tokens) {
     if (token.kind === "positional" && !allowPositionals) {
       return `This command takes no arguments, but it got "${token.value}".`;

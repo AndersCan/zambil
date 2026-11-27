@@ -58,7 +58,7 @@ export const uninstallCommand: Command = {
   options: [
     {
       flag: "--repo <path>",
-      text: "Accepted, so that the same flags work for every command. It does not read the repo.",
+      text: "Accepted, so that the same --repo works for every command. It does not read the repo.",
     },
   ],
   run: runUninstall,

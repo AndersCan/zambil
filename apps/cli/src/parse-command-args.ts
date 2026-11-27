@@ -27,11 +27,10 @@ function unsafeParseArgs<Config extends ParseArgsConfig>(config: Config): Parsed
 export function parseCommandArgs<Config extends ParseArgsConfig>(
   config: Config,
 ): Either<string, ParsedArgs<Config>> {
-  const problem = argumentProblem(config);
-  if (problem !== undefined) return left(problem);
   try {
     return right(unsafeParseArgs(config));
   } catch (error: unknown) {
-    return left(error instanceof Error ? error.message : String(error));
+    const message = error instanceof Error ? error.message : String(error);
+    return left(argumentProblem(config) ?? message);
   }
 }

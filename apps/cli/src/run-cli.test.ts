@@ -244,7 +244,11 @@ describe("runCli", () => {
     const mismatched: string[] = [];
     for (const { name, usage, options, accepted } of results) {
       const usageFlags = new Set([...(usage.match(/--[a-z-]+/g) ?? []), "--help"]);
-      const helpFlags = new Set(options.match(/--[a-z-]+/g));
+      const helpFlags = new Set(
+        options
+          .match(/^ {2}(?:-[a-z], )?--[a-z-]+/gm)
+          ?.map((row) => row.replace(/^.*?(--[a-z-]+)$/, "$1")),
+      );
       const parserFlags = new Set(accepted.match(/--[a-z-]+/g));
       const isSame = usageFlags.symmetricDifference(helpFlags).size === 0;
       const isAccepted = helpFlags.symmetricDifference(parserFlags).size === 0;

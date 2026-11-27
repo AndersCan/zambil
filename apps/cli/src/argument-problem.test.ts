@@ -17,6 +17,7 @@ describe("argumentProblem", () => {
       ["--repo"],
       ["--repo", "--rewrite"],
       ["--repo", "--notes"],
+      ["--repo", "-h"],
       ["-xyz"],
       ["--write"],
       ["--rewrite=yes"],
@@ -30,6 +31,7 @@ describe("argumentProblem", () => {
       'The option "--repo" needs a value.',
       'The option "--repo" needs a value.',
       'The option "--repo" needs a value. If the value is "--notes", write --repo=--notes.',
+      'The option "--repo" needs a value.',
       'This command has no option "-xyz". It takes --repo, --expires, --rewrite and --help.',
       'This command has no option "--write". It takes --repo, --expires, --rewrite and --help.',
       'The option "--rewrite" takes no value.',
@@ -48,7 +50,7 @@ describe("argumentProblem", () => {
       valid: undefined,
       text: [
         'This command has no option "--bogus". It takes --repo, --expires, --rewrite and --help.',
-        'If "--bogus" is not meant as an option, write -- before it.',
+        'If "--bogus" is not meant as an option, write -- before it, after the other options.',
       ].join("\n"),
     });
   });
