@@ -184,6 +184,21 @@ describe("saveNote", () => {
     });
   });
 
+  test("refuses a verify that keeps the expires date, because it changes nothing", async () => {
+    const results = await Promise.all([
+      save({ mode: "verify", name: "deploy", expires: "2026-12-01" }),
+      save({ mode: "verify", name: "deploy", expires: "2026-12-01T00:00" }),
+    ]);
+    const refusal = {
+      refused: {
+        reason: "invalid",
+        message:
+          "ops/deploy.md already expires on 2026-12-01, so a verify with that date changes nothing. Give the date when its claims are likely to change next.",
+      },
+    };
+    expect(results.map((result) => result.summary)).toEqual([refusal, refusal]);
+  });
+
   test("rewrites a skill in its SKILL.md", async () => {
     const request: SaveRequest = {
       mode: "rewrite",

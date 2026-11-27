@@ -5,6 +5,7 @@ import type { ConfigurationRepo } from "../repo/configuration-repo.ts";
 import { editFrontmatter } from "./edit-frontmatter.ts";
 import type { Either } from "../either.ts";
 import { findNote } from "../repo/find-note.ts";
+import { formatMoment } from "../render/describe-expiry.ts";
 import { isDeepStrictEqual } from "node:util";
 import { isNever } from "../is-never.ts";
 import { join } from "node:path";
@@ -189,6 +190,22 @@ function writeChanges(request: WriteRequest, options: ChangeOptions): Either<Sav
   return isEmptyNote ? invalid("The note has no text.") : right(changes);
 }
 
+function verifyChanges(expires: string, options: ChangeOptions): Either<SaveRefusal, Changes> {
+  const edit = expiresEdit(expires, options);
+  if (!edit.ok) return edit;
+  const { path } = options.target.file;
+  const current = options.repo.notes.find((note) => note.path === path)?.expiry;
+  const newTime = parseExpires(expires);
+  const isSameMoment =
+    current?.kind === "at" &&
+    newTime.kind === "at" &&
+    current.time.getTime() === newTime.time.getTime();
+  if (!isSameMoment) return right({ edits: [edit.value] });
+  return invalid(
+    `${path} already expires on ${formatMoment(current.time)}, so a verify with that date changes nothing. Give the date when its claims are likely to change next.`,
+  );
+}
+
 function requestChanges(
   request: SaveRequest,
   options: ChangeOptions,
@@ -197,10 +214,8 @@ function requestChanges(
     case "create":
     case "rewrite":
       return writeChanges(request, options);
-    case "verify": {
-      const expires = expiresEdit(request.expires, options);
-      return expires.ok ? right({ edits: [expires.value] }) : expires;
-    }
+    case "verify":
+      return verifyChanges(request.expires, options);
     default:
       return isNever(request);
   }
