@@ -36,14 +36,15 @@ function missingHookProblems(missing: string[], options: MissingHookOptions): st
   const problems: string[] = [];
   const { notes } = options;
   const namesSubagentStart = notes.some((note) => note.hooks.includes(subagentStart));
-  const lost = missing.filter((hook) => hook !== subagentStart || namesSubagentStart);
+  const hasSessionNote = notes.some((note) => note.hooks.includes("SessionStart"));
+  const isOwnLine = namesSubagentStart && !hasSessionNote;
+  const lost = missing.filter((hook) => hook !== subagentStart || isOwnLine);
   if (lost.length > 0) {
     const names = lost.join(", ");
     problems.push(
       `The notes for ${names} do not reach the agent, because no zambil hook runs there.`,
     );
   }
-  const hasSessionNote = notes.some((note) => note.hooks.includes("SessionStart"));
   if (missing.includes(subagentStart) && hasSessionNote) {
     problems.push(
       "Subagents get no SessionStart notes, because no zambil hook runs at SubagentStart.",

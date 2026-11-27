@@ -255,7 +255,7 @@ describe("hookCommand", () => {
     const repo = await writeTestRepo({
       "a.md": "---\nhooks: [UserPromptSubmit, PreToolUse]\n---\nA.\n",
       "b.md": "B.\n",
-      "s.md": "---\nhooks: SessionStart\n---\nS.\n",
+      "s.md": "---\nhooks: [SessionStart, PreToolUse]\n---\nS.\n",
       "f.md": "---\nhooks: Stop\n---\nF.\n",
     });
     const cacheHome = await mkdtemp(join(tmpdir(), "zambil-cache-"));
@@ -272,6 +272,17 @@ describe("hookCommand", () => {
     });
     const compact = JSON.stringify({ ...ids, hook_event_name: "SessionStart", source: "compact" });
     const stop = JSON.stringify({ ...ids, hook_event_name: "Stop", stop_hook_active: false });
+    const subagentStart = JSON.stringify({
+      ...ids,
+      agent_id: "agent2",
+      hook_event_name: "SubagentStart",
+    });
+    const subagentTwoTool = JSON.stringify({
+      ...ids,
+      agent_id: "agent2",
+      hook_event_name: "PreToolUse",
+      tool_name: "Bash",
+    });
     const payloads = [
       prompt("Hi"),
       prompt("Hi"),
@@ -283,6 +294,9 @@ describe("hookCommand", () => {
       stop,
       compact,
       prompt("Hi"),
+      subagentStart,
+      subagentTwoTool,
+      subagentStart,
     ];
     const names: string[][] = [];
     // Each hook reads the file that the hook before it wrote, so they run in order.
@@ -301,12 +315,15 @@ describe("hookCommand", () => {
       [],
       ["b"],
       ["b"],
-      ["a"],
+      ["a", "s"],
       [],
       ["f"],
       ["f"],
       ["s"],
       ["a"],
+      ["s"],
+      ["a"],
+      ["s"],
       ["a"],
       ["a"],
     ]);
