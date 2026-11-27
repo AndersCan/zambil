@@ -174,6 +174,8 @@ Each feature that shows notes follows these rules:
 
 If the `when-expired` note does not exist, `zambil check` gives an error.
 
+A `when-expired` note that names no hook is not a similar note to a prompt, because it is for the agent that verifies the other note. The expiry warning and `z:<name>` reach it.
+
 ## Write a note
 
 Writing a note is a deliberate act. zambil, a hook or a background process never writes a note on its own. A note changes in two cases only: the user edits it, or the user asks the agent to run `zambil save`. The one exception is `zambil init`: in a new or empty folder, it writes the starter note `zambil-welcome.md`. Most often, the agent writes the first version. At the request of the user, it rewrites the note. Then the user fine-tunes it by hand in Obsidian. `zambil save-guide` prints these rules for the agent.
@@ -266,7 +268,7 @@ The core names no agent tool. The caller passes a `RenderWording` with three fun
 
 ## Claude Code
 
-`packages/claude-code` is the adapter for Claude Code, and `zambil hook` runs it. At each hook, it adds the current notes whose `hooks` name that hook, filtered by `tools` at a tool hook. At `UserPromptSubmit`, it also adds each note that the prompt names with `z:<name>`. Its README describes the rules, the `z:<name>` syntax, the hook list and `zambil install`. The hook warnings of `zambil check` come from the adapter, with the hook list from the Claude Code hooks reference.
+`packages/claude-code` is the adapter for Claude Code, and `zambil hook` runs it. At each hook, it adds the current notes whose `hooks` name that hook, filtered by `tools` at a tool hook. At `SubagentStart`, it also adds the `SessionStart` notes. At `UserPromptSubmit`, it also adds each note that the prompt names with `z:<name>`. Its README describes the rules, the `z:<name>` syntax, the hook list and `zambil install`. The hook warnings of `zambil check` come from the adapter, with the hook list from the Claude Code hooks reference.
 
 ## The core library
 

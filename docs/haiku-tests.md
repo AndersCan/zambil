@@ -84,7 +84,7 @@ The example in `zambil save-guide` also uses the date 2027-03-01. So in 17a, Hai
 
 ## Flaky or open results
 
-- Case 10: the expired note is left out, as designed. But its when-expired note `check-billing` has a similar description, so it matched. The agent then learned the old file path from it. This does not break the rule "expired content is never shown as current", because `check-billing` is a current note. A when-expired note with a description such as "How to verify the billing module note" will often match prompts about that topic.
+- Case 10: the expired note is left out, as designed. But its when-expired note `check-billing` has a similar description, so it matched. The agent then learned the old file path from it. This does not break the rule "expired content is never shown as current", because `check-billing` is a current note. A when-expired note with a description such as "How to verify the billing module note" will often match prompts about that topic. Since issue #22, item 4, a when-expired note that names no hook is not a similar note, so this case no longer matches.
 - Case 18: Haiku made two wrong `zambil save` calls before it asked for a date. zambil refused both and changed no file. The messages were clear. A first try without the expiry choice is a small cost, and it did not lead to a wrong save.
 - Case 19: "Remember" went to the auto memory of Claude Code, not to zambil. The `zambil-save` skill matches "write, save, change or verify a note". Whether "remember" must go to zambil is a choice for the user, not a bug.
 - In 15, Haiku picked an expiry date on its own and said that the user can change it. In 18, it asked the user for the date. Both are within the guide.

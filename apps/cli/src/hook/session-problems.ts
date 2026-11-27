@@ -5,6 +5,7 @@ import type { HookList } from "@zambil/claude-code/hook-list";
 import { hooksToInstall } from "@zambil/claude-code/hooks-to-install";
 import { listZambilHooks } from "@zambil/claude-code/settings-hooks";
 import type { ModelState } from "@zambil/embed/check-search-files";
+import type { Note } from "@zambil/core/note";
 import { readSettings } from "../install/settings-file.ts";
 import { settingsPath } from "../install/claude-paths.ts";
 
@@ -19,6 +20,33 @@ function needsModel(repo: ConfigurationRepo, options: SessionProblemsOptions): P
   const hasDescription = repo.notes.some((note) => note.description !== undefined);
   if (!hasDescription) return Promise.resolve("ready");
   return checkModel({ environment: options.config.environment });
+}
+
+const subagentStart = "SubagentStart";
+
+interface MissingHookOptions {
+  notes: Note[];
+}
+
+/** `SubagentStart` carries the `SessionStart` notes to subagents, so it matters only when such a note exists. */
+function missingHookProblems(missing: string[], options: MissingHookOptions): string[] {
+  const problems: string[] = [];
+  const others = missing.filter((hook) => hook !== subagentStart);
+  if (others.length > 0) {
+    const names = others.join(", ");
+    problems.push(
+      `The notes for ${names} do not reach the agent, because no zambil hook runs there.`,
+    );
+  }
+  const reachesSubagents = options.notes.some((note) =>
+    note.hooks.some((hook) => hook === "SessionStart" || hook === subagentStart),
+  );
+  if (missing.includes(subagentStart) && reachesSubagents) {
+    problems.push(
+      "Subagents get no SessionStart notes, because no zambil hook runs at SubagentStart.",
+    );
+  }
+  return problems;
 }
 
 /**
@@ -42,12 +70,7 @@ export async function findSessionProblems(
     const missing = expected.filter(
       (hook) => hook !== options.hookEventName && hooks.value[hook] === undefined,
     );
-    const names = missing.join(", ");
-    if (missing.length > 0) {
-      problems.push(
-        `The notes for ${names} do not reach the agent, because no zambil hook runs there.`,
-      );
-    }
+    problems.push(...missingHookProblems(missing, { notes: repo.notes }));
   }
   if (model === "missing") problems.push("Similar notes are off, because the model is missing.");
   return problems;

@@ -58,16 +58,30 @@ describe("findSimilarNotes", () => {
 });
 
 describe("searchableNotes", () => {
-  test("leaves out a SessionStart note and a note that the context holds, in any version", async () => {
+  test("leaves out a SessionStart note, a note that the context holds, and a when-expired helper with no hook", async () => {
     const root = await writeTestRepo({
       "Deploy.md": "---\ndescription: How to deploy.\n---\nRun make deploy.\n",
       "rebase.md": "---\ndescription: How to rebase.\n---\nRun git rebase.\n",
       "welcome.md": "---\ndescription: Welcome.\nhooks: SessionStart\n---\nHi.\n",
       "constructor.md": "---\ndescription: How to build a class.\n---\nUse functions.\n",
+      "billing.md":
+        '---\ndescription: How billing works.\nexpires: 2026-12-31\nwhen-expired: "[[verify billing]]"\n---\nTaxes.\n',
+      "check-billing.md":
+        "---\ndescription: How to check the billing note.\naliases: [verify billing]\n---\nRead the code.\n",
+      "check-deploy.md":
+        "---\ndescription: How to check the deploy note.\nhooks: UserPromptSubmit\n---\nRun make status.\n",
+      "today.md":
+        '---\ndescription: The date.\nexpires: 2026-11-28\nwhen-expired: "[[check-deploy]]"\n---\nFriday.\n',
     });
     const repo = loadRepo(root);
     if (!repo.ok) throw new Error(repo.error.message);
     const notes = searchableNotes(repo.value.notes, { inContext: { deploy: "an older version" } });
-    expect(notes.map((note) => note.name)).toEqual(["constructor", "rebase"]);
+    expect(notes.map((note) => note.name)).toEqual([
+      "billing",
+      "check-deploy",
+      "constructor",
+      "rebase",
+      "today",
+    ]);
   });
 });

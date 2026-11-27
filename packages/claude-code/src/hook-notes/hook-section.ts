@@ -15,6 +15,7 @@ export interface HookSectionOptions {
 }
 
 function describeHook(input: HookInput): string {
+  if (input.hookEventName === "SubagentStart") return "the SessionStart or SubagentStart hook";
   if (input.kind !== "tool") return `the ${input.hookEventName} hook`;
   const tools = [...new Set(input.toolNames)].join(", ");
   const label = input.toolNames.length === 1 ? "tool" : "tools";

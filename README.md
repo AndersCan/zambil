@@ -70,10 +70,10 @@ Quote every path. Use `set -euo pipefail` in scripts.
 A note reaches the agent in three ways:
 
 - You type `z:<name>` in a prompt, for example `Fix the backup script the way z:shell-style says`.
-- The note names a hook in its `hooks` property. A hook is a moment in a session where Claude Code runs a command. With `hooks: [SessionStart]`, the note reaches the agent at the start of each session, like the starter note.
+- The note names a hook in its `hooks` property. A hook is a moment in a session where Claude Code runs a command. With `hooks: [SessionStart]`, the note reaches the agent at the start of each session, like the starter note, and each subagent that it starts.
 - The description of the note is similar to your prompt.
 
-After you add or change notes in your editor, run `zambil index`. It keeps the search for similar notes fast. If a note names a hook that no note named before, run `zambil install` too. Apart from `SessionStart` and `UserPromptSubmit`, zambil connects only the hooks that your notes name. Then start a new Claude Code session.
+After you add or change notes in your editor, run `zambil index`. It keeps the search for similar notes fast. If a note names a hook that no note named before, run `zambil install` too. Apart from `SessionStart`, `SubagentStart` and `UserPromptSubmit`, zambil connects only the hooks that your notes name. Then start a new Claude Code session.
 
 `zambil list` lists your notes, and `zambil show <name>` prints a note as the agent gets it. [`docs/notes.md`](docs/notes.md) describes every property, expiry, skills, scripts, links and embeds.
 

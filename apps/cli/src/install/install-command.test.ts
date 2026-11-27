@@ -139,7 +139,7 @@ describe("zambil install and zambil uninstall", () => {
         code: 0,
         stdout: [
           "Skipped the hook list and the model, because of --offline. Run this command again when you are online.",
-          `Installed the zambil hooks (SessionStart, UserPromptSubmit, PreToolUse) in ${settings}.`,
+          `Installed the zambil hooks (SessionStart, UserPromptSubmit, PreToolUse, SubagentStart) in ${settings}.`,
           `The hooks read the configuration repo ${repo}.`,
           "Skipped Notification, because zambil never answers there.",
           `Installed the zambil-save skill in ${machine.skill}.`,
@@ -160,6 +160,7 @@ describe("zambil install and zambil uninstall", () => {
           PreToolUse: [userSettings.hooks.PreToolUse[0], { hooks: [handler] }],
           SessionStart: [{ hooks: [handler] }],
           UserPromptSubmit: [{ hooks: [handler] }],
+          SubagentStart: [{ hooks: [handler] }],
         },
       },
       skill: [
@@ -170,7 +171,7 @@ describe("zambil install and zambil uninstall", () => {
       second: {
         code: 0,
         stdout: expect.stringContaining(
-          `In ${settings}, the zambil hooks (SessionStart, UserPromptSubmit, PreToolUse) are up to date.`,
+          `In ${settings}, the zambil hooks (SessionStart, UserPromptSubmit, PreToolUse, SubagentStart) are up to date.`,
         ),
         stderr: expect.stringContaining("Checked 2 notes: 0 errors and 1 warning."),
       },
@@ -248,7 +249,7 @@ describe("zambil install and zambil uninstall", () => {
         "Run zambil check after a fix to see the problems that are left.",
         "",
       ],
-      hooks: ["PreToolUse", "SessionStart", "UserPromptSubmit"],
+      hooks: ["PreToolUse", "SessionStart", "UserPromptSubmit", "SubagentStart"],
     });
   });
 });

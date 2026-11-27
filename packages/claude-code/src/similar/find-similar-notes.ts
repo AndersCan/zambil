@@ -60,15 +60,39 @@ export interface SearchableNotesOptions {
   inContext: ShownNotes;
 }
 
+/** The name keys of the notes that another note names in `when-expired`. */
+function helperKeys(notes: Note[]): Set<string> {
+  const keys = new Set<string>();
+  for (const note of notes) {
+    if (note.whenExpired !== undefined) keys.add(nameKey(note.whenExpired));
+  }
+  return keys;
+}
+
+interface HelperOptions {
+  helpers: Set<string>;
+}
+
+/**
+ * A note that tells how to verify another note is for the agent that reads the expiry warning, not for
+ * a prompt about the topic. A helper that names a hook still matches, because the user made it a note of its own.
+ */
+function isExpiryHelper(note: Note, options: HelperOptions): boolean {
+  if (note.hooks.length > 0) return false;
+  return [note.name, ...note.aliases].some((name) => options.helpers.has(nameKey(name)));
+}
+
 /**
  * The notes that a prompt can match. A `SessionStart` note and a note in `inContext` are in the context
- * already, so they take no match, and a lower note can take the place.
+ * already, so they take no match, and a lower note can take the place. A `when-expired` helper with
+ * no hook takes no match either: the expiry warning and `z:<name>` reach it.
  */
 export function searchableNotes(notes: Note[], options: SearchableNotesOptions): Note[] {
+  const helpers = helperKeys(notes);
   return notes.filter((note) => {
     const isInContext =
       note.hooks.includes("SessionStart") || Object.hasOwn(options.inContext, nameKey(note.name));
-    return !isInContext;
+    return !isInContext && !isExpiryHelper(note, { helpers });
   });
 }
 

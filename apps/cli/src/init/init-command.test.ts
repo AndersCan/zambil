@@ -95,7 +95,7 @@ describe("zambil init", () => {
           `Wrote the starter note zambil-welcome.md in ${notes}.`,
           `Saved the configuration repo ${notes} in ${machine.userConfig}.`,
           "Skipped the hook list and the model, because of --offline. Run this command again when you are online.",
-          `Installed the zambil hooks (SessionStart, UserPromptSubmit) in ${machine.settings}.`,
+          `Installed the zambil hooks (SessionStart, UserPromptSubmit, SubagentStart) in ${machine.settings}.`,
           `The hooks read the configuration repo ${notes}.`,
           expect.stringContaining("Installed the zambil-save skill"),
           "Checked 1 note: no problems.",
@@ -114,7 +114,7 @@ describe("zambil init", () => {
       files: ["zambil-welcome.md"],
       note: starterNoteText,
       userConfig: { repo: notes },
-      hooks: ["SessionStart", "UserPromptSubmit"],
+      hooks: ["SessionStart", "UserPromptSubmit", "SubagentStart"],
       second: {
         code: 0,
         stdout: expect.arrayContaining([
