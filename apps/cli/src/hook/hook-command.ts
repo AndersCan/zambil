@@ -35,9 +35,9 @@ async function similarTo(repo: ConfigurationRepo, options: SimilarToOptions): Pr
   }
   const { matches, skipped } = similar.value;
   if (skipped > 0) {
-    const count = skipped === 1 ? "1 description" : `${skipped} descriptions`;
+    const count = skipped === 1 ? "1 description is" : `${skipped} descriptions are`;
     output.error(
-      `zambil hook: the similarity match left out the notes of ${count} that are not in the index. Run \`${hint}\`.\n`,
+      `zambil hook: ${count} not in the index, so the similarity match left out their notes. Run \`${hint}\`.\n`,
     );
   }
   return matches.map((match) => match.note);

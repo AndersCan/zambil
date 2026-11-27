@@ -30,7 +30,7 @@ describe("tokenize", () => {
     expect(ids).toEqual([2, 4, 5, 6, 7, 8, 9, 1, 1, 3]);
   });
 
-  test("reads only 100 characters per token, so a huge text gives the same ids as its start", () => {
+  test("gives a huge text the same ids as its start", () => {
     const start = "loops ".repeat(100);
     const tail = "for ".repeat(250_000);
     const huge = `${start}${tail}`;

@@ -43,13 +43,15 @@ describe("findSimilarNotes", () => {
     await chmod(locked, 0o000);
     const environment = { home: "/home/ada", workingFolder: "/", cacheHome };
     const now = new Date(2026, 10, 27);
-    const [command, text] = await Promise.all([
+    const [command, noText, text] = await Promise.all([
       findSimilarNotes(repo.value, { prompt: "/clear", now, environment }),
+      findSimilarNotes(repo.value, { prompt: "?!", now, environment }),
       findSimilarNotes(repo.value, { prompt: "iterating", now, environment }),
     ]);
     await chmod(locked, 0o755);
-    expect({ command, text: text.ok ? "matched" : text.error.kind }).toEqual({
+    expect({ command, noText, text: text.ok ? "matched" : text.error.kind }).toEqual({
       command: { ok: true, value: { matches: [], skipped: 0 } },
+      noText: { ok: true, value: { matches: [], skipped: 0 } },
       text: "failed",
     });
   });

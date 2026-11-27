@@ -60,7 +60,8 @@ function failed(message: string): Either<SimilarNotesError, never> {
  * Finds the current notes whose description is similar to the prompt. It never downloads the model,
  * so a missing model is an error. Every failure, a thrown one too, is an error value, so that the hook
  * still adds its other notes. It writes nothing. It loads the embedder only for a prompt with text, in
- * a repo with at least one description.
+ * a repo with at least one description. A `SessionStart` note is in the context already, so it is not
+ * searched and takes no match.
  */
 export async function findSimilarNotes(
   repo: ConfigurationRepo,
@@ -79,7 +80,9 @@ export async function findSimilarNotes(
   const noteSearch = opened.value;
   if (!noteSearch.ok) return left({ kind: "no-model", message: noteSearch.error });
   const { prompt, now } = options;
-  const searched = await wrap(noteSearch.value.search(repo, { text: prompt, now, unindexedLimit }));
+  const notes = repo.notes.filter((note) => !note.hooks.includes("SessionStart"));
+  const searchOptions = { text: prompt, now, unindexedLimit };
+  const searched = await wrap(noteSearch.value.search({ ...repo, notes }, searchOptions));
   if (!searched.ok) return failed(`the search failed: ${describe(searched.error)}`);
   const result = searched.value;
   if (!result.ok) return failed(result.error);
