@@ -59,7 +59,7 @@ function isSessionStart(input: HookInput): boolean {
 /** The short warning that Claude Code shows to the user at the start of a session. */
 function sessionWarning(problems: string[]): string {
   const text = problems.join(" ");
-  return `zambil: ${text} Run zambil doctor to see how to fix it.`;
+  return `zambil: ${text} Run zambil doctor to see the fix.`;
 }
 
 interface SetupWarningOptions {
@@ -139,7 +139,7 @@ export const hookCommand: Command = {
   details: [
     "It reads the JSON that Claude Code sends to a hook on standard input, and prints the notes that apply.",
     "At UserPromptSubmit it also adds the notes whose description is similar to the prompt. It never downloads the model, so run zambil index once first.",
-    "It prints nothing when no note applies, and it always exits with 0, so that it never blocks a session.",
+    "It prints nothing when no note applies and the setup works, and it always exits with 0, so that it never blocks a session.",
     "At SessionStart, it warns the user in one line when the setup is broken, for example a moved notes folder, and points to zambil doctor.",
     "Run `zambil install` to set up the hooks. The file packages/claude-code/README.md in the zambil repo describes them.",
   ].join("\n"),

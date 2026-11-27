@@ -159,21 +159,25 @@ describe("hookCommand", () => {
     const claudeConfigFolder = await writeClaudeFolder(["SessionStart", "UserPromptSubmit"]);
     const compact = JSON.stringify({ hook_event_name: "SessionStart", source: "compact" });
     const missing = { repo: "/no/such/repo", claudeConfigFolder };
+    const toolNote = await writeTestRepo({ "a.md": "---\nhooks: PreToolUse\n---\nA.\n" });
+    const elsewhere = await writeClaudeFolder([]);
     const results = await Promise.all([
       runHook([], { stdin: sessionStart, ...missing }),
       runHook([], { stdin: compact, ...missing }),
       runHook([], { stdin: sessionStart, repo, claudeConfigFolder }),
+      runHook([], { stdin: sessionStart, repo: toolNote, claudeConfigFolder }),
+      runHook([], { stdin: sessionStart, repo: toolNote, claudeConfigFolder: elsewhere }),
     ]);
-    const [moved, compacted, unhooked] = results.map((result) => ({
+    const [moved, compacted, unhooked, onlyWarning, projectHooks] = results.map((result) => ({
       code: result.code,
       stdout: result.stdout === "" ? "" : JSON.parse(result.stdout),
     }));
-    expect({ moved, compacted, unhooked }).toEqual({
+    expect({ moved, compacted, unhooked, onlyWarning, projectHooks }).toEqual({
       moved: {
         code: 0,
         stdout: {
           systemMessage:
-            "zambil: The configuration repo /no/such/repo does not exist. No note reaches this session. Run zambil doctor to see how to fix it.",
+            "zambil: The configuration repo /no/such/repo does not exist. No note reaches this session. Run zambil doctor to see the fix.",
         },
       },
       compacted: { code: 0, stdout: "" },
@@ -181,10 +185,18 @@ describe("hookCommand", () => {
         code: 0,
         stdout: {
           systemMessage:
-            "zambil: No zambil hook runs at PreToolUse, so notes go missing. Similar notes are off, because the model is missing. Run zambil doctor to see how to fix it.",
+            "zambil: The notes for PreToolUse do not reach the agent, because no zambil hook runs there. Similar notes are off, because the model is missing. Run zambil doctor to see the fix.",
           hookSpecificOutput: expect.objectContaining({ hookEventName: "SessionStart" }),
         },
       },
+      onlyWarning: {
+        code: 0,
+        stdout: {
+          systemMessage:
+            "zambil: The notes for PreToolUse do not reach the agent, because no zambil hook runs there. Run zambil doctor to see the fix.",
+        },
+      },
+      projectHooks: { code: 0, stdout: "" },
     });
   });
 });

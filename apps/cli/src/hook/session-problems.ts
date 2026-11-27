@@ -24,27 +24,30 @@ function needsModel(repo: ConfigurationRepo, options: SessionProblemsOptions): P
 /**
  * The problems that make notes drop out of a session without a sign: a hook that a note needs and
  * that is not installed, and a missing model. It reads one settings file and two file sizes, so that
- * the hook stays fast. `zambil doctor` checks the rest.
+ * the hook stays fast. Settings without a zambil hook mean that it runs from other settings, such as
+ * those of a project, so they give no warning. `zambil doctor` checks the rest.
  */
 export async function findSessionProblems(
   repo: ConfigurationRepo,
   options: SessionProblemsOptions,
 ): Promise<string[]> {
-  const [settings, model] = await Promise.all([
-    readSettings(settingsPath(options.config)),
-    needsModel(repo, options),
-  ]);
+  const path = settingsPath(options.config);
+  const [settings, model] = await Promise.all([readSettings(path), needsModel(repo, options)]);
   const problems: string[] = [];
   const hooks = settings.ok ? listZambilHooks(settings.value) : settings;
-  if (hooks.ok) {
+  if (!hooks.ok) problems.push(`The Claude Code settings ${path} cannot be read.`);
+  const isInstalledHere = hooks.ok && Object.keys(hooks.value).length > 0;
+  if (hooks.ok && isInstalledHere) {
     const expected = hooksToInstall(repo.notes, { hookList: options.hookList });
     const missing = expected.filter(
       (hook) => hook !== options.hookEventName && hooks.value[hook] === undefined,
     );
     const names = missing.join(", ");
-    if (missing.length > 0) problems.push(`No zambil hook runs at ${names}, so notes go missing.`);
-  } else {
-    problems.push(`zambil cannot read the Claude Code settings: ${hooks.error}.`);
+    if (missing.length > 0) {
+      problems.push(
+        `The notes for ${names} do not reach the agent, because no zambil hook runs there.`,
+      );
+    }
   }
   if (model === "missing") problems.push("Similar notes are off, because the model is missing.");
   return problems;
