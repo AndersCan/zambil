@@ -17,7 +17,7 @@ const hookTimeout = 10;
 const zambilHookCommand = /(?:^|[\s/'"])zambil['"]?\s+hook(?:\s|$)/;
 
 /** A hook handler that runs `zambil hook`, by any path. The user's own hooks never match. */
-export function isZambilHandler(handler: unknown): boolean {
+function isZambilHandler(handler: unknown): boolean {
   const command = asRecord(handler)?.command;
   return typeof command === "string" && zambilHookCommand.test(command);
 }
