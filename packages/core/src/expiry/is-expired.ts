@@ -6,10 +6,7 @@ export interface IsExpiredOptions {
   now: Date;
 }
 
-/**
- * Tells whether a note is expired at `options.now`. A note expires at its `expires` time, and a note
- * whose `expires` value cannot be read counts as expired, so that its content is never shown as current.
- */
+/** An unreadable `expires` value counts as expired, so that its content is never shown as current. */
 export function isExpired(note: Note, options: IsExpiredOptions): boolean {
   const expiry = note.expiry;
   switch (expiry.kind) {
