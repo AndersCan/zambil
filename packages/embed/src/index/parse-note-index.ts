@@ -1,4 +1,5 @@
 import { asRecord } from "@zambil/core/as-record";
+import { parseJson } from "@zambil/core/parse-json";
 
 /** The vectors of one repo's descriptions, by description text, from one model. */
 export interface NoteIndex {
@@ -18,18 +19,6 @@ interface IndexHeader {
   root: string;
   dimensions: number;
   texts: string[];
-}
-
-function unsafeParseJson(text: string): unknown {
-  return JSON.parse(text);
-}
-
-function parseJson(text: string): unknown {
-  try {
-    return unsafeParseJson(text);
-  } catch {
-    return undefined;
-  }
 }
 
 function isTextList(value: unknown): value is string[] {

@@ -20,6 +20,7 @@
     "./note-file": "./src/note/note-file.ts",
     "./note-problem": "./src/note/note-problem.ts",
     "./parse-frontmatter": "./src/properties/parse-frontmatter.ts",
+    "./parse-json": "./src/parse-json.ts",
     "./parse-link-target": "./src/properties/parse-link-target.ts",
     "./parse-note": "./src/note/parse-note.ts",
     "./project-place": "./src/scope/project-place.ts",

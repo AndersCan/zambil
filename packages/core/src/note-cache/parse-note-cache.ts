@@ -2,6 +2,7 @@ import { asRecord } from "../as-record.ts";
 import type { Note } from "../note/note.ts";
 import type { NoteFile } from "../note/note-file.ts";
 import type { NoteProblem } from "../note/note-problem.ts";
+import { parseJson } from "../parse-json.ts";
 
 /** One note file as zambil last parsed it, with the size and the modified time that the file had then. */
 export interface CachedNote {
@@ -21,18 +22,6 @@ export interface NoteCache {
 
 /** The version of the cache file. A file with another version is ignored and rebuilt. */
 export const noteCacheFormat = 1;
-
-function unsafeParseJson(text: string): unknown {
-  return JSON.parse(text);
-}
-
-function parseJson(text: string): unknown {
-  try {
-    return unsafeParseJson(text);
-  } catch {
-    return undefined;
-  }
-}
 
 function isCachedNote(value: unknown): value is CachedNote {
   const { file, size, modifiedMs, note, problems } = asRecord(value) ?? {};

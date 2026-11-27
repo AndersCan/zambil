@@ -313,6 +313,7 @@ Later features import from `@zambil/core`. Each export is one file. A new export
 - `@zambil/core/note-file`. The `NoteFile` type: a note file before it is read.
 - `@zambil/core/note-problem`. The `NoteProblem` type.
 - `@zambil/core/parse-frontmatter`. `parseFrontmatter` reads frontmatter YAML the same way as the loader.
+- `@zambil/core/parse-json`. `parseJson` parses JSON text, or gives `undefined` when the text is not JSON.
 - `@zambil/core/parse-link-target`. `parseLinkTarget` returns the note name in a link such as `[[folder/name#heading]]`, or in a plain name.
 - `@zambil/core/parse-note`. `parseNote` reads one note from its text.
 - `@zambil/core/project-place`. `findProjectPlace` finds the project names of a folder: the name of its git repo and of the folder.
