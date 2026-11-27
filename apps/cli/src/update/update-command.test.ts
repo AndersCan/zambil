@@ -36,6 +36,14 @@ printf '{"version": "0.0.9"}\\n' > apps/cli/package.json
 git ${gitIdentity} commit --quiet --all -m "Back to 0.0.9"
 `;
 
+/** An install.sh that commits a new install.sh, which zambil update then runs once more. */
+const newScriptScript = `set -eu
+cd "$ZAMBIL_HOME"
+printf 'echo "the new install.sh ran"\\n' > install.sh
+git ${gitIdentity} commit --quiet --all -m "Change install.sh"
+echo "Updated zambil."
+`;
+
 /** An install.sh that prints the link folder that it got. */
 const binScript = 'echo "bin=${ZAMBIL_BIN_DIR:-unset}"\n';
 
@@ -48,14 +56,16 @@ const fakeMain = 'console.log(`doctor ran with: ${process.argv.slice(2).join(" "
 interface FakeCloneOptions {
   installScript: string;
   isDevelopment?: boolean;
+  doctorExitCode?: number;
 }
 
 async function writeFakeClone(options: FakeCloneOptions): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "zambil-update-"));
+  const doctorExitCode = options.doctorExitCode ?? 0;
   const files: Record<string, string> = {
     "package.json": JSON.stringify({ name: "zambil", devDependencies: { "vite-plus": "1" } }),
     "apps/cli/package.json": JSON.stringify({ version: "0.1.0" }),
-    "apps/cli/src/main.ts": fakeMain,
+    "apps/cli/src/main.ts": `${fakeMain}process.exitCode = ${doctorExitCode};\n`,
     "CHANGELOG.md": changelog,
     "install.sh": options.installScript,
   };
@@ -198,6 +208,29 @@ describe("updateCommand", () => {
       wentBack: "zambil went back from 0.1.0 to 0.0.9.",
       throughLink: `bin=${bin}`,
       throughFile: "bin=unset",
+    });
+  });
+
+  test("runs a changed install.sh once more, and exits with 1 when doctor finds a problem", async () => {
+    const [changed, failing] = await Promise.all([
+      writeFakeClone({ installScript: newScriptScript }),
+      writeFakeClone({ installScript: binScript, doctorExitCode: 3 }),
+    ]);
+    const [rerun, doctorFailed] = await Promise.all([run(changed), run(failing)]);
+    expect({
+      rerun: { code: rerun.code, lines: rerun.stdout.split("\n").slice(0, 4) },
+      doctorFailed: doctorFailed.code,
+    }).toEqual({
+      rerun: {
+        code: 0,
+        lines: [
+          "Updated zambil.",
+          "",
+          "The new version has another install.sh. zambil runs it once more to finish the install.",
+          "the new install.sh ran",
+        ],
+      },
+      doctorFailed: 1,
     });
   });
 });

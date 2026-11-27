@@ -37,4 +37,4 @@ env -i HOME="$home" PATH="$PATH" "$home/.local/bin/zambil" --version
 
 Make sure that the install prints `Downloading zambil v0.1.0`, and that the last command prints `zambil 0.1.0` with no commit.
 
-The next time that a user runs the install command, a clone on `main` moves to the release. A clone that the user put on `main` with `ZAMBIL_GIT_REF=main` stays on `main`.
+The next time that a user runs `zambil update` or the install command, a clone on `main` moves to the release. A clone that the user put on `main` with `ZAMBIL_GIT_REF=main` stays on `main`.

@@ -137,7 +137,7 @@ zambil update
 
 It updates the clone of zambil and installs the new dependencies. Then it prints what changed and runs `zambil doctor`. If you changed files in the clone, it stops and tells you how to keep your changes. If the new version writes other hooks, `zambil doctor` tells you to run `zambil install`.
 
-`zambil update` runs the install command of its own clone. If `zambil update` does not start, run the install command again. If you moved zambil, set the same `ZAMBIL_HOME` as in [Move zambil](#move-zambil):
+`zambil update` runs the install command of its own clone. To install one release, run `ZAMBIL_GIT_REF=v0.1.0 zambil update`. If `zambil update` does not start, run the install command again. If you moved zambil, set the same `ZAMBIL_HOME` as in [Move zambil](#move-zambil):
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/AndersCan/zambil/main/install.sh | sh

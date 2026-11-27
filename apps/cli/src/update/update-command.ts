@@ -75,7 +75,8 @@ async function commitLines(before: InstallState, options: ChangeOptions): Promis
   const lines = text.split("\n");
   const shown = lines.slice(0, commitLimit);
   const hidden = lines.length - commitLimit;
-  if (hidden > 0) shown.push(`  and ${hidden} more commits.`);
+  const noun = hidden === 1 ? "commit" : "commits";
+  if (hidden > 0) shown.push(`  and ${hidden} more ${noun}.`);
   return ["The new commits:", ...shown];
 }
 
@@ -87,7 +88,10 @@ async function describeChanges(before: InstallState, options: ChangeOptions): Pr
   const { root, after } = options;
   if (after.commit === before.commit) return [];
   if (isNewerVersion(before.version, { than: after.version })) {
-    return [`zambil went back from ${before.version} to ${after.version}.`];
+    return [
+      `zambil went back from ${before.version} to ${after.version}.`,
+      "The next zambil update without ZAMBIL_GIT_REF installs the newest release again.",
+    ];
   }
   if (after.version === before.version) return commitLines(before, options);
   const changelog = await wrap(readFile(join(root, "CHANGELOG.md"), "utf8"));
@@ -109,9 +113,43 @@ function runDoctor(root: string, options: DoctorOptions): Promise<number> {
   return runProgram(command, { input: "", output: options.output });
 }
 
-function reinstallLine(root: string): string {
-  const home = quoteArgument(root);
-  return `If zambil update does not start, run the install command: curl -fsSL ${installScriptUrl} | ZAMBIL_HOME=${home} sh`;
+function reinstallLine(
+  root: string,
+  options: InstallCommandOptions = { binFolder: undefined },
+): string {
+  const home = `ZAMBIL_HOME=${quoteArgument(root)}`;
+  const bin =
+    options.binFolder === undefined ? "" : ` ZAMBIL_BIN_DIR=${quoteArgument(options.binFolder)}`;
+  return `If zambil update does not start, run the install command: curl -fsSL ${installScriptUrl} | ${home}${bin} sh`;
+}
+
+interface FinishOptions {
+  root: string;
+  command: string[];
+  oldScript: string;
+  before: InstallState;
+  output: CommandOutput;
+}
+
+/**
+ * The old install.sh moved the clone, then installed it with its own rules. When the new tree has
+ * another install.sh, or the first run failed after the move, the new script runs once more. So a
+ * release can change how it is installed, and an older release still updates to it.
+ */
+async function finishWithNewScript(firstCode: number, options: FinishOptions): Promise<number> {
+  const { root, output } = options;
+  const [moved, newScript] = await Promise.all([
+    readInstall(root),
+    wrap(readFile(join(root, "install.sh"), "utf8")),
+  ]);
+  const hasMoved = moved.ok && moved.value.commit !== options.before.commit;
+  if (!hasMoved || !newScript.ok) return firstCode;
+  const isSameScript = newScript.value === options.oldScript;
+  if (isSameScript && firstCode === 0) return firstCode;
+  output.write(
+    "\nThe new version has another install.sh. zambil runs it once more to finish the install.\n",
+  );
+  return runProgram(options.command, { input: newScript.value, output });
 }
 
 interface PrintChangesOptions {
@@ -169,13 +207,20 @@ async function runUpdate(options: CommandRunOptions): Promise<ExitCode> {
     return 1;
   }
   const command = installCommand(root, { binFolder });
-  const installed = await runProgram(command, { input: script.value, output });
+  const first = await runProgram(command, { input: script.value, output });
+  const installed = await finishWithNewScript(first, {
+    root,
+    command,
+    oldScript: script.value,
+    before: before.value,
+    output,
+  });
   if (installed !== 0) {
     await printChanges(before.value, { root, output });
     output.error(
       `The update did not finish. When you fixed the problem above, run zambil update again.\n`,
     );
-    output.error(`${reinstallLine(root)}\n`);
+    output.error(`${reinstallLine(root, { binFolder })}\n`);
     return 1;
   }
   await printChanges(before.value, { root, output });
@@ -191,7 +236,7 @@ export const updateCommand: Command = {
   usage: "Usage: zambil update [--repo <path>]",
   details: [
     "It runs the install.sh of this clone, so it follows the same rules as the install command.",
-    "Set ZAMBIL_GIT_REF to install one release, or to follow a branch such as main.",
+    "Set ZAMBIL_GIT_REF to install one release, for example `ZAMBIL_GIT_REF=v0.1.0 zambil update`, or to follow a branch such as main.",
     "It exits with 1 when the update fails or zambil doctor finds a problem.",
   ].join("\n"),
   options: [

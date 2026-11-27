@@ -29,11 +29,14 @@ export interface NewerVersionOptions {
   than: string;
 }
 
-/** Whether the version is newer than the other one. A text that is not `X.Y.Z` is never newer. */
+/**
+ * Whether the version is newer than the other one. When either is not `X.Y.Z`, neither is newer. A
+ * version without a section in the changelog, such as `0.0.0`, is older than each release.
+ */
 export function isNewerVersion(version: string, options: NewerVersionOptions): boolean {
   const parts = versionParts(version);
-  const others = versionParts(options.than) ?? [0, 0, 0];
-  if (parts === undefined) return false;
+  const others = versionParts(options.than);
+  if (parts === undefined || others === undefined) return false;
   for (const [position, part] of parts.entries()) {
     const other = others[position] ?? 0;
     if (part !== other) return part > other;
