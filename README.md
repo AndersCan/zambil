@@ -117,6 +117,14 @@ Claude Code also shows a warning at the start of a session when the setup is bro
 SessionStart:startup says: zambil: The configuration repo /home/ada/zambil-notes does not exist. No note reaches this session. Run zambil doctor to see the fix.
 ```
 
+If the zambil clone moved or is gone, your shell says that it cannot find `zambil`, and `zambil doctor` cannot start. Claude Code then shows this warning at each hook:
+
+```text
+SessionStart:startup says: zambil cannot start, so no note reaches this session. To install zambil again, run: curl -fsSL https://raw.githubusercontent.com/AndersCan/zambil/main/install.sh | sh
+```
+
+Run the install command of [Update zambil](#update-zambil). It changes no note and no file of Claude Code. If you moved the clone on purpose, set `ZAMBIL_HOME` as in [Move zambil](#move-zambil).
+
 `zambil help` lists the commands, and `zambil <command> --help` explains one command.
 
 ## Update zambil

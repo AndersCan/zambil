@@ -12,6 +12,7 @@
     "./hook-command-line": "./src/install/hook-command-line.ts",
     "./hook-list": "./src/hook-list/hook-list.ts",
     "./hooks-to-install": "./src/install/hooks-to-install.ts",
+    "./install-script-command": "./src/install/install-script-command.ts",
     "./load-hook-list": "./src/hook-list/load-hook-list.ts",
     "./parse-hook-input": "./src/hook-input/parse-hook-input.ts",
     "./refresh-hook-list": "./src/hook-list/refresh-hook-list.ts",

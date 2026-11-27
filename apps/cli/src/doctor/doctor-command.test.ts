@@ -2,7 +2,9 @@ import { describe, expect, test } from "vite-plus/test";
 import { mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from "node:fs/promises";
 import type { CliConfig } from "../config.ts";
 import { doctorCommand } from "./doctor-command.ts";
+import { fileURLToPath } from "node:url";
 import { installCommand } from "../install/install-command.ts";
+import { installScriptUrl } from "@zambil/claude-code/install-script-command";
 import { join } from "node:path";
 import { localBinPathLine } from "../install/link-hint.ts";
 import { mainPath } from "../install/link-hint.ts";
@@ -85,6 +87,7 @@ describe("zambil doctor", () => {
     await symlink("/gone/zambil/apps/cli/src/main.ts", setup.link);
     const results = await runChecks(setup.config, { repoFlag: undefined, nodeVersion: "22.1.0" });
     const configPath = join(setup.home, ".config", "zambil", "config.json");
+    const cloneRoot = fileURLToPath(new URL("../../../..", import.meta.url)).replace(/\/$/u, "");
     expect(results.filter((result) => result.level !== "ok")).toEqual([
       {
         level: "fail",
@@ -97,7 +100,7 @@ describe("zambil doctor", () => {
         details: [
           `${setup.link} links to /gone/zambil/apps/cli/src/main.ts, which does not exist. The clone moved or is gone.`,
         ],
-        fixes: [`mkdir -p ~/.local/bin && ln -sf ${mainPath()} ~/.local/bin/zambil`],
+        fixes: [`curl -fsSL ${installScriptUrl} | ZAMBIL_HOME=${cloneRoot} sh`],
       },
       {
         level: "fail",
@@ -199,9 +202,11 @@ describe("zambil doctor", () => {
       { repoFlag: undefined, nodeVersion: "24.1.0" },
     );
     const text = await readFile(setup.settings, "utf8");
-    const installed = /"command": "([^"]+)"/u.exec(text)?.[1] ?? "";
+    const installed = JSON.parse(text).hooks.SessionStart[0].hooks[0].command;
     const oldCache = installed.replace("node-compile-cache", "old-cache");
-    await writeFile(setup.settings, text.replaceAll(installed, oldCache));
+    const jsonText = JSON.stringify(installed).slice(1, -1);
+    const oldJsonText = JSON.stringify(oldCache).slice(1, -1);
+    await writeFile(setup.settings, text.replaceAll(jsonText, oldJsonText));
     const changed = await runChecks(setup.config, { repoFlag: undefined, nodeVersion: "24.1.0" });
     expect({ link: withoutBin[1], hooks: changed[5] }).toEqual({
       link: {
