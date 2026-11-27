@@ -34,9 +34,11 @@ The repo is a pnpm workspace (one repo with many packages).
 - `packages/<name>/` holds a library that apps import.
 - `scripts/` holds tests and scripts for the repo itself.
 
-Each package has its own `package.json`. Its name is `@zambil/<name>`. It has `"private": true` and `"type": "module"`. Put each test next to its code: `parse-order.test.ts` beside `parse-order.ts`. The root `pnpm test` finds it. You do not add a test script to the package.
+Each package has its own `package.json`. Its name is `@zambil/<name>`, and the name must be different from all other names in `apps/` and `packages/`. It has `"private": true` and `"type": "module"`. Put each test next to its code: `parse-order.test.ts` beside `parse-order.ts`. The root `pnpm test` finds it. You do not add a test script to the package.
 
-Each folder in `apps/` and `packages/` is its own Vitest project. A package can need its own test configuration, for example a DOM environment or a setup file. Then put a `vite.config.ts` in the folder of that package. The root `pnpm test` uses it for the tests in that folder.
+Each folder in `apps/` and `packages/` is its own Vitest project. A package can need its own test configuration, for example a DOM environment or a setup file. Then put a `vite.config.ts` in the folder of that package. The root `pnpm test` uses it for the tests in that folder. Only the `test` part of that file is used. A lint rule for one folder goes in the root `vite.config.ts`, as an entry in `lint.overrides` with `files: ["packages/<name>/**"]`.
+
+If a package needs a different TypeScript configuration, for example JSX or browser types, add a `tsconfig.json` to the package with `"extends": "../../tsconfig.json"`. Do not change the root `tsconfig.json` for one package.
 
 Write TypeScript only. Import local files with the `.ts` extension. Node runs `.ts` files directly, so a script does not need a build step.
 
@@ -53,6 +55,8 @@ All versions live in the `catalog` in `pnpm-workspace.yaml`. To add a dependency
 1. Add the name and version to the `catalog` in `pnpm-workspace.yaml`. This is a shared file, but a new catalog line is an expected change.
 2. In the `package.json` of your package, write the version as `"catalog:"`.
 3. Run `pnpm install`, and commit `pnpm-lock.yaml`.
+
+If `pnpm install` stops with `ERR_PNPM_IGNORED_BUILDS`, the dependency has a build script. Add `<name>: true` under `allowBuilds` in `pnpm-workspace.yaml` to run the script, or `<name>: false` to skip it. Do not run `pnpm approve-builds`, because it asks questions on the screen.
 
 If a dependency saves less than about a day of work, write the code yourself.
 

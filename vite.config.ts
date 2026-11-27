@@ -1,4 +1,8 @@
 import { defineConfig } from "vite-plus";
+import { globSync } from "node:fs";
+
+/** Only folders become test projects, so a stray file such as `packages/.gitkeep` does not stop the run. */
+const packageFolders = globSync("{apps,packages}/*/", { cwd: import.meta.dirname });
 
 export default defineConfig({
   staged: {
@@ -16,10 +20,6 @@ export default defineConfig({
     cache: true,
   },
   test: {
-    projects: [
-      "apps/*",
-      "packages/*",
-      { test: { name: "scripts", include: ["scripts/**/*.test.ts"] } },
-    ],
+    projects: [...packageFolders, { test: { name: "scripts", include: ["scripts/**/*.test.ts"] } }],
   },
 });

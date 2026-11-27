@@ -2,7 +2,17 @@ import { expect, test } from "vite-plus/test";
 import manifest from "../package.json" with { type: "json" };
 import { readFileSync } from "node:fs";
 
-const pnpmCommands = new Set(["add", "dlx", "exec", "install", "list", "remove", "update", "why"]);
+const pnpmCommands = new Set([
+  "add",
+  "approve-builds",
+  "dlx",
+  "exec",
+  "install",
+  "list",
+  "remove",
+  "update",
+  "why",
+]);
 
 function listDocumentedScripts(markdown: string): string[] {
   const scripts = new Set<string>();
