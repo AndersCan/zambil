@@ -183,7 +183,7 @@ describe("zambil install and zambil uninstall", () => {
       noPath: {
         code: 2,
         firstLine:
-          "zambil is not on your PATH. The hooks and the agent run it by name. Link it into a folder on your PATH, then run zambil install again:",
+          "zambil is not on your PATH, or its link points to a clone that moved. The agent runs zambil by name. Link it into a folder on your PATH, then run zambil install again:",
       },
       broken: {
         code: 1,

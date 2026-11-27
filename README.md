@@ -25,7 +25,7 @@ You need Node 24 or later, pnpm, git and Claude Code. The steps work on Linux an
 2. Put `zambil` on your `PATH`. Run this command in the root of the clone:
 
    ```sh
-   mkdir -p ~/.local/bin && ln -s "$PWD/apps/cli/src/main.ts" ~/.local/bin/zambil
+   mkdir -p ~/.local/bin && ln -sf "$PWD/apps/cli/src/main.ts" ~/.local/bin/zambil
    ```
 
    Node runs the TypeScript directly, so there is no build step. Run `zambil help` in another folder. If your shell says `command not found`, add `export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc` or `~/.zshrc` and open a new terminal.
@@ -70,7 +70,8 @@ Each hook gets the full path of `zambil` and of the repo, so it works from every
 Run `zambil install` again in these cases:
 
 - A note names a hook that no note named before. zambil installs only the hooks that your notes name, because each hook starts a process on every event.
-- You move the configuration repo or the clone.
+- You move the configuration repo.
+- You move the clone. First run the `ln -sf` command of step 2 again in the root of the moved clone. The hooks then work again, because they run the link.
 
 Without a network connection, run `zambil install --offline`. It skips the hook list and the model. Run `zambil index` later to download the model.
 

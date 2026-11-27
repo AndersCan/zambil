@@ -25,9 +25,9 @@ const installOptions = { ...sharedOptions, offline: { type: "boolean" } } as con
 function linkHint(): string {
   const main = quoteArgument(fileURLToPath(new URL("../main.ts", import.meta.url)));
   return [
-    "zambil is not on your PATH. The hooks and the agent run it by name. Link it into a folder on your PATH, then run zambil install again:",
+    "zambil is not on your PATH, or its link points to a clone that moved. The agent runs zambil by name. Link it into a folder on your PATH, then run zambil install again:",
     "",
-    `  mkdir -p ~/.local/bin && ln -s ${main} ~/.local/bin/zambil`,
+    `  mkdir -p ~/.local/bin && ln -sf ${main} ~/.local/bin/zambil`,
     "",
     "If ~/.local/bin is not on your PATH, add it in the profile of your shell.",
   ].join("\n");

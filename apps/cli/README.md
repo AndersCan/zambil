@@ -17,7 +17,7 @@ node apps/cli/src/main.ts search "my branch is behind main" --repo packages/embe
 To put `zambil` on your `PATH`, link `apps/cli/src/main.ts` into a folder on your `PATH`. Run this command from the root of the repo:
 
 ```sh
-mkdir -p ~/.local/bin && ln -s "$PWD/apps/cli/src/main.ts" ~/.local/bin/zambil
+mkdir -p ~/.local/bin && ln -sf "$PWD/apps/cli/src/main.ts" ~/.local/bin/zambil
 ```
 
 Then `zambil list` works in every folder. If it does not, add `~/.local/bin` to your `PATH`. The root `README.md` describes the full setup with Claude Code.
