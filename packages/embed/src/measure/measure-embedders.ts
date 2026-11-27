@@ -1,8 +1,18 @@
 #!/usr/bin/env node
 import { arch, cpus, loadavg, release, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import {
+  laterMatchCases,
+  laterNoMatchCases,
+  matchCases,
+  noMatchCases,
+  proseRepo,
+  shortMatchCases,
+  shortNoMatchCases,
+  taskMatchCases,
+  taskNoMatchCases,
+} from "./prose-cases.ts";
 import { left, right } from "@zambil/core/either";
-import { matchCases, noMatchCases, proseRepo } from "./prose-cases.ts";
 import { minimumScore, searchModel } from "../model/search-model.ts";
 import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { cacheFolder } from "../model/cache-folder.ts";
@@ -14,6 +24,7 @@ import { evaluateCases } from "./evaluate-cases.ts";
 import { fileURLToPath } from "node:url";
 import { loadRepo } from "@zambil/core/load-repo";
 import { openEmbedder } from "../embed/open-embedder.ts";
+import type { ProseCase } from "./prose-cases.ts";
 import { readMeasureEnvironment } from "./config.ts";
 import { spawnSync } from "node:child_process";
 
@@ -281,6 +292,36 @@ function formatSweep(measurements: ModelMeasurement[]): string[] {
   return table(header, { rows });
 }
 
+/** A group of prose cases, as `prose-cases.ts` lists them. */
+interface CaseGroup {
+  label: string;
+  cases: ProseCase[];
+}
+
+const caseGroups: CaseGroup[] = [
+  { label: "Short texts", cases: [...shortMatchCases, ...shortNoMatchCases] },
+  { label: "Task prompts", cases: [...taskMatchCases, ...taskNoMatchCases] },
+  { label: "Later cases", cases: [...laterMatchCases, ...laterNoMatchCases] },
+];
+
+function formatGroups(measurement: ModelMeasurement): string[] {
+  const rows: string[][] = [];
+  for (const group of caseGroups) {
+    const queries = new Set(group.cases.map((proseCase) => proseCase.query));
+    const results = measurement.results.filter((result) => queries.has(result.query));
+    const matchCount = group.cases.filter((proseCase) => proseCase.expected.length > 0).length;
+    const counts = countAt(results, { threshold: minimumScore });
+    const caseCount = String(group.cases.length);
+    rows.push([
+      group.label,
+      caseCount,
+      `${counts.found}/${matchCount}`,
+      String(counts.falseMatches),
+    ]);
+  }
+  return table(["Group", "Cases", "Found", "False matches"], { rows });
+}
+
 function formatFalseMatches(measurement: ModelMeasurement): string[] {
   const lines: string[] = [];
   for (const result of measurement.results) {
@@ -479,6 +520,10 @@ function formatReport(measurements: ModelMeasurement[], timings: Timings): strin
     `zambil uses ${searchModel.id} with the threshold ${minimumScore}. Found notes and false matches of the search model and the previous model, at each threshold, out of ${matchCount} match cases:`,
     "",
     ...formatSweep(measurements),
+    "",
+    `${searchModel.id} at ${minimumScore}, by group of cases. The later cases were written after the threshold was chosen:`,
+    "",
+    ...(current === undefined ? [] : formatGroups(current)),
     "",
     `The false matches of ${searchModel.id} at ${minimumScore}:`,
     "",

@@ -50,24 +50,26 @@ const result = await noteSearch.value.search(repo, {
 
 - 21 short texts must find one note. For example, "iterating" must find the note about for loops. 12 short texts must find none, for example "bake sourdough bread" and "what day is it". The note for today's date is expired, so "what day is it" must not match it.
 - 20 task prompts are about one note each, as a user types them in an agent session. 15 task prompts and replies are about no note.
-- 20 texts that must find a note and 15 that must find none. These were written after the threshold was chosen on the other groups, to see whether the choice holds on new texts.
+- 22 texts that must find a note and 15 that must find none. These were written after the threshold was chosen on the other groups, to see whether the choice holds on new texts. "iteration" and "iterating?" were added to them after the review.
 
 These are the results:
 
-- A false match costs more than a miss, because the hook adds each match to the prompt. So each model gets the threshold where the found notes minus 2 times the false matches is highest.
-- The previous model, all-MiniLM-L6-v2, gives "iterating" the score 0.347. It puts the for-loops note first, but under its threshold of 0.42. At 0.42 it finds 23 of 61 notes with 2 false matches. To find "iterating", it needs 0.34, and it then gives 9 false matches.
-- multi-qa-MiniLM-L6-cos-v1 gives "iterating" the score 0.388. At 0.38 it finds 32 of 61 notes with 3 false matches, "iterating" included. The previous model finds 32 at 0.38 too, but not "iterating".
+- A false match costs more than a miss, because the hook adds each match to the prompt. So the summary in `measurements.md` gives each model the threshold where the found notes minus 2 times the false matches is highest.
+- The previous model, all-MiniLM-L6-v2, gives "iterating" the score 0.347. It puts the for-loops note first, but under its threshold of 0.42. At 0.42 it finds 23 of 63 notes with 2 false matches. To find "iterating", it needs 0.34, and it then gives 9 false matches.
+- multi-qa-MiniLM-L6-cos-v1 gives "iterating" the score 0.388. At 0.38 it finds 32 of 63 notes with 3 false matches, "iterating" included. The previous model finds 32 at 0.38 too, but not "iterating".
 - Both models have the same size and the same layers, so they take the same time. bge-small-en-v1.5 and gte-small are slower and give more false matches at their best thresholds.
 
-So zambil uses multi-qa-MiniLM-L6-cos-v1 with the threshold 0.38, for `zambil search` and for the hook. 0.38 is the highest threshold that finds "iterating". On the 35 later cases, it finds 12 of 20 notes with 3 false matches. The previous model at 0.42 finds 9 of them with 2 false matches. Each false match shares a word with the note, for example "Convert this JavaScript file to TypeScript" and "How to write for loops in TypeScript". A lower threshold for `zambil search` alone is possible, because the user reads its scores. At 0.34 it finds 7 more notes and gives 4 more false matches, which is not clearly better, so search uses the same threshold.
+So zambil uses multi-qa-MiniLM-L6-cos-v1 with the threshold 0.38, for `zambil search` and for the hook. 0.38 is the highest threshold that finds "iterating". The summary puts the best threshold of this model at 0.34: 41 found with 7 false matches. If a false match costs 2 misses, that is one point ahead of 0.38. If it costs 3 misses, 0.38 is ahead. The result is not clearly better, so zambil keeps the stricter threshold. A lower threshold for `zambil search` alone is possible, because the user reads its scores. It is not clearly better either, so search uses the same threshold.
+
+The threshold is close to the score of "iterating". "iterate" (0.40) and "iterating over a list" (0.42) match, but "iteration" and "iterating?" do not. On the later cases, the model finds 12 of 22 notes with 3 false matches. All 3 false matches of the 105 cases are in that group. Each false match shares a word with the note, for example "Convert this JavaScript file to TypeScript" and "How to write for loops in TypeScript". The previous model at 0.42 finds 9 of the later notes with 2 false matches.
 
 These rules were tried and rejected:
 
-- If the best note scores at least 0.34 and leads the second note by 0.15, it matches. This rule finds 33 of 61. But it gives false matches in a repo with fewer notes. When the right note is missing, the next note leads by a wide margin. A plain threshold does not depend on the other notes.
+- If the best note scores at least 0.34 and leads the second note by 0.15, it matches. On the 61 match cases of that time, this rule found 33. But it gives false matches in a repo with fewer notes. When the right note is missing, the next note leads by a wide margin. A plain threshold does not depend on the other notes.
 - Embedding the name or the start of the note with the description. It lowers the score of "iterating".
 - Scoring each sentence of a long prompt and keeping the best score. It finds a few more notes and gives more false matches, and it embeds more texts.
 
-The threshold comes from 103 cases and 20 notes, so a new kind of note can need a new measurement. A prompt with more words than the topic, such as "iterating. Before you answer, quote the first line of any note", scores under the threshold.
+The threshold comes from 105 cases and 20 notes, so a new kind of note can need a new measurement. A prompt with more words than the topic, such as "iterating. Before you answer, quote the first line of any note", scores under the threshold.
 
 The script times a model in a new Node process. A busy moment on the machine slows every model in the same way, because the runs go in rounds. Run the script again after you change the model, the tokenizer or the cases:
 
@@ -77,11 +79,11 @@ node packages/embed/src/measure/measure-embedders.ts
 
 ## No reranker
 
-A reranker is a second model that reads the text and a note together and scores the pair. ms-marco-MiniLM-L-6-v2, quantized, was tried once on the first 33 cases with the transformers.js library. It put the right note first in 12 of 21 cases. At a threshold with no false match, it found 7 of 21 notes. It also added about 68 ms for each query. It is worse than the embedder alone, so zambil has no reranker.
+A reranker is a second model that reads the text and a note together and scores the pair. ms-marco-MiniLM-L-6-v2, quantized, was tried once on the 33 short texts with the transformers.js library. It put the right note first in 12 of 21 cases. At a threshold with no false match, it found 7 of 21 notes. It also added about 68 ms for each query. It is worse than the embedder alone, so zambil has no reranker.
 
 ## No background process
 
-`measurements.md` times `zambil hook` at `UserPromptSubmit` from a cold start, as Claude Code runs it. A slash command, which loads the repo but not the model, takes about 35 ms. The similarity search adds about 70 ms for a short prompt and about 100 ms for a prompt of 300 words. Loading the model is about 50 ms of that. A background process that keeps the model loaded saves that part on each prompt. The gain does not justify a process that the user must start and stop, so zambil has none.
+`measurements.md` times `zambil hook` at `UserPromptSubmit` from a cold start, as Claude Code runs it. A slash command, which loads the repo but not the model, takes about 35 ms. The similarity search adds about 70 ms for a short prompt. It adds about 100 ms for a prompt of 300 words. Loading the model is about 50 ms of that. A background process that keeps the model loaded saves that part on each prompt. The gain does not justify a process that the user must start and stop, so zambil has none.
 
 ## Tests
 

@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 
 describe("searchNotes", () => {
   test(
-    'finds 32 of the 61 expected notes, "iterating" included, with 3 known false matches',
+    'finds 32 of the 63 expected notes, "iterating" included, with 3 known false matches',
     { timeout: 120_000 },
     async () => {
       const repo = loadRepo(proseRepo);

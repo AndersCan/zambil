@@ -2,9 +2,9 @@
 
 `node packages/embed/src/measure/measure-embedders.ts` writes this file. Do not edit it by hand. `README.md` in this folder says which model zambil uses and why.
 
-Machine: unknown (10 cores), 7.2.12-orbstack-00394-gbecdd6130068 arm64, Node v24.22.3, load average 23.8 at the start.
+Machine: unknown (10 cores), 7.2.12-orbstack-00394-gbecdd6130068 arm64, Node v24.22.3, load average 13.4 at the start.
 
-The prose cases are in `src/measure/prose-cases.ts`: 61 texts that must find one note, and 42 texts that must find none. The notes are in `fixtures/prose-repo`.
+The prose cases are in `src/measure/prose-cases.ts`: 63 texts that must find one note, and 42 texts that must find none. The notes are in `fixtures/prose-repo`.
 
 The columns:
 
@@ -20,32 +20,32 @@ The columns:
 
 | Model                     | Size  | Top note right | Best threshold | Found | False matches | "iterating"       | Cold start | Load model | One query | 300-word query | 20 descriptions |
 | ------------------------- | ----- | -------------- | -------------- | ----- | ------------- | ----------------- | ---------- | ---------- | --------- | -------------- | --------------- |
-| multi-qa-minilm-l6-cos-v1 | 23 MB | 53/61          | 0.38           | 32/61 | 3             | 0.388 (first)     | 132 ms     | 51 ms      | 2 ms      | 23 ms          | 57 ms           |
-| all-minilm-l6-v2          | 23 MB | 56/61          | 0.36           | 35/61 | 4             | 0.347 (first)     | 136 ms     | 50 ms      | 2 ms      | 58 ms          | 100 ms          |
-| all-minilm-l6-v2-fp32     | 90 MB | 55/61          | 0.36           | 36/61 | 4             | 0.327 (first)     | 156 ms     | 71 ms      | 3 ms      | 146 ms         | 268 ms          |
-| paraphrase-minilm-l3-v2   | 17 MB | 43/61          | 0.40           | 23/61 | 7             | 0.182 (first)     | 116 ms     | 37 ms      | 3 ms      | 22 ms          | 86 ms           |
-| bge-small-en-v1.5         | 34 MB | 57/61          | 0.66           | 30/61 | 3             | 0.687 (first)     | 171 ms     | 85 ms      | 7 ms      | 468 ms         | 456 ms          |
-| gte-small                 | 34 MB | 59/61          | 0.83           | 34/61 | 6             | 0.826 (first)     | 161 ms     | 82 ms      | 5 ms      | 268 ms         | 211 ms          |
-| e5-small-v2               | 34 MB | 51/61          | 0.87           | 3/61  | 0             | 0.803 (not first) | 163 ms     | 85 ms      | 6 ms      | 83 ms          | 145 ms          |
-| mxbai-embed-xsmall-v1     | 24 MB | 56/61          | 0.37           | 34/61 | 4             | 0.350 (first)     | 122 ms     | 48 ms      | 5 ms      | 30 ms          | 76 ms           |
-| snowflake-arctic-embed-xs | 23 MB | 53/61          | 0.67           | 13/61 | 4             | 0.517 (first)     | 123 ms     | 48 ms      | 6 ms      | 33 ms          | 71 ms           |
+| multi-qa-minilm-l6-cos-v1 | 23 MB | 55/63          | 0.34           | 41/63 | 7             | 0.388 (first)     | 144 ms     | 55 ms      | 4 ms      | 20 ms          | 48 ms           |
+| all-minilm-l6-v2          | 23 MB | 58/63          | 0.36           | 35/63 | 4             | 0.347 (first)     | 142 ms     | 53 ms      | 4 ms      | 21 ms          | 55 ms           |
+| all-minilm-l6-v2-fp32     | 90 MB | 57/63          | 0.36           | 36/63 | 4             | 0.327 (first)     | 162 ms     | 74 ms      | 3 ms      | 115 ms         | 324 ms          |
+| paraphrase-minilm-l3-v2   | 17 MB | 45/63          | 0.40           | 23/63 | 7             | 0.182 (first)     | 118 ms     | 38 ms      | 2 ms      | 6 ms           | 30 ms           |
+| bge-small-en-v1.5         | 34 MB | 59/63          | 0.64           | 38/63 | 6             | 0.687 (first)     | 172 ms     | 86 ms      | 4 ms      | 66 ms          | 115 ms          |
+| gte-small                 | 34 MB | 61/63          | 0.83           | 34/63 | 6             | 0.826 (first)     | 170 ms     | 83 ms      | 6 ms      | 126 ms         | 157 ms          |
+| e5-small-v2               | 34 MB | 52/63          | 0.87           | 3/63  | 0             | 0.803 (not first) | 166 ms     | 84 ms      | 4 ms      | 79 ms          | 142 ms          |
+| mxbai-embed-xsmall-v1     | 24 MB | 58/63          | 0.37           | 34/63 | 4             | 0.350 (first)     | 131 ms     | 50 ms      | 2 ms      | 26 ms          | 67 ms           |
+| snowflake-arctic-embed-xs | 23 MB | 55/63          | 0.67           | 13/63 | 4             | 0.517 (first)     | 128 ms     | 50 ms      | 3 ms      | 43 ms          | 67 ms           |
 
-The whole `zambil search` command, with multi-qa-minilm-l6-cos-v1, the index in the cache and the 20 notes of the prose repo, takes 103 ms from the start of the process to its exit. The fastest of 10 runs.
+The whole `zambil search` command, with multi-qa-minilm-l6-cos-v1, the index in the cache and the 20 notes of the prose repo, takes 112 ms from the start of the process to its exit. The fastest of 10 runs.
 
 ## Thresholds
 
-zambil uses multi-qa-minilm-l6-cos-v1 with the threshold 0.38. Found notes and false matches of the search model and the previous model, at each threshold, out of 61 match cases:
+zambil uses multi-qa-minilm-l6-cos-v1 with the threshold 0.38. Found notes and false matches of the search model and the previous model, at each threshold, out of 63 match cases:
 
 | Threshold | multi-qa-minilm-l6-cos-v1             | all-minilm-l6-v2                      |
 | --------- | ------------------------------------- | ------------------------------------- |
-| 0.30      | 42 found, 18 false, finds "iterating" | 46 found, 19 false, finds "iterating" |
-| 0.31      | 42 found, 15 false, finds "iterating" | 46 found, 18 false, finds "iterating" |
-| 0.32      | 41 found, 11 false, finds "iterating" | 45 found, 13 false, finds "iterating" |
-| 0.33      | 41 found, 8 false, finds "iterating"  | 42 found, 9 false, finds "iterating"  |
-| 0.34      | 39 found, 7 false, finds "iterating"  | 39 found, 9 false, finds "iterating"  |
-| 0.35      | 37 found, 7 false, finds "iterating"  | 38 found, 6 false                     |
-| 0.36      | 35 found, 7 false, finds "iterating"  | 35 found, 4 false                     |
-| 0.37      | 34 found, 5 false, finds "iterating"  | 34 found, 4 false                     |
+| 0.30      | 44 found, 18 false, finds "iterating" | 47 found, 19 false, finds "iterating" |
+| 0.31      | 44 found, 15 false, finds "iterating" | 47 found, 18 false, finds "iterating" |
+| 0.32      | 43 found, 11 false, finds "iterating" | 46 found, 13 false, finds "iterating" |
+| 0.33      | 43 found, 8 false, finds "iterating"  | 43 found, 9 false, finds "iterating"  |
+| 0.34      | 41 found, 7 false, finds "iterating"  | 40 found, 9 false, finds "iterating"  |
+| 0.35      | 39 found, 7 false, finds "iterating"  | 39 found, 6 false                     |
+| 0.36      | 37 found, 7 false, finds "iterating"  | 35 found, 4 false                     |
+| 0.37      | 35 found, 5 false, finds "iterating"  | 34 found, 4 false                     |
 | 0.38      | 32 found, 3 false, finds "iterating"  | 32 found, 3 false                     |
 | 0.39      | 31 found, 3 false                     | 30 found, 3 false                     |
 | 0.40      | 29 found, 3 false                     | 30 found, 3 false                     |
@@ -54,6 +54,14 @@ zambil uses multi-qa-minilm-l6-cos-v1 with the threshold 0.38. Found notes and f
 | 0.43      | 20 found, 2 false                     | 23 found, 2 false                     |
 | 0.44      | 19 found, 2 false                     | 20 found, 1 false                     |
 | 0.45      | 18 found, 1 false                     | 18 found, 1 false                     |
+
+multi-qa-minilm-l6-cos-v1 at 0.38, by group of cases. The later cases were written after the threshold was chosen:
+
+| Group        | Cases | Found | False matches |
+| ------------ | ----- | ----- | ------------- |
+| Short texts  | 33    | 11/21 | 0             |
+| Task prompts | 35    | 9/20  | 0             |
+| Later cases  | 37    | 12/22 | 3             |
 
 The false matches of multi-qa-minilm-l6-cos-v1 at 0.38:
 
@@ -67,12 +75,12 @@ The false matches of multi-qa-minilm-l6-cos-v1 at 0.38:
 
 | Case                                                                   | Whole hook | Added by the search |
 | ---------------------------------------------------------------------- | ---------- | ------------------- |
-| A slash command, `/compact`. The hook does not search.                 | 35 ms      | -                   |
-| "iterating", with the index                                            | 105 ms     | 70 ms               |
-| A 300-word prompt, with the index                                      | 133 ms     | 98 ms               |
-| A pasted prompt of 1 MB, with the index                                | 149 ms     | 113 ms              |
-| "iterating", with no index. The hook embeds 10 of the 20 descriptions. | 161 ms     | 126 ms              |
-| "iterating", with no model. The hook does not search.                  | 47 ms      | 12 ms               |
+| A slash command, `/compact`. The hook does not search.                 | 36 ms      | -                   |
+| "iterating", with the index                                            | 103 ms     | 67 ms               |
+| A 300-word prompt, with the index                                      | 133 ms     | 96 ms               |
+| A pasted prompt of 1 MB, with the index                                | 145 ms     | 109 ms              |
+| "iterating", with no index. The hook embeds 10 of the 20 descriptions. | 165 ms     | 129 ms              |
+| "iterating", with no model. The hook does not search.                  | 48 ms      | 12 ms               |
 
 ## Scores per case
 
@@ -141,6 +149,8 @@ The false matches of multi-qa-minilm-l6-cos-v1 at 0.38:
 | this function is called handle, what is a better name?                                                                                                                                                                                  | naming               | naming               | 0.491     | 0.491          | 0.117            |
 | We cannot tell which request failed in the logs. Add a request id to every log line of the api service and log the start and end of each request.                                                                                       | logging              | logging              | 0.408     | 0.408          | 0.292            |
 | iterate                                                                                                                                                                                                                                 | for-loops            | for-loops            | 0.397     | 0.397          | 0.116            |
+| iteration                                                                                                                                                                                                                               | for-loops            | for-loops            | 0.372     | 0.372          | 0.116            |
+| iterating?                                                                                                                                                                                                                              | for-loops            | for-loops            | 0.364     | 0.364          | 0.072            |
 | what day is it                                                                                                                                                                                                                          | (none)               | dates                | 0.320     | -              | 0.320            |
 | bake sourdough bread                                                                                                                                                                                                                    | (none)               | dates                | 0.163     | -              | 0.163            |
 | what is the capital of France                                                                                                                                                                                                           | (none)               | naming               | 0.181     | -              | 0.181            |
@@ -249,6 +259,8 @@ The false matches of multi-qa-minilm-l6-cos-v1 at 0.38:
 | this function is called handle, what is a better name?                                                                                                                                                                                  | naming               | naming               | 0.438     | 0.438          | 0.130            |
 | We cannot tell which request failed in the logs. Add a request id to every log line of the api service and log the start and end of each request.                                                                                       | logging              | logging              | 0.383     | 0.383          | 0.261            |
 | iterate                                                                                                                                                                                                                                 | for-loops            | for-loops            | 0.378     | 0.378          | 0.157            |
+| iteration                                                                                                                                                                                                                               | for-loops            | for-loops            | 0.353     | 0.353          | 0.153            |
+| iterating?                                                                                                                                                                                                                              | for-loops            | for-loops            | 0.285     | 0.285          | 0.098            |
 | what day is it                                                                                                                                                                                                                          | (none)               | dates                | 0.316     | -              | 0.316            |
 | bake sourdough bread                                                                                                                                                                                                                    | (none)               | logging              | 0.124     | -              | 0.124            |
 | what is the capital of France                                                                                                                                                                                                           | (none)               | dates                | 0.068     | -              | 0.068            |

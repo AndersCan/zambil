@@ -277,6 +277,8 @@ export const laterMatchCases: ProseCase[] = [
     expected: ["logging"],
   },
   { query: "iterate", expected: ["for-loops"] },
+  { query: "iteration", expected: ["for-loops"] },
+  { query: "iterating?", expected: ["for-loops"] },
 ];
 
 /** Written after the threshold was chosen, like `laterMatchCases`. */
