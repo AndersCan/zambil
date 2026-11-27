@@ -70,11 +70,14 @@ describe("renderNote", () => {
   test("embeds a heading or a block, and points an empty name at the note itself", async () => {
     const files = {
       "host.md": "![[guide#Use]]\n![[guide#^tip]]\n",
-      "guide.md": "# Use\nRun it. ^tip\n\nSee [[#Use]] and ![[#^tip]].\n# Other\nNot this.\n",
+      "guide.md":
+        "# Use\nRun it. ^tip\n\nSee [[#Use]] and ![[#^tip]]. Not [[#Nope]].\n# Other\nNot this.\n",
     };
     const tip = ['<note name="guide" path="guide.md" section="#^tip">', "Run it.", "</note>"];
     const use = ['<note name="guide" path="guide.md" section="#Use">', "# Use", "Run it.", ""];
-    use.push("See [[#Use]] and", ...tip, ".", "</note>");
+    use.push("See [[#Use]] and", ...tip, ". Not [[#Nope]].", "", "Links:");
+    use.push("- [[guide#Use]]: It has no description. Open guide#Use.");
+    use.push('- [[guide#Nope]]: warning: [[guide]] has no heading "Nope".', "</note>");
     const host = ['<note name="host" path="host.md">', ...use, ...tip, "</note>"];
     expect((await render(files, { target: "host" })).text).toBe(host.join("\n"));
   });
@@ -220,6 +223,14 @@ describe("renderNote", () => {
         "</note>",
       ].join("\n"),
     ]);
+  });
+
+  test("gives a true reason for a note whose frontmatter does not parse", async () => {
+    const files = { "broken.md": "---\nexpires: 2099-01-01\ntags: [a\n---\nOld.\n" };
+    const lines = (await render(files, { target: "broken" })).text.split("\n");
+    expect(lines[1]).toBe(
+      "Warning: this note counts as expired, because zambil cannot read its `expires` value or its frontmatter, so its content can be out of date. It is not shown here.",
+    );
   });
 
   test("finds headings in a note with Windows line endings", async () => {

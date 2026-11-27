@@ -25,7 +25,7 @@ export function expiredPhrase(note: Note): string {
     case "at":
       return `expired on ${formatMoment(expiry.time)}`;
     case "unreadable":
-      return `counts as expired, because its \`expires\` value ${JSON.stringify(expiry.text)} is not a date`;
+      return "counts as expired, because zambil cannot read its `expires` value or its frontmatter";
     case "never":
       return "expired";
     default:

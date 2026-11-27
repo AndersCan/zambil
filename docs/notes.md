@@ -244,7 +244,7 @@ An embed gets a warning in its place when no note has the name, when more than o
 
 Expired notes follow the rules in [Expiry](#expiry):
 
-- An expired note gets a warning in place of its content, in an embed and in `zambil show`. The warning names the `when-expired` note, if the note has one. It says that the agent can skip the note, or read it anyway with `zambil show <name> --expired`. It says that the agent can offer an update, but saves a change only when the user asks for it.
+- An expired note gets a warning in place of its content, in an embed and in `zambil show`. The warning names the `when-expired` note, if the note has one. It says that the agent can skip the note or read it anyway. The caller words how to read it anyway, and `zambil show` says `zambil show <name> --expired`. It says that the agent can offer an update, but saves a change only when the user asks for it.
 - `--expired`, or the option `expired: "show"`, reads only the named note anyway. An expired note that it embeds still gets the warning.
 - A link to an expired note gives its description with a warning, and names its `when-expired` note with the warning of that note too.
 - A current note that has `when-expired` names that note as the way to verify its claims, because a note can be wrong before its date. If the `when-expired` note expired too, it gets the expiry warning.

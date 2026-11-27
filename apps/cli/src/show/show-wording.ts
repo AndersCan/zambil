@@ -16,8 +16,8 @@ export function showWording(options: ShowWordingOptions): RenderWording {
   }
 
   return {
-    openNote: (target) => `To read it, run \`${command(target)}\`.`,
-    openExpired: (target) => `To read it anyway, run \`${command(target)} --expired\`.`,
+    openNote: (target) => `To read [[${target}]], run \`${command(target)}\`.`,
+    openExpired: (target) => `To read [[${target}]] anyway, run \`${command(target)} --expired\`.`,
     loadSkill: (skill) => `To use it, read ${skill.path} and follow it.`,
   };
 }

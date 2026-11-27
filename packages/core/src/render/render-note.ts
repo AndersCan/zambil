@@ -163,12 +163,20 @@ interface EmbedOptions {
   context: EmbedContext;
 }
 
+interface InNoteOptions {
+  note: Note;
+}
+
+/** A target with an empty name, such as `#Steps`, points to the note that holds it. */
+function inNote(target: WikilinkTarget, options: InNoteOptions): WikilinkTarget {
+  if (target.name !== "") return target;
+  const { name } = options.note;
+  return { ...target, name, text: `${name}${target.text}` };
+}
+
 function renderEmbed(link: Wikilink, options: EmbedOptions): string {
   const { note, context } = options;
-  const isSameNote = link.target.name === "";
-  const name = isSameNote ? note.name : link.target.name;
-  const text = isSameNote ? `${note.name}${link.target.text}` : link.target.text;
-  const target = { ...link.target, name, text };
+  const target = inNote(link.target, { note });
   const lookup = findTarget(target, { repo: context.repo, now: context.now, expired: "warn" });
   return renderLookup(lookup, { target, context, subject: link.raw });
 }
@@ -208,8 +216,9 @@ function renderContent(note: Note, options: ContentOptions): RenderedContent {
         continue;
       }
       text += link.raw;
-      const key = nameKey(link.target.text);
-      if (link.target.name !== "" && !links.has(key)) links.set(key, link.target);
+      const target = inNote(link.target, { note });
+      const key = nameKey(target.text);
+      if (!links.has(key)) links.set(key, target);
     }
     output.push(text + source.slice(cursor));
   }

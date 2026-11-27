@@ -21,7 +21,15 @@ function headingKey(title: string): string {
 }
 
 function isBlank(line: MarkdownLine | undefined): boolean {
-  return line === undefined || line.text.trim() === "";
+  return line === undefined || (line.kind !== "code" && line.text.trim() === "");
+}
+
+function isAfterFenceOpening(line: MarkdownLine | undefined): boolean {
+  return line?.kind === "code" && line.fence !== "open";
+}
+
+function isParagraphLine(line: MarkdownLine | undefined): boolean {
+  return line?.kind === "text" && line.text.trim() !== "";
 }
 
 function sectionEnd(lines: MarkdownLine[], range: Range): number {
@@ -76,25 +84,45 @@ function itemEnd(lines: MarkdownLine[], options: BlockOptions): number {
 
 function paragraphStart(lines: MarkdownLine[], options: BlockOptions): number {
   let start = options.marker;
-  while (start > 0 && !isBlank(lines[start - 1]) && lines[start - 1]?.kind !== "heading") {
-    start -= 1;
-  }
+  while (start > 0 && isParagraphLine(lines[start - 1])) start -= 1;
   return start;
 }
 
-function blockAbove(lines: MarkdownLine[], options: BlockOptions): Range {
+function fenceStart(lines: MarkdownLine[], options: BlockOptions): number {
+  let start = options.marker;
+  while (start > 0 && isAfterFenceOpening(lines[start])) start -= 1;
+  return start;
+}
+
+function startAbove(lines: MarkdownLine[], options: BlockOptions): number {
+  const line = lines[options.marker];
+  switch (line?.kind) {
+    case "heading":
+      return options.marker;
+    case "code":
+      return fenceStart(lines, options);
+    case "text":
+    case undefined:
+      return paragraphStart(lines, options);
+    default:
+      return isNever(line);
+  }
+}
+
+function blockAbove(lines: MarkdownLine[], options: BlockOptions): Range | undefined {
   let end = options.marker;
   while (end > 0 && isBlank(lines[end - 1])) end -= 1;
-  return { start: paragraphStart(lines, { marker: end - 1 }), end, level: 0 };
+  if (end === 0) return undefined;
+  return { start: startAbove(lines, { marker: end - 1 }), end, level: 0 };
 }
 
 function paragraph(lines: MarkdownLine[], options: BlockOptions): Range {
   let end = options.marker + 1;
-  while (!isBlank(lines[end]) && lines[end]?.kind === "text") end += 1;
+  while (isParagraphLine(lines[end])) end += 1;
   return { start: paragraphStart(lines, options), end, level: 0 };
 }
 
-function blockRange(lines: MarkdownLine[], options: BlockOptions): Range {
+function blockRange(lines: MarkdownLine[], options: BlockOptions): Range | undefined {
   const text = lines[options.marker]?.text ?? "";
   if (text.replace(blockMarker, "").trim() === "") return blockAbove(lines, options);
   if (listItem.test(text)) return { start: options.marker, end: itemEnd(lines, options), level: 0 };
@@ -112,7 +140,7 @@ function selectBlock(lines: MarkdownLine[], options: BlockSelection): MarkdownLi
   });
   if (marker === -1) return undefined;
   const range = blockRange(lines, { marker });
-  return lines.slice(range.start, range.end);
+  return range === undefined ? undefined : lines.slice(range.start, range.end);
 }
 
 /** A line without its block id, which Obsidian hides in reading view. */

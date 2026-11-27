@@ -1,7 +1,10 @@
+/** Where a line of a fenced code block is: its opening fence, the code, or its closing fence. */
+export type FencePart = "open" | "inside" | "close";
+
 /** One line of a note. Links in a `code` line are plain text, as in Obsidian. */
 export type MarkdownLine =
   | { kind: "text"; text: string }
-  | { kind: "code"; text: string }
+  | { kind: "code"; text: string; fence: FencePart }
   | { kind: "heading"; text: string; level: number; title: string };
 
 const fencePattern = /^ {0,3}(?<fence>`{3,}|~{3,})/;
@@ -24,14 +27,15 @@ export function scanLines(content: string): MarkdownLine[] {
   let openFence: string | undefined = undefined;
   for (const text of content.split(/\r?\n/)) {
     if (openFence !== undefined) {
-      lines.push({ kind: "code", text });
-      if (closesFence(text, { fence: openFence })) openFence = undefined;
+      const isClosing = closesFence(text, { fence: openFence });
+      lines.push({ kind: "code", text, fence: isClosing ? "close" : "inside" });
+      if (isClosing) openFence = undefined;
       continue;
     }
     const fence = fencePattern.exec(text)?.groups?.fence;
     if (fence !== undefined) {
       openFence = fence;
-      lines.push({ kind: "code", text });
+      lines.push({ kind: "code", text, fence: "open" });
       continue;
     }
     const heading = headingPattern.exec(text)?.groups;

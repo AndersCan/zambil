@@ -42,7 +42,7 @@ export const showCommand: Command = {
   usage: "Usage: zambil show <name>[#heading|#^block] [--expired] [--repo <path>]",
   details: [
     "An expired note prints a warning in place of its content. --expired prints the content anyway.",
-    "A name that no note has, or that more than one note has, sets the exit code to 1.",
+    "A name that no note has or that more than one note has, or a missing heading or block, sets the exit code to 1.",
   ].join("\n"),
   run: runShow,
 };

@@ -39,7 +39,10 @@ describe("showCommand", () => {
       unknown,
       usage: usage.code,
     }).toEqual({
-      warned: [0, "You can skip this note. To read it anyway, run `zambil show today --expired`."],
+      warned: [
+        0,
+        "You can skip this note. To read [[today]] anyway, run `zambil show today --expired`.",
+      ],
       read: [0, "Today is 2026-11-27."],
       unknown: {
         code: 1,
@@ -62,7 +65,7 @@ describe("showCommand", () => {
       now: new Date(),
     });
     expect(printed.join("").split("\n").at(-3)).toBe(
-      `- [[b c]]: It has no description. To read it, run \`zambil show 'b c' --repo ${root}\`.`,
+      `- [[b c]]: It has no description. To read [[b c]], run \`zambil show 'b c' --repo ${root}\`.`,
     );
   });
 });
