@@ -20,7 +20,7 @@ function withHeader(header: unknown): Uint8Array {
 }
 
 describe("parseNoteIndex", () => {
-  test("reads what formatNoteIndex writes, also off a float boundary, and no index from a cut file or another format", () => {
+  test("reads what formatNoteIndex writes as views into one buffer, also off a float boundary, and no index from a cut file or another format", () => {
     const bytes = formatNoteIndex(index);
     const shifted = new Uint8Array(bytes.byteLength + 1);
     shifted.set(bytes, 1);
@@ -32,6 +32,9 @@ describe("parseNoteIndex", () => {
       otherFormat: parseNoteIndex(withHeader({ ...header, format: 2 })),
       emptyIndex: parseNoteIndex(withHeader({ ...header, format: 3 }))?.vectors.size,
       notAnIndex: parseNoteIndex(Buffer.from("{}")),
+      buffers: new Set(
+        [...(parseNoteIndex(bytes)?.vectors.values() ?? [])].map((vector) => vector.buffer),
+      ).size,
     }).toEqual({
       roundTrip: index,
       offBoundary: index,
@@ -39,6 +42,7 @@ describe("parseNoteIndex", () => {
       otherFormat: undefined,
       emptyIndex: 0,
       notAnIndex: undefined,
+      buffers: 1,
     });
   });
 });

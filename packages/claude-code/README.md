@@ -181,7 +181,7 @@ zambil supports up to 20,000 notes in one repo. The CLI keeps the parsed notes i
 | 5,000  | 131 ms to 96 ms  | 247 ms to 193 ms                |
 | 20,000 | 252 ms to 164 ms | 463 ms to 285 ms                |
 
-`packages/core/src/note-cache/parse-note-files.test.ts` loads 20,000 notes. If a load from the cache takes more than half the time of a full parse, the test fails.
+The first hook after an update of zambil parses every note again. So does a hook in the 2 seconds after a file changes, for that file. `packages/core/src/note-cache/parse-note-files.test.ts` loads 10,000 notes of about 1.5 KB. If a load from the cache takes more than three quarters of the time of a full parse, the test fails. Today it takes less than half.
 
 ## Code
 

@@ -7,7 +7,7 @@ import { readFolder } from "../repo/read-folder.ts";
 import { readTextFile } from "../repo/read-text-file.ts";
 
 /** The folders with the code that turns a file into a note. */
-const parserFolders = ["../note/", "../properties/", "../expiry/"];
+const parserFolders = ["../note/", "../properties/", "../expiry/", "../scope/"];
 
 /**
  * A hash of the code that parses a note. The note cache keeps it, so that a zambil update that

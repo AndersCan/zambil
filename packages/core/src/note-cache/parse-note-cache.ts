@@ -9,6 +9,7 @@ export interface CachedNote {
   file: NoteFile;
   size: number;
   modifiedMs: number;
+  changedMs: number;
   note: Note;
   problems: NoteProblem[];
 }
@@ -24,11 +25,13 @@ export interface NoteCache {
 export const noteCacheFormat = 1;
 
 function isCachedNote(value: unknown): value is CachedNote {
-  const { file, size, modifiedMs, note, problems } = asRecord(value) ?? {};
-  const hasStats = typeof size === "number" && typeof modifiedMs === "number";
+  const { file, size, modifiedMs, changedMs, note, problems } = asRecord(value) ?? {};
+  const hasTimes = typeof modifiedMs === "number" && typeof changedMs === "number";
+  const hasStats = typeof size === "number" && hasTimes;
   const { path } = asRecord(file) ?? {};
-  const { name } = asRecord(note) ?? {};
-  const hasNote = typeof path === "string" && typeof name === "string";
+  const { name, expiry } = asRecord(note) ?? {};
+  const hasExpiry = typeof asRecord(expiry)?.kind === "string";
+  const hasNote = typeof path === "string" && typeof name === "string" && hasExpiry;
   return hasStats && hasNote && Array.isArray(problems);
 }
 
