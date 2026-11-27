@@ -9,6 +9,10 @@ import { readTextFile } from "../repo/read-text-file.ts";
 /** The folders with the code that turns a file into a note. */
 const parserFolders = ["../note/", "../properties/", "../expiry/", "../scope/"];
 
+function isSource(name: string): boolean {
+  return name.endsWith(".ts") && !name.endsWith(".test.ts");
+}
+
 /**
  * A hash of the code that parses a note. The note cache keeps it, so that a zambil update that
  * parses notes in another way does not reuse notes that the old code parsed. It reads about 20 small
@@ -21,7 +25,7 @@ export function parserKey(): Either<unknown, string> {
     const entries = readFolder(path);
     if (!entries.ok) return left(entries.error);
     const names: string[] = [];
-    for (const entry of entries.value) if (entry.name.endsWith(".ts")) names.push(entry.name);
+    for (const entry of entries.value) if (isSource(entry.name)) names.push(entry.name);
     for (const name of names.toSorted()) {
       const source = readTextFile(join(path, name));
       if (!source.ok) return left(source.error);

@@ -47,6 +47,6 @@ export interface ScriptNote extends NoteFields {
 
 /**
  * One Markdown note of a configuration repo. `path` is relative to the repo root and uses `/`. The text
- * of the note is not here: `readNoteContent` reads it when a note is shown.
+ * of the note is not here: rendering reads it from the file when it shows the note.
  */
 export type Note = PlainNote | SkillNote | ScriptNote;

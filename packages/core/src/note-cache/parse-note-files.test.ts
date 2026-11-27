@@ -1,5 +1,13 @@
 import { describe, expect, test } from "vite-plus/test";
-import { mkdirSync, mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { loadRepo } from "../repo/load-repo.ts";
 import { noteCachePath } from "./note-cache-file.ts";
@@ -107,11 +115,13 @@ describe("parseNoteFiles", () => {
     const path = join(root, "deploy.md");
     const cacheFolder = mkdtempSync(join(tmpdir(), "zambil-cache-"));
     const first = descriptions(root, { cacheFolder });
+    const isCached = existsSync(noteCachePath(root, { cacheFolder }));
     const { mtime } = statSync(path);
     writeFileSync(path, "---\ndescription: Deploy B.\n---\n");
     utimesSync(path, mtime, mtime);
-    expect({ first, second: descriptions(root, { cacheFolder }) }).toEqual({
+    expect({ first, isCached, second: descriptions(root, { cacheFolder }) }).toEqual({
       first: ["Deploy A."],
+      isCached: false,
       second: ["Deploy B."],
     });
   });

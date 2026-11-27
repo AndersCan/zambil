@@ -173,7 +173,7 @@ Each event starts a new Node process that loads the whole repo. Measured in the 
 
 The table above was measured before the similarity search. At `UserPromptSubmit`, the search loads the model in each new process. `packages/embed/measurements.md` times the whole hook from a cold start, with `NODE_COMPILE_CACHE`. On the prose repo of 50 notes, the search adds about 60 ms to a short prompt. It adds about 100 ms to a prompt of 300 words. A slash command and a prompt with no letter add nothing, because the hook does not load the model for them. `packages/embed/README.md` says why zambil has no background process that keeps the model loaded.
 
-zambil supports up to 20,000 notes in one repo. The CLI keeps the parsed notes in a cache, `$XDG_CACHE_HOME/zambil/notes/`. A note in the cache is used again while its file keeps its size and its modified time. So a hook reads only the files that changed, and the text of each note that it adds. These times are the median of 7 runs on generated folders, without `NODE_COMPILE_CACHE`, before and after the cache:
+zambil supports up to 20,000 notes in one repo. The CLI keeps the parsed notes in a cache, `$XDG_CACHE_HOME/zambil/notes/`. A note in the cache is used again while its file keeps its size, its modified time and its status change time. A change of time zone parses every note again. So a hook reads only the files that changed, and the text of each note that it adds. These times are the median of 7 runs on generated folders, without `NODE_COMPILE_CACHE`, before and after the cache:
 
 | Notes  | `PreToolUse`     | `UserPromptSubmit`, with search |
 | ------ | ---------------- | ------------------------------- |
