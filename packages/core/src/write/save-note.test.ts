@@ -338,6 +338,7 @@ describe("saveNote", () => {
       }),
       save({ mode: "create", name: "a#b", text: "Text.", expiry: none }),
       save({ mode: "create", name: "skill", text: "Text.", expiry: none }),
+      save({ mode: "create", name: "open", text: "---\ndescription: Open.\nText.", expiry: none }),
       save({
         mode: "create",
         name: "empty",
@@ -363,13 +364,19 @@ describe("saveNote", () => {
         refused: {
           reason: "invalid",
           message:
-            'The name "a#b" has a character that a filename or an Obsidian link cannot have: \\ / : * " < > ? # ^ [ ] | or a control character',
+            'The name "a#b" has a character that a filename or an Obsidian link cannot have: \\ / : * " < > ? # ^ [ ] | or a control character.',
         },
       },
       {
         refused: {
           reason: "invalid",
           message: "A SKILL.md file makes a skill folder. zambil does not create skills.",
+        },
+      },
+      {
+        refused: {
+          reason: "invalid",
+          message: "The frontmatter of the new text has no closing --- line.",
         },
       },
       { refused: { reason: "invalid", message: "The note has no text." } },

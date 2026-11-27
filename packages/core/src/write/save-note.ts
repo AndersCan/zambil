@@ -175,6 +175,9 @@ function normalizeContent(content: string): string | undefined {
 
 function writeChanges(request: WriteRequest, options: ChangeOptions): Either<SaveRefusal, Changes> {
   const split = splitFrontmatter(request.text);
+  if (split.frontmatter === undefined && delimiterLine.test(split.content)) {
+    return invalid("The frontmatter of the new text has no closing --- line.");
+  }
   const input = inputEdits(split.frontmatter);
   if (!input.ok) return input;
   const expiry = expiryEdits(request, options);

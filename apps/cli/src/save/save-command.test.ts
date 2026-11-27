@@ -60,7 +60,11 @@ describe("saveCommand", () => {
     });
     const result = await run(["deploy", "--verified", "--expires", "2027-03-01", "--repo", root]);
     expect({ result, text: await readFile(join(root, "deploy.md"), "utf8") }).toEqual({
-      result: { code: 0, stdout: "Verified deploy.md. It expires 2027-03-01 now.\n", stderr: "" },
+      result: {
+        code: 0,
+        stdout: "Verified deploy.md. It now expires on 2027-03-01.\n",
+        stderr: "",
+      },
       text: "---\nexpires: 2027-03-01\nwhen-expired: deploy\n---\nText.\n",
     });
   });
@@ -77,7 +81,7 @@ describe("saveCommand", () => {
     ]);
     const messages = results.map((result) => {
       const lines = result.stderr.split("\n");
-      return [result.code, ...lines.filter((line) => line !== "" && !line.startsWith("Usage:"))];
+      return [result.code, ...lines.filter((line) => line !== "" && !/^(Usage:| )/.test(line))];
     });
     expect(messages).toEqual([
       [

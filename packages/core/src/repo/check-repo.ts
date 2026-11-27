@@ -6,8 +6,7 @@ import { join } from "node:path";
 import type { Note } from "../note/note.ts";
 import type { NoteProblem } from "../note/note-problem.ts";
 
-/** The repo that the note is in. */
-export interface ProblemOptions {
+interface ProblemOptions {
   repo: ConfigurationRepo;
 }
 
@@ -25,16 +24,6 @@ function whenExpiredProblem(note: Note, options: ProblemOptions): NoteProblem | 
   return { severity: "error", path: note.path, message };
 }
 
-/** The checks of one note that need the rest of the repo: its script file and its `when-expired` note. */
-export function checkNote(note: Note, options: ProblemOptions): NoteProblem[] {
-  const problems: NoteProblem[] = [];
-  const script = scriptProblem(note, options);
-  if (script !== undefined) problems.push(script);
-  const whenExpired = whenExpiredProblem(note, options);
-  if (whenExpired !== undefined) problems.push(whenExpired);
-  return problems;
-}
-
 /**
  * Every problem in a loaded repo, sorted by path. It adds the checks that the loader skips to stay fast:
  * that each script file exists, and that each `when-expired` note exists. A script is checked with
@@ -42,6 +31,11 @@ export function checkNote(note: Note, options: ProblemOptions): NoteProblem[] {
  */
 export function checkRepo(repo: ConfigurationRepo): NoteProblem[] {
   const problems = [...repo.problems];
-  for (const note of repo.notes) problems.push(...checkNote(note, { repo }));
+  for (const note of repo.notes) {
+    const script = scriptProblem(note, { repo });
+    if (script !== undefined) problems.push(script);
+    const whenExpired = whenExpiredProblem(note, { repo });
+    if (whenExpired !== undefined) problems.push(whenExpired);
+  }
   return problems.toSorted((first, second) => comparePaths(first.path, { other: second.path }));
 }

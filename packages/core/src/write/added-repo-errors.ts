@@ -1,4 +1,4 @@
-import { checkNote } from "../repo/check-repo.ts";
+import { checkRepo } from "../repo/check-repo.ts";
 import type { ConfigurationRepo } from "../repo/configuration-repo.ts";
 import { indexNames } from "../repo/index-names.ts";
 import type { Note } from "../note/note.ts";
@@ -9,13 +9,10 @@ interface RepoErrorOptions {
 
 function repoErrors(notes: Note[], options: RepoErrorOptions): Set<string> {
   const indexed = indexNames(notes);
-  const repo = { root: options.root, notes, names: indexed.names, problems: [] };
+  const repo = { root: options.root, notes, names: indexed.names, problems: indexed.problems };
   const errors = new Set<string>();
-  for (const problem of indexed.problems) errors.add(`${problem.path}: ${problem.message}`);
-  for (const note of notes) {
-    for (const problem of checkNote(note, { repo })) {
-      if (problem.severity === "error") errors.add(`${problem.path}: ${problem.message}`);
-    }
+  for (const problem of checkRepo(repo)) {
+    if (problem.severity === "error") errors.add(`${problem.path}: ${problem.message}`);
   }
   return errors;
 }

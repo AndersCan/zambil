@@ -43,7 +43,7 @@ export function findNewTarget(
   }
   if (lookup.kind === "found") {
     const { note } = lookup;
-    if (nameKey(note.name) !== nameKey(name)) {
+    if (nameKey(note.name) !== nameKey(name.trim())) {
       return invalid(
         `"${name}" is an alias of ${note.path}. Pick another name, or rewrite that note by its name, "${note.name}".`,
       );
@@ -81,7 +81,7 @@ export function findExistingTarget(
       return isNever(lookup);
   }
   const { note } = lookup;
-  if (nameKey(note.name) !== nameKey(name)) {
+  if (nameKey(note.name) !== nameKey(name.trim())) {
     return invalid(`"${name}" is an alias of ${note.path}. Use its name, "${note.name}".`);
   }
   const text = readTextFile(`${options.repo.root}/${note.path}`);

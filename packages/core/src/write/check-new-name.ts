@@ -13,7 +13,7 @@ export function checkNewName(name: string): Either<string, string> {
   if (name.trim() !== name) return left(`The name "${name}" starts or ends with a space.`);
   if (forbiddenCharacters.test(name)) {
     return left(
-      `The name "${name}" has a character that a filename or an Obsidian link cannot have: \\ / : * " < > ? # ^ [ ] | or a control character`,
+      `The name "${name}" has a character that a filename or an Obsidian link cannot have: \\ / : * " < > ? # ^ [ ] | or a control character.`,
     );
   }
   if (name.startsWith(".")) {

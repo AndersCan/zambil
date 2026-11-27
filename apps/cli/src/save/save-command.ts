@@ -137,7 +137,7 @@ function describeSaved(saved: SavedNote): string {
       return `Rewrote ${path}.`;
     case "verify": {
       const expires = String(saved.note.properties.expires);
-      return `Verified ${path}. It expires ${expires} now.`;
+      return `Verified ${path}. It now expires on ${expires}.`;
     }
     default:
       return isNever(saved.mode);
@@ -207,7 +207,7 @@ async function runSave(options: CommandRunOptions): Promise<ExitCode> {
 export const saveCommand: Command = {
   summary: "Create or rewrite a note, or record that its claims still hold.",
   usage:
-    "Usage: zambil save <name> (--expires <date> | --no-expires) [--when-expired <name>] [--folder <path>] [--rewrite | --verified] [--repo <path>]",
+    "Usage: zambil save <name> (--expires <date> | --no-expires) [--when-expired <name>] [--folder <path>] [--rewrite] [--repo <path>]\n       zambil save <name> --verified --expires <date> [--repo <path>]",
   details: [
     "The text of the note comes on standard input: Markdown, with optional frontmatter.",
     "Its properties are set on the note. The other properties of the note stay as they are.",
