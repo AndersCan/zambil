@@ -9,7 +9,7 @@ export type PropertyEdit =
   | { kind: "set"; key: string; text: string }
   | { kind: "remove"; key: string };
 
-const keyLine = /^(?<key>"[^"]*"|'[^']*'|[^\s#'"-][^:]*?)[ \t]*:(?:[ \t]|\r?$)/;
+const keyLine = /^(?<key>"[^"]*"|'[^']*'|[^\s#'"-][^:]*?)[ \t]*:(?:[ \t]|\r?\n|$)/;
 
 function keyOf(line: string): string | undefined {
   const key = keyLine.exec(line)?.groups?.key;

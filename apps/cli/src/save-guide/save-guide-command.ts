@@ -11,7 +11,7 @@ You write the first version of a note. When the user asks for changes, rewrite i
 A note that makes claims goes out of date. The code changes, and then the note is false and confuses the next agent. So:
 
 1. Give the note an expires date: the date when its claims are likely to change.
-2. Give it a when-expired note that tells how to update the note or verify its claims, for example the files and commands to read.
+2. Give it a when-expired note that tells how to update the note or verify its claims, for example the files and commands to read. Save the when-expired note first, because it must exist.
 3. Use --no-expires only for a note that makes no claims that go out of date, such as a preference of the user.
 
 Give each note a description in its frontmatter. Similarity search matches the prompt against it.

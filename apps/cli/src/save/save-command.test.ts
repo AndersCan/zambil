@@ -42,7 +42,7 @@ describe("saveCommand", () => {
         stderr: [
           "Reminder: ops/deploy.md expires, but it has no when-expired note.",
           "Save a note that tells how to update this note or verify its claims. Then link it:",
-          `  zambil save deploy --rewrite --expires <date> --when-expired <that note> --repo ${root} < /dev/null`,
+          `  zambil save deploy --rewrite --expires 2027-01-15 --when-expired <that note> --repo ${root} < /dev/null`,
           "",
         ].join("\n"),
       },
@@ -70,6 +70,7 @@ describe("saveCommand", () => {
       run(["deploy", "--repo", root, "--no-expires"], { input: note }),
       run(["new", "--repo", root, "--no-expires"]),
       run(["deploy", "--repo", root, "--verified", "--no-expires"]),
+      run(["new", "--repo", root, "--no-expires", "--when-expired", "deploy"], { input: note }),
     ]);
     const messages = results.map((result) => {
       const lines = result.stderr.split("\n");
@@ -78,7 +79,7 @@ describe("saveCommand", () => {
     expect(messages).toEqual([
       [
         2,
-        "Choose about expiry: add --expires <date>, or add --no-expires for a note that makes no claims that go out of date.",
+        "Choose an expiry: add --expires <date>, or add --no-expires for a note that makes no claims that go out of date.",
       ],
       [
         1,
@@ -87,6 +88,7 @@ describe("saveCommand", () => {
       ],
       [2, "Give the text of the new note on standard input."],
       [2, "--verified sets a new expires date only. Use --rewrite to change more."],
+      [2, "--when-expired needs --expires. A note without expires has no when-expired note."],
     ]);
   });
 });

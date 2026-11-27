@@ -189,7 +189,7 @@ The text of the note comes on standard input. It is Markdown, with optional fron
 A create and a rewrite need a choice about expiry:
 
 - `--expires <date>` sets a date in the future, in a form from [Expiry](#expiry).
-- `--no-expires` removes `expires`, for a note that makes no claims that go out of date.
+- `--no-expires` removes `expires` and `when-expired`, for a note that makes no claims that go out of date.
 
 `--when-expired <name>` links the note that tells how to update this note or verify its claims. That note must exist, or it must be the note itself. If a saved note expires and has no `when-expired` note, zambil prints a reminder. Set `expires` and `when-expired` with these options, not in the frontmatter of the text, so that zambil can check them. `--folder <path>` puts a new note in a folder of the repo. The default is the root.
 

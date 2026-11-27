@@ -38,16 +38,19 @@ export function findNewTarget(
   const checked = checkNewName(name);
   if (!checked.ok) return invalid(checked.error);
   const lookup = findNote(options.repo, { name });
-  if (lookup.kind === "found") {
-    return left({
-      reason: "taken",
-      message: `The name "${name}" is already used by ${lookup.note.path}.`,
-    });
-  }
   if (lookup.kind === "ambiguous") {
+    return invalid(`The name "${name}" is already used by more than one note.`);
+  }
+  if (lookup.kind === "found") {
+    const { note } = lookup;
+    if (nameKey(note.name) !== nameKey(name)) {
+      return invalid(
+        `"${name}" is an alias of ${note.path}. Pick another name, or rewrite that note by its name, "${note.name}".`,
+      );
+    }
     return left({
       reason: "taken",
-      message: `The name "${name}" is already used by more than one note.`,
+      message: `The name "${name}" is already used by ${note.path}.`,
     });
   }
   const folder = checkFolder(options.folder ?? "", { root: options.repo.root });

@@ -132,6 +132,13 @@ function expiryEdits(
   const expires = expiryEdit(request.expiry, options);
   if (!expires.ok) return expires;
   const edits = [expires.value];
+  if (request.expiry.kind === "none") {
+    if (request.whenExpired !== undefined) {
+      return invalid("A note without expires has no when-expired note.");
+    }
+    edits.push({ kind: "remove", key: "when-expired" });
+    return right(edits);
+  }
   if (request.whenExpired === undefined) return right(edits);
   const name = whenExpiredName(request.whenExpired, options);
   if (!name.ok) return name;
@@ -146,7 +153,12 @@ function inputEdits(frontmatter: string | undefined): Either<SaveRefusal, Proper
   if (!parsed.ok) return invalid(`The frontmatter of the new text is wrong: ${parsed.error}.`);
   const edits: PropertyEdit[] = [];
   for (const block of splitYamlBlocks(frontmatter)) {
-    if (block.key === undefined) continue;
+    if (block.key === undefined) {
+      const line = block.text.trim();
+      const isBlankOrComment = line === "" || line.startsWith("#");
+      if (isBlankOrComment) continue;
+      return invalid(`zambil cannot read this line of the frontmatter as a property: ${line}`);
+    }
     if (expiryKeys.has(block.key)) {
       return invalid(`Set ${block.key} with its option, not in the frontmatter of the text.`);
     }
@@ -252,7 +264,11 @@ interface ReviewOptions {
 }
 
 function takenSpelling(note: Note, options: ReviewOptions): string | undefined {
+  const oldSpellings = new Set<string>();
+  const oldNote = options.repo.notes.find((candidate) => candidate.path === note.path);
+  for (const alias of oldNote?.aliases ?? []) oldSpellings.add(nameKey(alias));
   for (const spelling of [note.name, ...note.aliases]) {
+    if (oldSpellings.has(nameKey(spelling))) continue;
     const entries = options.repo.names.get(nameKey(spelling)) ?? [];
     for (const entry of entries) {
       if (entry.note.path !== note.path) {

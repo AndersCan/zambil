@@ -40,12 +40,15 @@ type PlannedSave =
   | { mode: "verify"; name: string; expires: string };
 
 const expiryChoiceHint =
-  "Choose about expiry: add --expires <date>, or add --no-expires for a note that makes no claims that go out of date.";
+  "Choose an expiry: add --expires <date>, or add --no-expires for a note that makes no claims that go out of date.";
 
 function expiryChoice(flags: SaveFlags): Either<string, ExpiryChoice> {
   const hasDate = flags.expires !== undefined;
   const hasNone = flags["no-expires"] === true;
   if (hasDate && hasNone) return left("Use --expires or --no-expires, not both.");
+  if (hasNone && flags["when-expired"] !== undefined) {
+    return left("--when-expired needs --expires. A note without expires has no when-expired note.");
+  }
   if (flags.expires !== undefined) return right({ kind: "expires", text: flags.expires });
   return hasNone ? right({ kind: "none" }) : left(expiryChoiceHint);
 }
@@ -151,10 +154,11 @@ function whenExpiredReminder(saved: SavedNote, options: ReminderOptions): string
   if (!hasNoGuide) return undefined;
   const repo = options.repoFlag === undefined ? "" : ` --repo ${quoteArgument(options.repoFlag)}`;
   const name = quoteArgument(note.name);
+  const expires = quoteArgument(String(note.properties.expires));
   return [
     `Reminder: ${note.path} expires, but it has no when-expired note.`,
     "Save a note that tells how to update this note or verify its claims. Then link it:",
-    `  zambil save ${name} --rewrite --expires <date> --when-expired <that note>${repo} < /dev/null`,
+    `  zambil save ${name} --rewrite --expires ${expires} --when-expired <that note>${repo} < /dev/null`,
   ].join("\n");
 }
 

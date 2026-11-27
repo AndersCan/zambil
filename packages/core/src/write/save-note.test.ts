@@ -127,7 +127,7 @@ describe("saveNote", () => {
     });
   });
 
-  test("keeps the content of a rewrite without text, and removes expires when the writer says none", async () => {
+  test("keeps the content of a rewrite without text, and removes expires and when-expired for none", async () => {
     const request: SaveRequest = {
       mode: "rewrite",
       name: "deploy",
@@ -135,15 +135,44 @@ describe("saveNote", () => {
       expiry: { kind: "none" },
     };
     const { root, summary } = await save(request);
-    const expected = deploy.replace("expires: 2026-12-01\n", "");
+    const expected = deploy.replace('expires: 2026-12-01\nwhen-expired: "[[check-deploy]]"\n', "");
     expect({ summary, text: await read(root, { path: "ops/deploy.md" }) }).toEqual({
-      summary: {
-        saved: "ops/deploy.md",
-        mode: "rewrite",
-        warnings: ["`when-expired` has no effect without `expires`"],
-      },
+      summary: { saved: "ops/deploy.md", mode: "rewrite", warnings: [] },
       text: expected,
     });
+  });
+
+  test("sets properties that Obsidian writes as block lists, in a create and a rewrite", async () => {
+    const root = await writeTestRepo({ "ops.md": "---\ntags:\n  - old\nowner: ada\n---\nText.\n" });
+    const none = { kind: "none" } as const;
+    const text = "---\ntags:\n  - ops\naliases:\n  - first\n---\nText.\n";
+    const created = await save({ mode: "create", name: "first", text, expiry: none }, { root });
+    const newTags = "---\ntags:\n  - new\n---\n";
+    const rewritten = await save(
+      { mode: "rewrite", name: "ops", text: newTags, expiry: none },
+      { root },
+    );
+    expect({
+      summaries: [created.summary, rewritten.summary],
+      first: await read(root, { path: "first.md" }),
+      ops: await read(root, { path: "ops.md" }),
+    }).toEqual({
+      summaries: [
+        { saved: "first.md", mode: "create", warnings: [] },
+        { saved: "ops.md", mode: "rewrite", warnings: [] },
+      ],
+      first: "---\ntags:\n  - ops\naliases:\n  - first\n---\n\nText.\n",
+      ops: "---\ntags:\n  - new\nowner: ada\n---\nText.\n",
+    });
+  });
+
+  test("verifies a note whose alias another note already shares", async () => {
+    const root = await writeTestRepo({
+      "a.md": "---\naliases: [same]\n---\nA.\n",
+      "b.md": "---\naliases: [same]\n---\nB.\n",
+    });
+    const { summary } = await save({ mode: "verify", name: "a", expires: "2027-01-01" }, { root });
+    expect(summary).toEqual({ saved: "a.md", mode: "verify", warnings: [] });
   });
 
   test("records a verified note with a new expires date and the same content", async () => {
@@ -174,6 +203,7 @@ describe("saveNote", () => {
     const results = await Promise.all([
       save({ mode: "create", name: "DEPLOY", ...write }),
       save({ mode: "create", name: "ship", ...write }),
+      save({ mode: "rewrite", name: "deploy", ...write, whenExpired: "check-deploy" }),
       save({ mode: "rewrite", name: "missing", ...write }),
       save({ mode: "verify", name: "missing", expires: "2027-01-01" }),
     ]);
@@ -185,7 +215,14 @@ describe("saveNote", () => {
         },
       },
       {
-        refused: { reason: "taken", message: 'The name "ship" is already used by ops/deploy.md.' },
+        refused: {
+          reason: "invalid",
+          message:
+            '"ship" is an alias of ops/deploy.md. Pick another name, or rewrite that note by its name, "deploy".',
+        },
+      },
+      {
+        refused: { reason: "invalid", message: "A note without expires has no when-expired note." },
       },
       { refused: { reason: "missing", message: 'No note has the name "missing".' } },
       { refused: { reason: "missing", message: 'No note has the name "missing".' } },
@@ -213,8 +250,8 @@ describe("saveNote", () => {
       ),
     );
     expect(results.map((result) => result.summary)).toEqual([
-      { refused: { reason: "invalid", message: "the folder ../outside is outside the repo." } },
-      { refused: { reason: "invalid", message: "the folder /tmp is outside the repo." } },
+      { refused: { reason: "invalid", message: "The folder ../outside is outside the repo." } },
+      { refused: { reason: "invalid", message: "The folder /tmp is outside the repo." } },
       {
         refused: {
           reason: "invalid",
@@ -250,7 +287,7 @@ describe("saveNote", () => {
     const results = await Promise.all([
       save({ ...write, expiry: { kind: "expires", text: "2026-11-27" } }),
       save({ ...write, expiry: { kind: "expires", text: "next week" } }),
-      save({ ...write, expiry: { kind: "none" }, whenExpired: "nowhere" }),
+      save({ ...write, expiry: { kind: "expires", text: "2027-01-01" }, whenExpired: "nowhere" }),
       save({ ...write, text: "---\nexpires: 2027-01-01\n---\nText.", expiry: { kind: "none" } }),
       save({ mode: "verify", name: "deploy", expires: "2026-01-01" }),
     ]);
@@ -322,7 +359,7 @@ describe("saveNote", () => {
         refused: {
           reason: "invalid",
           message:
-            'The name "a#b" has a character that a filename or an Obsidian link cannot have: \\ / : * " < > ? # ^ [ ] |',
+            'The name "a#b" has a character that a filename or an Obsidian link cannot have: \\ / : * " < > ? # ^ [ ] | or a control character',
         },
       },
       {

@@ -72,7 +72,7 @@ export function checkFolder(folder: string, options: CheckFolderOptions): Either
   const normalized = posix.normalize(folder.replaceAll("\\", "/")).replace(/\/+$/, "");
   const relative = normalized === "." ? "" : normalized;
   const isOutside = posix.isAbsolute(relative) || relative === ".." || relative.startsWith("../");
-  if (isOutside) return left(`the folder ${folder} is outside the repo`);
+  if (isOutside) return left(`The folder ${folder} is outside the repo`);
   if (relative === "") return right("");
   const parts = relative.split("/");
   if (parts.some((part) => isHiddenPart(part))) {
