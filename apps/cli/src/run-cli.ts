@@ -196,7 +196,7 @@ export async function runCli(args: string[], options: RunCliOptions): Promise<Ex
   if (help !== undefined) return printHelp(help, options);
   if (asksForVersion(args)) {
     const { default: cliPackage } = await import("../package.json", { with: { type: "json" } });
-    const root = resolve(import.meta.dirname, "../../..");
+    const root = options.config.zambilFolder ?? resolve(import.meta.dirname, "../../..");
     const version = await describeVersion(cliPackage.version, { root });
     options.output.write(`zambil ${version}\n`);
     return 0;
