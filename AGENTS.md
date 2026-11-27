@@ -85,4 +85,6 @@ If a rebase stops on a conflict in these files, do not edit `pnpm-lock.yaml` by 
 
 Run `pnpm run ready`. CI runs `pnpm run check` and `pnpm test` on each pull request and on each push to `main`. If CI fails, the PR does not land.
 
+CI also runs `node scripts/install-smoke.ts` on Linux and macOS. It runs `install.sh` from your working tree in a temporary home folder, and installs the code of your last commit. Run it after you change `install.sh`. It downloads about 120 MB the first time.
+
 If you rename a script in `package.json`, update this file too. If this file names a `pnpm` script that does not exist, `scripts/documented-scripts.test.ts` fails.

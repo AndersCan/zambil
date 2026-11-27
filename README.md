@@ -12,29 +12,25 @@ zambil never writes a note on its own. You write a note, or you ask the agent to
 
 ## Set up
 
-You need Node 24 or later, pnpm, git and Claude Code. The steps work on Linux and macOS.
+You need Node 24 or later with npm, git and Claude Code. The steps work on Linux and macOS.
 
-1. Clone the repo and install its dependencies:
-
-   ```sh
-   git clone https://github.com/AndersCan/zambil.git
-   cd zambil
-   pnpm install
-   ```
-
-2. Put `zambil` on your `PATH`. Run this command in the root of the clone:
+1. Install zambil:
 
    ```sh
-   mkdir -p ~/.local/bin && ln -sf "$PWD/apps/cli/src/main.ts" ~/.local/bin/zambil
+   curl -fsSL https://raw.githubusercontent.com/AndersCan/zambil/main/install.sh | sh
    ```
 
-   Node runs the TypeScript directly, so there is no build step. Run `zambil help` in another folder. If your shell says `command not found`, add `export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc` or `~/.zshrc` and open a new terminal.
+   The script clones zambil into `~/.local/share/zambil`, or into `$XDG_DATA_HOME/zambil` if you set that variable. It installs the dependencies that it needs to run. It links `zambil` into `~/.local/bin`. If that folder is not on your `PATH`, the script prints the line to add to the profile of your shell. To update zambil, run the same command again. The script stops and changes nothing if the clone has local changes. Set `ZAMBIL_HOME` or `ZAMBIL_BIN_DIR` to use other folders.
+
+2. Run `zambil help` in another folder to make sure that `zambil` is on your `PATH`.
 
 3. Make a configuration repo. This is a folder of notes that you own. To start with an example, copy the sample repo of the clone:
 
    ```sh
-   cp -r packages/core/fixtures/sample-repo ~/notes
+   cp -r ~/.local/share/zambil/packages/core/fixtures/sample-repo ~/notes
    ```
+
+   If the script installed zambil in another folder, use that folder in place of `~/.local/share/zambil`.
 
 4. Tell zambil where the repo is. Write its path to the user configuration file:
 
@@ -71,7 +67,7 @@ Run `zambil install` again in these cases:
 
 - A note names a hook that no note named before. zambil installs only the hooks that your notes name, because each hook starts a process on every event.
 - You move the configuration repo. First write the new path to `~/.config/zambil/config.json`.
-- You move the clone. First run the `ln -sf` command of step 2 again in the root of the moved clone. The hooks then work again, because they run the link.
+- You move the clone. First link `apps/cli/src/main.ts` of the moved clone to `~/.local/bin/zambil` again. The hooks then work again, because they run the link.
 
 Without a network connection, run `zambil install --offline`. It skips the hook list and the model. Run `zambil index` later to download the model.
 
