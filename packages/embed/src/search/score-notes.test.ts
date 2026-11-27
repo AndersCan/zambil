@@ -65,4 +65,25 @@ describe("scoreNotes", () => {
       unindexed: 1,
     });
   });
+
+  test("embeds at most unindexedLimit descriptions that are not in the index, and leaves out the rest", async () => {
+    const root = await writeTestRepo({
+      "deploy.md": "---\ndescription: How to deploy.\n---\n",
+      "deploy-checks.md": "---\ndescription: What to check before a deploy.\n---\n",
+      "git-deploy.md": "---\ndescription: How git starts a deploy.\n---\n",
+    });
+    const repo = loadRepo(root);
+    if (!repo.ok) throw new Error(repo.error.message);
+    const cacheFolder = await mkdtemp(join(tmpdir(), "zambil-cache-"));
+    const options = { text: "deploy it", embedder: topicEmbedder, cacheFolder, now: new Date() };
+    const scored = await scoreNotes(repo.value, { ...options, unindexedLimit: 2 });
+    if (!scored.ok) throw new Error(scored.error);
+    const { scores, unindexed, skipped } = scored.value;
+    const names = scores.map((score) => score.note.name);
+    expect({ names, unindexed, skipped }).toEqual({
+      names: ["deploy-checks", "deploy"],
+      unindexed: 3,
+      skipped: 1,
+    });
+  });
 });

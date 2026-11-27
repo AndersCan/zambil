@@ -5,10 +5,14 @@ import type { Either } from "@zambil/core/either";
 import { right } from "@zambil/core/either";
 import { scoreNotes } from "./score-notes.ts";
 
-/** The matches, best first, and how many descriptions were not in the index and were embedded now. */
+/**
+ * The matches, best first, how many descriptions were not in the index, and how many of those were
+ * left out because of `unindexedLimit`.
+ */
 export interface SearchResult {
   matches: NoteScore[];
   unindexed: number;
+  skipped: number;
 }
 
 /**
@@ -26,5 +30,6 @@ export async function searchNotes(
   for (const score of scored.value.scores) {
     if (score.score >= minimumScore && matches.length < matchLimit) matches.push(score);
   }
-  return right({ matches, unindexed: scored.value.unindexed });
+  const { unindexed, skipped } = scored.value;
+  return right({ matches, unindexed, skipped });
 }

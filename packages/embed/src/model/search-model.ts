@@ -1,17 +1,18 @@
 import type { EmbeddingModel } from "./embedding-model.ts";
 
 /**
- * The model that search uses: all-MiniLM-L6-v2, quantized to 8 bits. `measurements.md` holds the
- * numbers that picked it, and `README.md` says why.
+ * The model that search uses: multi-qa-MiniLM-L6-cos-v1, quantized to 8 bits. It was trained to match
+ * a short question to a passage. `measurements.md` holds the numbers that picked it, and `README.md`
+ * says why.
  */
 export const searchModel: EmbeddingModel = {
-  id: "all-minilm-l6-v2",
-  repository: "Xenova/all-MiniLM-L6-v2",
-  revision: "751bff37182d3f1213fa05d7196b954e230abad9",
+  id: "multi-qa-minilm-l6-cos-v1",
+  repository: "Xenova/multi-qa-MiniLM-L6-cos-v1",
+  revision: "3c96c1df3fec9a98a5de76e80877c8bec18498f6",
   weights: {
     path: "onnx/model_quantized.onnx",
-    bytes: 22_972_370,
-    sha256: "afdb6f1a0e45b715d0bb9b11772f032c399babd23bfc31fed1c170afc848bdb1",
+    bytes: 22_972_369,
+    sha256: "3da8d06414059630b9e6989c5877bae7d79c2dc5525070e2f36417c15bc07114",
   },
   vocabulary: {
     path: "vocab.txt",
@@ -25,10 +26,11 @@ export const searchModel: EmbeddingModel = {
 };
 
 /**
- * The lowest score that counts as a match. It is 0.02 above the best score of a wrong note in every
- * prose case, because a false match costs more than a miss: the agent reads each match.
+ * The lowest score that counts as a match, for `zambil search` and for the agent hooks. It is the
+ * highest threshold that still finds the for-loops note for "iterating", and it gives the fewest false
+ * matches of the thresholds that find it.
  */
-export const minimumScore = 0.42;
+export const minimumScore = 0.38;
 
 /** The most notes that one search returns. */
 export const matchLimit = 3;

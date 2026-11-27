@@ -252,6 +252,9 @@ importers:
       '@zambil/core':
         specifier: workspace:*
         version: link:../core
+      '@zambil/embed':
+        specifier: workspace:*
+        version: link:../embed
 
   packages/core:
     dependencies:

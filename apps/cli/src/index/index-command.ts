@@ -18,6 +18,7 @@ async function runIndex(options: CommandRunOptions): Promise<ExitCode> {
   const { openNoteSearch } = await import("@zambil/embed/open-note-search");
   const noteSearch = await openNoteSearch(options.config.environment, {
     report: (message) => output.error(`${message}\n`),
+    download: "allow",
   });
   if (!noteSearch.ok) {
     output.error(`zambil cannot load its model: ${noteSearch.error}\n`);

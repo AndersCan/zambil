@@ -28,14 +28,22 @@ const notes = {
   "finish.md": "---\ndescription: Finish.\nhooks: Stop\n---\nSay done.\n",
 };
 
-async function answer(payload: string) {
+/** The names of the notes that a similarity search found, best first. */
+interface AnswerOptions {
+  similar: string[];
+}
+
+async function answer(payload: string, options: AnswerOptions = { similar: [] }) {
   const root = await writeTestRepo(notes);
   const repo = loadRepo(root);
   const request = parseHookInput(payload);
   if (!repo.ok || !request.ok) return { root, stdout: "not answered" };
   if (request.value.kind === "ignore") return { root, stdout: "not answered" };
   const { input } = request.value;
-  return { root, stdout: answerHook(repo.value, { input, now }) };
+  const similarNotes = options.similar.flatMap((name) =>
+    repo.value.notes.filter((note) => note.name === name),
+  );
+  return { root, stdout: answerHook(repo.value, { input, now, similarNotes }) };
 }
 
 function contextOf(stdout: string): unknown {
@@ -43,8 +51,11 @@ function contextOf(stdout: string): unknown {
   return JSON.parse(stdout);
 }
 
-async function namesAt(payload: string): Promise<string[]> {
-  const { stdout } = await answer(payload);
+async function namesAt(
+  payload: string,
+  options: AnswerOptions = { similar: [] },
+): Promise<string[]> {
+  const { stdout } = await answer(payload, options);
   const names: string[] = [];
   for (const match of stdout.matchAll(/<(?:note|skill|script) name=\\"(?<name>[^\\]+)\\"/g)) {
     names.push(match.groups?.name ?? "");
@@ -186,5 +197,63 @@ describe("answerHook", () => {
       "The user typed z:deploy#Nope in the prompt.",
       `Warning: zambil cannot show \\"deploy#Nope\\", because [[deploy]] has no heading \\"Nope\\". To read [[deploy]], run \`zambil show deploy --repo ${root}\`.`,
     ]);
+  });
+
+  test("offers similar skills and scripts as matches, never as an opt-in, after the other notes", async () => {
+    const prompt = "make a backup and ship a new version";
+    const similar = ["release", "backup", "check deploy"];
+    const { root, stdout } = await answer(hookPayload("UserPromptSubmit", { prompt }), { similar });
+    expect(contextOf(stdout)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "UserPromptSubmit",
+        additionalContext: [
+          `${repoHeading} These notes name the UserPromptSubmit hook:`,
+          "",
+          '<note name="deploy" path="deploy.md">',
+          "Description: How to deploy.",
+          `This note is current until 2026-12-31, but it can be wrong before that date. To verify its claims, read [[check deploy]]: How to check the deploy note. To read [[check deploy]], run \`zambil show 'check deploy' --repo ${root}\`.`,
+          "",
+          "# Steps",
+          "Run make deploy.",
+          "</note>",
+          "",
+          '<note name="language" path="language.md">',
+          "Description: Language.",
+          "",
+          "Answer in English.",
+          "</note>",
+          "",
+          `${repoHeading} The description of each of these notes is similar to the prompt. The user did not name them, so use one only if it fits the task:`,
+          "",
+          'The skill "release" matched the prompt. The user did not opt in to it, so load it only if it fits the task.',
+          '<skill name="release" path="skills/release/SKILL.md">',
+          "Description: Release a package.",
+          `To use it, read ${root}/skills/release/SKILL.md with the Read tool and follow it. Paths in it are relative to ${root}/skills/release.`,
+          "</skill>",
+          "",
+          'The script "backup" matched the prompt. zambil did not run it. Run it only if the task needs it.',
+          '<script name="backup" path="backup.md">',
+          "Description: Back up the notes.",
+          `The script is ${root}/backup.sh. Run it with \`bash ${root}/backup.sh\`.`,
+          "",
+          "Pass a folder.",
+          "</script>",
+          "",
+          '<note name="check deploy" path="check deploy.md">',
+          "Description: How to check the deploy note.",
+          "",
+          "Run make status.",
+          "</note>",
+        ].join("\n"),
+      },
+    });
+    expect(stdout.includes("SCRIPT-SOURCE")).toBe(false);
+  });
+
+  test("adds a similar note once: not again after its hook, nor after z:<name> names it or a part of it", async () => {
+    const prompt = "z:deploy#Steps and z:[[check deploy]]";
+    const similar = ["language", "deploy", "check deploy", "welcome"];
+    const names = await namesAt(hookPayload("UserPromptSubmit", { prompt }), { similar });
+    expect(names).toEqual(["deploy", "check deploy", "deploy", "language", "welcome"]);
   });
 });

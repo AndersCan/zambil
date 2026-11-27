@@ -112,6 +112,7 @@ async function measureModel(
   const embedder = await openEmbedder(model, {
     cacheFolder: options.folder,
     report: (message) => process.stderr.write(`${message}\n`),
+    download: "allow",
   });
   if (!embedder.ok) return embedder;
   const emptyIndexFolder = join(tmpdir(), "zambil-measure-no-index");

@@ -15,7 +15,11 @@ async function main(): Promise<void> {
   const [, , modelId = "", folder = ""] = process.argv;
   const model = candidateModels.find((candidate) => candidate.id === modelId);
   if (model === undefined) throw new Error(`no candidate model is named ${modelId}`);
-  const embedder = await openEmbedder(model, { cacheFolder: folder, report: () => {} });
+  const embedder = await openEmbedder(model, {
+    cacheFolder: folder,
+    report: () => {},
+    download: "allow",
+  });
   if (!embedder.ok) throw new Error(embedder.error);
   const loaded = performance.now();
   const query = await embedder.value.embed(["how do I loop over an array"], { role: "query" });
