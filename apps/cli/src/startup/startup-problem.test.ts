@@ -13,14 +13,16 @@ describe("nodeVersionProblem", () => {
 });
 
 describe("missingDependencyProblem", () => {
-  test("explains a missing package and leaves other failures alone", () => {
+  test("explains a missing package and leaves a missing file and other failures alone", () => {
     const missing = Object.assign(new Error("Cannot find package 'js-yaml'"), {
       code: "ERR_MODULE_NOT_FOUND",
     });
+    const missingFile = Object.assign(new Error("Cannot find module '/home/user/zambil/a.ts'"), {
+      code: "ERR_MODULE_NOT_FOUND",
+    });
     const options = { root: "/home/user/zambil" };
-    const problems = [missing, new Error("a bug"), "not an error"].map((error) =>
-      missingDependencyProblem(error, options),
-    );
+    const failures = [missing, missingFile, new Error("a bug"), "not an error"];
+    const problems = failures.map((error) => missingDependencyProblem(error, options));
     expect(problems).toEqual([
       [
         "zambil cannot start, because its dependencies are not installed in /home/user/zambil.",
@@ -33,6 +35,7 @@ describe("missingDependencyProblem", () => {
         "In a clone for development, run `pnpm install` in /home/user/zambil.",
         "",
       ].join("\n"),
+      undefined,
       undefined,
       undefined,
     ]);

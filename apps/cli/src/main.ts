@@ -2,24 +2,28 @@
 import { missingDependencyProblem, nodeVersionProblem } from "./startup/startup-problem.ts";
 import type { Either } from "@zambil/core/either";
 import { enableCompileCache } from "node:module";
-import type { readCliConfig } from "./config.ts";
+import type { ExitCode } from "./command.ts";
 import { text as readStream } from "node:stream/consumers";
 import { resolve } from "node:path";
-import type { runCli } from "./run-cli.ts";
 
-interface CliModules {
-  readCliConfig: typeof readCliConfig;
-  runCli: typeof runCli;
+/** Loads the CLI and runs it. A type import of `@zambil/core` is erased, but a value import fails without the dependencies. */
+async function runZambil(): Promise<ExitCode> {
+  const [config, cli] = await Promise.all([import("./config.ts"), import("./run-cli.ts")]);
+  const output = {
+    write: (text: string) => process.stdout.write(text),
+    error: (text: string) => process.stderr.write(text),
+  };
+  const input = {
+    readAll: () => (process.stdin.isTTY ? Promise.resolve("") : readStream(process.stdin)),
+  };
+  const options = { config: config.readCliConfig(), input, output, now: new Date() };
+  return cli.runCli(process.argv.slice(2), options);
 }
 
-/** A type import of `@zambil/core` is erased, but a value import fails before the dependencies are installed. */
-function loadCli(): Promise<Either<unknown, CliModules>> {
-  return Promise.all([import("./config.ts"), import("./run-cli.ts")]).then(
-    ([config, cli]): Either<unknown, CliModules> => ({
-      ok: true,
-      value: { readCliConfig: config.readCliConfig, runCli: cli.runCli },
-    }),
-    (reason: unknown): Either<unknown, CliModules> => ({ ok: false, error: reason }),
+function settle(run: Promise<ExitCode>): Promise<Either<unknown, ExitCode>> {
+  return run.then(
+    (code): Either<unknown, ExitCode> => ({ ok: true, value: code }),
+    (reason: unknown): Either<unknown, ExitCode> => ({ ok: false, error: reason }),
   );
 }
 
@@ -31,25 +35,16 @@ async function main(): Promise<void> {
     return;
   }
   enableCompileCache();
-  const loaded = await loadCli();
-  if (!loaded.ok) {
-    const root = resolve(import.meta.dirname, "../../..");
-    const problem = missingDependencyProblem(loaded.error, { root });
-    if (problem === undefined) throw loaded.error;
-    process.stderr.write(problem);
-    process.exitCode = 1;
+  const ran = await settle(runZambil());
+  if (ran.ok) {
+    process.exitCode = ran.value;
     return;
   }
-  const cli = loaded.value;
-  const output = {
-    write: (text: string) => process.stdout.write(text),
-    error: (text: string) => process.stderr.write(text),
-  };
-  const input = {
-    readAll: () => (process.stdin.isTTY ? Promise.resolve("") : readStream(process.stdin)),
-  };
-  const options = { config: cli.readCliConfig(), input, output, now: new Date() };
-  process.exitCode = await cli.runCli(process.argv.slice(2), options);
+  const root = resolve(import.meta.dirname, "../../..");
+  const problem = missingDependencyProblem(ran.error, { root });
+  if (problem === undefined) throw ran.error;
+  process.stderr.write(problem);
+  process.exitCode = 1;
 }
 
 await main();
