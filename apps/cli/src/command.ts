@@ -26,10 +26,24 @@ export interface CommandRunOptions {
   now: Date;
 }
 
-/** One `zambil <name>` command. Each lives in its own folder and has one line in `commands.ts`. */
+/** `user`: a person runs it. `agent`: only the agent or a hook runs it, so the help lists it apart. */
+export type CommandAudience = "user" | "agent";
+
+/** One option in the help of a command: the flag as the user types it, such as `--expires <date>`, and what it does. */
+export interface OptionHelp {
+  flag: string;
+  text: string;
+}
+
+/**
+ * One `zambil <name>` command. Each lives in its own folder and has one line in `commands.ts`. Without
+ * `audience`, it is a user command. `--help` prints `options` and adds `-h, --help` itself.
+ */
 export interface Command {
   summary: string;
   usage: string;
   details?: string;
+  audience?: CommandAudience;
+  options?: OptionHelp[];
   run: (options: CommandRunOptions) => ExitCode | Promise<ExitCode>;
 }

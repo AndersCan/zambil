@@ -66,16 +66,8 @@ describe("hookCommand", () => {
         "",
         `zambil hook: the input is not JSON: Unexpected token 'o', "not json" is not valid JSON`,
       ],
-      [
-        0,
-        "",
-        "zambil hook: zambil does not know where your configuration repo is. Do one of these:",
-      ],
-      [
-        0,
-        "",
-        "zambil hook: zambil cannot read the configuration repo /no/such/repo (from ZAMBIL_REPO): ENOENT: no such file or directory, scandir '/no/such/repo'",
-      ],
+      [0, "", "zambil hook: zambil does not know where your configuration repo is."],
+      [0, "", "zambil hook: The configuration repo /no/such/repo does not exist."],
       [0, "", "zambil hook: Unknown option '--bogus'"],
       [0, "", ""],
     ]);

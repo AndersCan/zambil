@@ -2,10 +2,13 @@ import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
 import type { ExpiryChoice, SavedNote, SaveRefusal, SaveRequest } from "@zambil/core/save-note";
 import { left, right } from "@zambil/core/either";
 import type { Either } from "@zambil/core/either";
+import { findRecalls } from "@zambil/claude-code/find-recalls";
 import { isNever } from "@zambil/core/is-never";
+import { nameKey } from "@zambil/core/index-names";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
 import { quoteArgument } from "@zambil/core/quote-argument";
+import { repoOptionHelp } from "../parse-command-args.ts";
 import { saveNote } from "@zambil/core/save-note";
 import { sharedOptions } from "../parse-command-args.ts";
 
@@ -144,6 +147,28 @@ function describeSaved(saved: SavedNote): string {
   }
 }
 
+/** The warning for a name that a plain `z:<name>` in a prompt does not recall, as the hook reads the prompt. */
+function recallWarning(name: string): string | undefined {
+  const [recall] = findRecalls(`z:${name}`);
+  if (recall !== undefined && nameKey(recall.target) === nameKey(name)) return undefined;
+  const result = recall === undefined ? "nothing" : `"${recall.target}"`;
+  return `A plain z:${name} in a prompt recalls ${result}, not this note. Write z:[[${name}]] to recall it.`;
+}
+
+/** Warnings that `zambil check` does not give: a name that `z:<name>` cannot recall, and a missing description. */
+function usabilityWarnings(saved: SavedNote): string[] {
+  const { note } = saved;
+  const warnings: string[] = [];
+  const recalled = recallWarning(note.name);
+  if (saved.mode === "create" && recalled !== undefined) warnings.push(recalled);
+  if (saved.mode !== "verify" && note.description === undefined) {
+    warnings.push(
+      "The note has no description, so zambil search and the similar notes in a prompt never find it. Add `description: <one sentence>` to its frontmatter.",
+    );
+  }
+  return warnings;
+}
+
 interface ReminderOptions {
   repoFlag: string | undefined;
 }
@@ -195,7 +220,8 @@ async function runSave(options: CommandRunOptions): Promise<ExitCode> {
     return 1;
   }
   output.write(`${describeSaved(saved.value)}\n`);
-  for (const warning of saved.value.warnings) {
+  const warnings = [...saved.value.warnings, ...usabilityWarnings(saved.value)];
+  for (const warning of warnings) {
     output.error(`${saved.value.note.path}: warning: ${warning}\n`);
   }
   const reminder = whenExpiredReminder(saved.value, { repoFlag: values.repo });
@@ -211,15 +237,35 @@ export const saveCommand: Command = {
   details: [
     "The text of the note comes on standard input: Markdown, with optional frontmatter.",
     "Its properties are set on the note. The other properties of the note stay as they are.",
-    "",
-    "  --expires <date>       The note is current until this date, for example 2027-01-15.",
-    "  --no-expires           The note makes no claims that can go out of date. Removes expires and when-expired.",
-    "  --when-expired <name>  The note that tells how to update this note or verify its claims.",
-    "  --folder <path>        The folder for a new note, relative to the repo. The default is the root.",
-    "  --rewrite              Change an existing note. Text without content keeps the old content.",
-    "  --verified             The claims still hold: set a new --expires date and nothing else.",
-    "",
-    "Run `zambil save-guide` before you write a note.",
+    "Give the note a description in its frontmatter, so that similarity search can find it.",
+    "An agent runs `zambil save-guide` before it writes a note.",
   ].join("\n"),
+  options: [
+    {
+      flag: "--expires <date>",
+      text: "The note is current until this date, for example 2027-01-15.",
+    },
+    {
+      flag: "--no-expires",
+      text: "The note makes no claims that can go out of date. Removes expires and when-expired.",
+    },
+    {
+      flag: "--when-expired <name>",
+      text: "The note that tells how to update this note or verify its claims.",
+    },
+    {
+      flag: "--folder <path>",
+      text: "The folder for a new note, relative to the repo. The default is the root.",
+    },
+    {
+      flag: "--rewrite",
+      text: "Change an existing note. Text without content keeps the old content.",
+    },
+    {
+      flag: "--verified",
+      text: "The claims still hold: set a new --expires date and nothing else.",
+    },
+    repoOptionHelp,
+  ],
   run: runSave,
 };

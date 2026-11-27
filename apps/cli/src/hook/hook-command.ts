@@ -8,6 +8,7 @@ import type { Note } from "@zambil/core/note";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
 import { parseHookInput } from "@zambil/claude-code/parse-hook-input";
+import { repoOptionHelp } from "../parse-command-args.ts";
 import { sharedOptions } from "../parse-command-args.ts";
 
 interface SimilarToOptions extends CommandRunOptions {
@@ -80,6 +81,8 @@ async function runHook(options: CommandRunOptions): Promise<ExitCode> {
 export const hookCommand: Command = {
   summary: "Add the matching notes to Claude Code's context. A Claude Code hook runs it.",
   usage: "Usage: zambil hook [--repo <path>] < hook-input.json",
+  audience: "agent",
+  options: [repoOptionHelp],
   details: [
     "It reads the JSON that Claude Code sends to a hook on standard input, and prints the notes that apply.",
     "At UserPromptSubmit it also adds the notes whose description is similar to the prompt. It never downloads the model, so run zambil index once first.",

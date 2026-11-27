@@ -102,4 +102,30 @@ describe("saveCommand", () => {
       ],
     ]);
   });
+
+  test("warns about a name that z: cannot recall plainly and about a note without description", async () => {
+    const root = await writeTestRepo({});
+    const spaced = await run(["My Note", "--no-expires", "--repo", root], { input: "Hello.\n" });
+    const described = "---\ndescription: The end.\n---\nBye.\n";
+    const dotted = await run(["end.", "--no-expires", "--repo", root], { input: described });
+    const plain = await run(["it-is", "--no-expires", "--repo", root], { input: described });
+    expect([spaced, dotted, plain]).toEqual([
+      {
+        code: 0,
+        stdout: "Created My Note.md.\n",
+        stderr: [
+          'My Note.md: warning: A plain z:My Note in a prompt recalls "My", not this note. Write z:[[My Note]] to recall it.',
+          "My Note.md: warning: The note has no description, so zambil search and the similar notes in a prompt never find it. Add `description: <one sentence>` to its frontmatter.",
+          "",
+        ].join("\n"),
+      },
+      {
+        code: 0,
+        stdout: "Created end..md.\n",
+        stderr:
+          'end..md: warning: A plain z:end. in a prompt recalls "end", not this note. Write z:[[end.]] to recall it.\n',
+      },
+      { code: 0, stdout: "Created it-is.md.\n", stderr: "" },
+    ]);
+  });
 });

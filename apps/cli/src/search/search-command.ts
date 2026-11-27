@@ -1,10 +1,12 @@
 import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
 import { matchLimit, minimumScore } from "@zambil/embed/search-model";
+import { firstNoteHint } from "../save/first-note-hint.ts";
 import { formatColumns } from "../list/format-columns.ts";
 import { indexHint } from "../index/index-hint.ts";
 import type { NoteScore } from "@zambil/embed/score-notes";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
+import { repoOptionHelp } from "../parse-command-args.ts";
 import { sharedOptions } from "../parse-command-args.ts";
 
 function formatMatches(matches: NoteScore[]): string {
@@ -38,6 +40,10 @@ async function runSearch(options: CommandRunOptions): Promise<ExitCode> {
     output.error(`${repo.error}\n`);
     return 2;
   }
+  if (repo.value.notes.length === 0) {
+    output.write(`${firstNoteHint({ root: repo.value.root, repoFlag: flag })}\n`);
+    return 0;
+  }
   const { openNoteSearch } = await import("@zambil/embed/open-note-search");
   const noteSearch = await openNoteSearch(options.config.environment, {
     report: (message) => output.error(`${message}\n`),
@@ -68,5 +74,6 @@ export const searchCommand: Command = {
   summary: "Find the notes whose description is similar to a text.",
   details: `It prints at most ${matchLimit} notes, best first, and leaves out expired notes. Only a score of ${minimumScore} or more, out of 1, is a match.`,
   usage: "Usage: zambil search <text> [--repo <path>]",
+  options: [repoOptionHelp],
   run: runSearch,
 };

@@ -2,6 +2,7 @@ import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
 import { renderNote } from "@zambil/core/render-note";
+import { repoOptionHelp } from "../parse-command-args.ts";
 import { sharedOptions } from "../parse-command-args.ts";
 import { showWording } from "./show-wording.ts";
 
@@ -41,8 +42,12 @@ export const showCommand: Command = {
   summary: "Print a note as the agent gets it, with embeds, links and expiry warnings.",
   usage: "Usage: zambil show <name>[#heading|#^block] [--expired] [--repo <path>]",
   details: [
-    "An expired note prints a warning in place of its content. --expired prints the content anyway.",
+    "An expired note prints a warning in place of its content.",
     "A name that no note has or that more than one note has, or a missing heading or block, sets the exit code to 1.",
   ].join("\n"),
+  options: [
+    { flag: "--expired", text: "Print the content of an expired note anyway." },
+    repoOptionHelp,
+  ],
   run: runShow,
 };

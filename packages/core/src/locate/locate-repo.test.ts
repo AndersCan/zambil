@@ -13,8 +13,8 @@ describe("locateRepo", () => {
   test("prefers the flag, then the environment variable, and expands the home folder", () => {
     const environment = { ...base, repo: "~/notes" };
     expect([locateRepo({ flag: "../notes", environment }), locateRepo({ environment })]).toEqual([
-      { ok: true, value: { root: "/work/notes", source: "flag" } },
-      { ok: true, value: { root: "/home/ada/notes", source: "environment" } },
+      { ok: true, value: { root: "/work/notes", source: "flag", written: "../notes" } },
+      { ok: true, value: { root: "/home/ada/notes", source: "environment", written: "~/notes" } },
     ]);
   });
 
@@ -30,7 +30,7 @@ describe("locateRepo", () => {
     const located = locateRepo({ environment: { ...base, configHome: folder } });
     expect(located).toEqual({
       ok: true,
-      value: { root: `${folder}/my-notes`, source: "user-config" },
+      value: { root: `${folder}/my-notes`, source: "user-config", written: "../my-notes" },
     });
   });
 

@@ -51,6 +51,14 @@ function runSaveGuide(options: CommandRunOptions): ExitCode {
 /** `zambil save-guide`: what an agent must know before it writes a note. */
 export const saveGuideCommand: Command = {
   summary: "Print what an agent must know before it writes a note.",
-  usage: "Usage: zambil save-guide",
+  usage: "Usage: zambil save-guide [--repo <path>]",
+  details: "The zambil-save skill tells the agent to run it.",
+  audience: "agent",
+  options: [
+    {
+      flag: "--repo <path>",
+      text: "Accepted, so that the zambil-save skill can pass it. The guide is the same for every repo.",
+    },
+  ],
   run: runSaveGuide,
 };

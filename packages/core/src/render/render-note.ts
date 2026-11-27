@@ -177,7 +177,12 @@ function inNote(target: WikilinkTarget, options: InNoteOptions): WikilinkTarget 
 function renderEmbed(link: Wikilink, options: EmbedOptions): string {
   const { note, context } = options;
   const target = inNote(link.target, { note });
-  const lookup = findTarget(target, { repo: context.repo, now: context.now, expired: "warn" });
+  const lookup = findTarget(target, {
+    repo: context.repo,
+    now: context.now,
+    expired: "warn",
+    suggest: "none",
+  });
   return renderLookup(lookup, { target, context, subject: link.raw });
 }
 
@@ -300,7 +305,7 @@ export function renderNote(
   const target = parseWikilinkTarget(options.target);
   const context = { repo, now: options.now, wording: options.wording, trail: [] };
   const expired = options.expired ?? "warn";
-  const lookup = findTarget(target, { repo, now: options.now, expired });
+  const lookup = findTarget(target, { repo, now: options.now, expired, suggest: "closest" });
   const subject = JSON.stringify(target.text);
   const text = renderLookup(lookup, { target, context, subject });
   switch (lookup.kind) {

@@ -6,6 +6,7 @@
   "exports": {
     "./answer-hook": "./src/answer-hook.ts",
     "./check-hook-names": "./src/hook-list/check-hook-names.ts",
+    "./find-recalls": "./src/recall/find-recalls.ts",
     "./find-similar-notes": "./src/similar/find-similar-notes.ts",
     "./hook-command-line": "./src/install/hook-command-line.ts",
     "./hook-list": "./src/hook-list/hook-list.ts",

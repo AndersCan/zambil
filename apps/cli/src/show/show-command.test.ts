@@ -31,7 +31,7 @@ describe("showCommand", () => {
   test("warns about an expired note, reads it with --expired and fails for an unknown name", async () => {
     const warned = await show(["today"]);
     const read = await show(["today", "--expired"]);
-    const unknown = await show(["nope"]);
+    const unknown = await show(["tody"]);
     const usage = await show([]);
     expect({
       warned: [warned.code, warned.stdout.split("\n")[3]],
@@ -46,7 +46,8 @@ describe("showCommand", () => {
       read: [0, "Today is 2026-11-27."],
       unknown: {
         code: 1,
-        stdout: 'Warning: zambil cannot show "nope", because no note has the name "nope".\n',
+        stdout:
+          'Warning: zambil cannot show "tody", because no note has the name "tody" (did you mean "today"?).\n',
         stderr: "",
       },
       usage: 2,

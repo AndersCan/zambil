@@ -34,7 +34,7 @@ The commands are:
 - `zambil index` embeds the description of each note ahead of time, so that search is fast. The first run downloads the model, about 23 MB, to `$XDG_CACHE_HOME/zambil`, or `~/.cache/zambil`. It never changes a note.
 - `zambil search <text>` prints at most 3 notes whose description is similar to the text, best first, with a score. It leaves out expired notes. `packages/embed/README.md` says how the model and the score threshold were chosen.
 - `zambil uninstall` removes the zambil hooks and the `zambil-save` skill from Claude Code, and nothing else.
-- `zambil help` prints the commands. `zambil help <command>` or `zambil <command> --help` prints the usage of one command.
+- `zambil help` prints the commands. `zambil help <command>` or `zambil <command> --help` prints the usage and the options of one command. `zambil --version` prints the version.
 
 Each command takes `--repo <path>`. Without it, zambil reads `ZAMBIL_REPO`, then `$XDG_CONFIG_HOME/zambil/config.json`. If `XDG_CONFIG_HOME` is not set, the file is `~/.config/zambil/config.json`.
 
@@ -57,7 +57,7 @@ Each command lives in its own folder and file, for example `src/show/show-comman
    show: async () => (await import("./show/show-command.ts")).showCommand,
    ```
 
-3. Parse the arguments with `parseCommandArgs` and spread `sharedOptions` into your options, so that `--repo` works.
+3. Parse the arguments with `parseCommandArgs` and spread `sharedOptions` into your options, so that `--repo` works. List each option in the `options` of the `Command`, so that `--help` explains it. If only the agent or a hook runs the command, set `audience: "agent"`. Then `zambil help` lists it apart from the user commands.
 4. Load the repo with `openRepo`. If zambil cannot find or read the repo, `openRepo` returns a message for the user.
 
 Commands read the environment only through `CliConfig`. `src/config.ts` reads `process.env` once at startup. A command that needs standard input calls `options.input.readAll()`.
