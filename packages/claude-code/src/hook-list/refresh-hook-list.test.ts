@@ -74,12 +74,22 @@ describe("refreshHookList", () => {
       download: () => Promise.resolve(right("# Hooks\n")),
       now,
     });
-    expect({ offline, changed, origin: loadHookList(environment).origin }).toEqual({
+    const quieter = await refreshHookList(environment, {
+      download: () =>
+        Promise.resolve(right(page.replace("| `Notification` |", "| `SessionStart` |"))),
+      now,
+    });
+    expect({ offline, changed, quieter, origin: loadHookList(environment).origin }).toEqual({
       offline: { ok: false, error: "cannot download: offline" },
       changed: {
         ok: false,
         error:
           "cannot read the hook list from https://code.claude.com/docs/en/hooks.md: the page has no table of hook events",
+      },
+      quieter: {
+        ok: false,
+        error:
+          "https://code.claude.com/docs/en/hooks.md no longer says that SessionStart can add context. zambil keeps the old list, because the page may only have changed its wording",
       },
       origin: "bundled",
     });

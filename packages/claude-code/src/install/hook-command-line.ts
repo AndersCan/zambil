@@ -9,8 +9,8 @@ export interface HookCommandLineOptions {
 
 /**
  * The shell command that each hook runs. `NODE_COMPILE_CACHE` must be set before Node starts to save
- * the compile time on each event. The full paths make it work from any project folder and with any
- * `PATH`. `--repo` comes after `hook`, because a flag before the command is a usage error.
+ * the compile time on each event. The full paths make it work from any project folder. Only `node`
+ * must be on the `PATH` of Claude Code. `--repo` comes after `hook`, because a flag before the command is a usage error.
  */
 export function hookCommandLine(options: HookCommandLineOptions): string {
   const cache = quoteArgument(options.compileCache);

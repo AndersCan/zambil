@@ -57,13 +57,13 @@ function runCheck(options: CommandRunOptions): ExitCode {
 }
 
 /**
- * `zambil check`: every problem in the repo, such as duplicate names, and each hook name that Claude Code
- * cannot answer. Exits with 1 when one is an error.
+ * `zambil check`: every problem in the repo, such as duplicate names, and each hook name that zambil
+ * never answers. Exits with 1 when one is an error.
  */
 export const checkCommand: Command = {
   summary: "Report duplicate names and other invalid notes.",
   details:
-    "It also warns about a hook name that Claude Code cannot answer. An error sets the exit code to 1. A warning does not.",
+    "It also warns about a hook name that zambil never answers. An error sets the exit code to 1. A warning does not.",
   usage: "Usage: zambil check [--repo <path>]",
   run: runCheck,
 };

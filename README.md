@@ -61,7 +61,7 @@ You need Node 24 or later, pnpm, git and Claude Code. The steps work on Linux an
 ### What `zambil install` does
 
 - It adds a hook that runs `zambil hook` to `~/.claude/settings.json`. If you set `CLAUDE_CONFIG_DIR`, the file is `$CLAUDE_CONFIG_DIR/settings.json`. The hook runs at `UserPromptSubmit` and at each other hook that a note names. The rest of the file, your own hooks too, stays as it is.
-- It writes the `zambil-save` skill to `~/.claude/skills/zambil-save/SKILL.md`. A skill is a set of instructions for the agent. Claude Code shows only its description in each session, and loads the rest on demand. When you ask the agent to write a note, the skill tells it to run `zambil save-guide` and `zambil save`.
+- It writes the `zambil-save` skill to `skills/zambil-save/SKILL.md` in the same folder as `settings.json`. A skill is a set of instructions for the agent. Claude Code shows only its description in each session, and loads the rest on demand. When you ask the agent to write a note, the skill tells it to run `zambil save-guide` and `zambil save`.
 - It reads the current list of Claude Code hooks from the [hooks reference](https://code.claude.com/docs/en/hooks), and keeps it in `~/.cache/zambil`.
 - It indexes the descriptions of the notes for similar notes. The first run downloads the model, 23 MB, to `~/.cache/zambil`.
 
@@ -95,16 +95,16 @@ Quote every path. Use `set -euo pipefail` in scripts.
 
 These commands help you work with the notes:
 
-| Command                | What it does                                                         |
-| ---------------------- | -------------------------------------------------------------------- |
-| `zambil list`          | Lists every note with its kind, path and description.                |
-| `zambil check`         | Reports invalid notes and hook names that Claude Code cannot answer. |
-| `zambil show <name>`   | Prints a note as the agent gets it.                                  |
-| `zambil search <text>` | Lists the notes with a description that is similar to the text.      |
-| `zambil index`         | Indexes the descriptions again, so that the search is fast.          |
-| `zambil save <name>`   | Writes a note from standard input. The agent uses it.                |
-| `zambil install`       | Installs the hooks and the skill in Claude Code.                     |
-| `zambil uninstall`     | Removes them.                                                        |
+| Command                | What it does                                                    |
+| ---------------------- | --------------------------------------------------------------- |
+| `zambil list`          | Lists every note with its kind, path and description.           |
+| `zambil check`         | Reports invalid notes and hook names that zambil never answers. |
+| `zambil show <name>`   | Prints a note as the agent gets it.                             |
+| `zambil search <text>` | Lists the notes with a description that is similar to the text. |
+| `zambil index`         | Indexes the descriptions again, so that the search is fast.     |
+| `zambil save <name>`   | Writes a note from standard input. The agent uses it.           |
+| `zambil install`       | Installs the hooks and the skill in Claude Code.                |
+| `zambil uninstall`     | Removes them.                                                   |
 
 To write a note with the agent, ask for it in a prompt, for example `Write a note that we use pnpm, never npm`. The agent uses the `zambil-save` skill. It chooses a name, an expiry and a description, and saves the note with `zambil save`. It writes a note only on your request.
 

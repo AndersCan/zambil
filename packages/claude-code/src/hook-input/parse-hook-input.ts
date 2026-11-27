@@ -1,6 +1,6 @@
 import { left, right } from "@zambil/core/either";
 import { asRecord } from "@zambil/core/as-record";
-import bundledHookList from "../hook-list/bundled-hook-list.json" with { type: "json" };
+import { bundledHookList } from "../hook-list/load-hook-list.ts";
 import type { Either } from "@zambil/core/either";
 import type { ToolHookName } from "./context-hooks.ts";
 import { toolHookNames } from "./context-hooks.ts";

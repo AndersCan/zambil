@@ -1,7 +1,10 @@
 import { describe, expect, test } from "vite-plus/test";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { hookCommand } from "./hook-command.ts";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { writeTestRepo } from "@zambil/core/write-test-repo";
 
 const main = fileURLToPath(new URL("../main.ts", import.meta.url));
@@ -95,6 +98,45 @@ describe("hookCommand", () => {
           "</note>",
         ].join("\n"),
       },
+    });
+  });
+
+  test("answers the hooks of the hook list in the cache, not of the bundled list", async () => {
+    const repo = await writeTestRepo({
+      "a.md": "---\nhooks: [SessionStart, Notification]\n---\nA.\n",
+    });
+    const cacheHome = await mkdtemp(join(tmpdir(), "zambil-cache-"));
+    const list = {
+      source: "https://code.claude.com/docs/en/hooks.md",
+      readOn: "2027-01-01",
+      hooks: ["SessionStart", "UserPromptSubmit", "Notification"],
+      contextHooks: ["UserPromptSubmit", "Notification"],
+    };
+    await mkdir(join(cacheHome, "zambil"));
+    await writeFile(join(cacheHome, "zambil", "claude-code-hooks.json"), JSON.stringify(list));
+    const environment = { home: "/home/ada", workingFolder: "/", cacheHome, repo };
+    const outputs = await Promise.all(
+      ["SessionStart", "Notification"].map(async (hookEventName) => {
+        const printed: string[] = [];
+        await hookCommand.run({
+          args: [],
+          config: { environment },
+          input: {
+            readAll: () => Promise.resolve(JSON.stringify({ hook_event_name: hookEventName })),
+          },
+          output: { write: (text) => printed.push(text), error: (text) => printed.push(text) },
+          now: new Date(2026, 10, 27),
+        });
+        return printed.join("");
+      }),
+    );
+    const [sessionStartOutput = "", notificationOutput = ""] = outputs;
+    expect({
+      sessionStartOutput,
+      notification: JSON.parse(notificationOutput).hookSpecificOutput.hookEventName,
+    }).toEqual({
+      sessionStartOutput: "",
+      notification: "Notification",
     });
   });
 });

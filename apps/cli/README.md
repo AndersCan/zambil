@@ -24,9 +24,9 @@ Then `zambil list` works in every folder. If it does not, add `~/.local/bin` to 
 
 The commands are:
 
-- `zambil hook` is the command that a Claude Code hook runs. It reads the hook JSON on standard input and prints the notes that apply. It always exits with 0. `packages/claude-code/README.md` tells you how to set up the hooks.
+- `zambil hook` is the command that a Claude Code hook runs. It reads the hook JSON on standard input and prints the notes that apply. It always exits with 0. Run `zambil install` to set up the hooks. `packages/claude-code/README.md` describes them.
 - `zambil list` prints one line per note: the name, the kind, the path and the description.
-- `zambil check` prints each problem with its path. It also warns about a hook name that Claude Code cannot answer. An error sets the exit code to 1.
+- `zambil check` prints each problem with its path. It also warns about a hook name that zambil never answers. An error sets the exit code to 1.
 - `zambil save <name>` creates or rewrites a note from standard input, or records with `--verified` that its claims still hold. It is the one way to write a note. See "Write a note" in `docs/notes.md`.
 - `zambil save-guide` prints what an agent must know before it writes a note.
 - `zambil show <name>` prints a note as the agent gets it, with its embeds, links and expiry warnings. `--expired` prints an expired note anyway. `docs/notes.md` describes the text in [Rendering](../../docs/notes.md#rendering).

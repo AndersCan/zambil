@@ -1,9 +1,12 @@
-import bundledHookList from "./bundled-hook-list.json" with { type: "json" };
+import bundled from "./bundled-hook-list.json" with { type: "json" };
 import type { HookList } from "./hook-list.ts";
 import { join } from "node:path";
 import { parseHookList } from "./parse-hook-list.ts";
 import { readFileSync } from "node:fs";
 import type { UserEnvironment } from "@zambil/core/locate-repo";
+
+/** The hook list that ships with zambil, read from the hooks reference on the day of its `readOn`. */
+export const bundledHookList: HookList = bundled;
 
 /** `cache`: the list that the last refresh read from the docs. `bundled`: the list that ships with zambil. */
 export type HookListOrigin = "cache" | "bundled";

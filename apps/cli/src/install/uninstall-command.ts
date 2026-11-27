@@ -42,7 +42,9 @@ async function runUninstall(options: CommandRunOptions): Promise<ExitCode> {
       : `${path} has no zambil hooks.`;
   output.write(`${message}\n`);
   await removeSkill(options);
-  output.write("zambil changed no note. Start a new Claude Code session to stop the hooks.\n");
+  const advice =
+    saved.value === "changed" ? " Start a new Claude Code session to stop the hooks." : "";
+  output.write(`zambil changed no note.${advice}\n`);
   return 0;
 }
 

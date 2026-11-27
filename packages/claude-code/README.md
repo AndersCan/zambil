@@ -89,7 +89,7 @@ Each handler runs this command, with full paths:
 NODE_COMPILE_CACHE=/home/ada/.cache/zambil/node-compile-cache /home/ada/.local/bin/zambil hook --repo /home/ada/notes
 ```
 
-`NODE_COMPILE_CACHE` lets Node keep the compiled code between runs. It must be set before Node starts. With the full path of `zambil`, the hook also works with a different `PATH` in Claude Code. The full path of the repo makes it work from every project folder. `--repo` comes after `hook`, because `zambil --repo <path> hook` is a usage error that exits with 2, and Claude Code then blocks the event. The handler has no `matcher`, because zambil filters by the `tools` of each note. Its `timeout` is 10 seconds.
+`NODE_COMPILE_CACHE` lets Node keep the compiled code between runs. It must be set before Node starts. With the full path of `zambil`, the hook does not depend on the `PATH` of Claude Code to find `zambil`. It still needs `node` on that `PATH`, because `zambil` starts with `#!/usr/bin/env node`. The full path of the repo makes it work from every project folder. `--repo` comes after `hook`, because `zambil --repo <path> hook` is a usage error that exits with 2, and Claude Code then blocks the event. The handler has no `matcher`, because zambil filters by the `tools` of each note. Its `timeout` is 10 seconds.
 
 zambil knows its handlers by the words `zambil hook` in the command. `zambil uninstall` removes each such handler and the `zambil-save` skill. If zambil emptied an event or the `hooks` object, it removes that too. It keeps an event that was empty before.
 

@@ -40,7 +40,7 @@ export const hookCommand: Command = {
   details: [
     "It reads the JSON that Claude Code sends to a hook on standard input, and prints the notes that apply.",
     "It prints nothing when no note applies, and it always exits with 0, so that it never blocks a session.",
-    "The file packages/claude-code/README.md in the zambil repo tells you how to set up the hooks.",
+    "Run `zambil install` to set up the hooks. The file packages/claude-code/README.md in the zambil repo describes them.",
   ].join("\n"),
   run: runHook,
 };

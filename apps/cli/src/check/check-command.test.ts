@@ -32,7 +32,7 @@ describe("checkCommand", () => {
     });
   });
 
-  test("warns about a hook name that Claude Code cannot answer, with the bundled hook list", async () => {
+  test("warns about a hook name that zambil never answers, with the bundled hook list", async () => {
     const root = await writeTestRepo({
       "alerts.md": "---\nhooks: [Notification, SessionStart]\n---\n",
       "typo.md": "---\nhooks: userpromptsubmit\n---\n",

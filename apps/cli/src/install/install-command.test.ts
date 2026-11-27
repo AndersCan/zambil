@@ -159,7 +159,7 @@ describe("zambil install and zambil uninstall", () => {
       },
       removedSettings: userSettings,
       hasSkill: false,
-      again: `${settings} has no zambil hooks.\nzambil changed no note. Start a new Claude Code session to stop the hooks.\n`,
+      again: `${settings} has no zambil hooks.\nzambil changed no note.\n`,
       notes,
     });
   });
