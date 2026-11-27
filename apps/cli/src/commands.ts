@@ -9,4 +9,5 @@ export const commands: Record<string, () => Promise<Command>> = {
   list: async () => (await import("./list/list-command.ts")).listCommand,
   save: async () => (await import("./save/save-command.ts")).saveCommand,
   "save-guide": async () => (await import("./save-guide/save-guide-command.ts")).saveGuideCommand,
+  show: async () => (await import("./show/show-command.ts")).showCommand,
 };

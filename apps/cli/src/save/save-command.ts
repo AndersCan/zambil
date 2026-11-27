@@ -5,7 +5,7 @@ import type { Either } from "@zambil/core/either";
 import { isNever } from "@zambil/core/is-never";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
-import { quoteArgument } from "../quote-argument.ts";
+import { quoteArgument } from "@zambil/core/quote-argument";
 import { saveNote } from "@zambil/core/save-note";
 import { sharedOptions } from "../parse-command-args.ts";
 
