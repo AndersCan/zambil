@@ -24,7 +24,7 @@ Then `zambil list` works in every folder. If it does not, add `~/.local/bin` to 
 
 The commands are:
 
-- `zambil hook` is the command that a Claude Code hook runs. It reads the hook JSON on standard input and prints the notes that apply. At `UserPromptSubmit`, these include the notes that are similar to the prompt, after `zambil index` or `zambil install` downloaded the model. It always exits with 0. Run `zambil install` to set up the hooks. `packages/claude-code/README.md` describes them.
+- `zambil hook` is the command that a Claude Code hook runs. It reads the hook JSON on standard input and prints the notes that apply. At `UserPromptSubmit`, these include the notes that are similar to the prompt, after `zambil index` or `zambil install` downloaded the model. It always exits with 0. At `SessionStart`, it warns the user in one line when the setup is broken, and points to `zambil doctor`. Run `zambil install` to set up the hooks. `packages/claude-code/README.md` describes them.
 - `zambil list` prints one line per note: the name, the kind, the path and the description.
 - `zambil check` prints each problem with its path. It also warns about a hook name that zambil never answers. An error sets the exit code to 1.
 - `zambil doctor` checks the whole setup and changes nothing. It checks Node, `zambil` on the `PATH`, the user configuration file, the notes folder, the problems that `zambil check` finds, the Claude Code hooks, the `zambil-save` skill, and the model and the index for similar notes. It compares the hooks and the skill with what `zambil install` writes now. For each problem, it prints the command that fixes it.

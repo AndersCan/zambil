@@ -1,8 +1,10 @@
 import { describe, expect, test } from "vite-plus/test";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import type { CliConfig } from "../config.ts";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { hookCommand } from "./hook-command.ts";
+import { installHooks } from "@zambil/claude-code/settings-hooks";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { writeTestRepo } from "@zambil/core/write-test-repo";
@@ -12,6 +14,7 @@ const main = fileURLToPath(new URL("../main.ts", import.meta.url));
 interface HookRunOptions {
   stdin: string;
   repo: string | undefined;
+  claudeConfigFolder?: string;
 }
 
 async function runHook(args: string[], options: HookRunOptions) {
@@ -27,15 +30,30 @@ async function runHook(args: string[], options: HookRunOptions) {
   const environment = { home: "/home/ada", workingFolder: "/", configHome: "/nowhere" };
   const withRepo =
     options.repo === undefined ? environment : { ...environment, repo: options.repo };
+  const config: CliConfig = { environment: withRepo };
+  if (options.claudeConfigFolder !== undefined) {
+    config.claudeConfigFolder = options.claudeConfigFolder;
+  }
   const code = await hookCommand.run({
     args,
-    config: { environment: withRepo },
+    config,
     input: { readAll: () => Promise.resolve(options.stdin) },
     output,
     now: new Date(2026, 10, 27),
   });
   return { code, ...printed };
 }
+
+/** A Claude Code folder whose settings run `zambil hook` at these hooks. */
+async function writeClaudeFolder(hookNames: string[]): Promise<string> {
+  const folder = await mkdtemp(join(tmpdir(), "zambil-claude-"));
+  const settings = installHooks({}, { command: "zambil hook", hookNames });
+  if (!settings.ok) throw new Error(settings.error);
+  await writeFile(join(folder, "settings.json"), JSON.stringify(settings.value));
+  return folder;
+}
+
+const userPrompt = JSON.stringify({ hook_event_name: "UserPromptSubmit", prompt: "Hi" });
 
 const sessionStart = JSON.stringify({
   session_id: "s1",
@@ -50,8 +68,8 @@ describe("hookCommand", () => {
     const repo = await writeTestRepo({ "a.md": "---\nhooks: SessionStart\n---\nA.\n" });
     const results = await Promise.all([
       runHook([], { stdin: "not json", repo }),
-      runHook([], { stdin: sessionStart, repo: undefined }),
-      runHook([], { stdin: sessionStart, repo: "/no/such/repo" }),
+      runHook([], { stdin: userPrompt, repo: undefined }),
+      runHook([], { stdin: userPrompt, repo: "/no/such/repo" }),
       runHook(["--bogus"], { stdin: sessionStart, repo }),
       runHook([], { stdin: JSON.stringify({ hook_event_name: "Notification" }), repo: undefined }),
     ]);
@@ -75,9 +93,11 @@ describe("hookCommand", () => {
 
   test("runs as a program: reads the payload on standard input and prints the hook JSON", async () => {
     const repo = await writeTestRepo({ "a.md": "---\nhooks: SessionStart\n---\nA.\n" });
+    const claude = await writeClaudeFolder(["SessionStart", "UserPromptSubmit"]);
     const stdout = execFileSync(main, ["hook", "--repo", repo], {
       input: sessionStart,
       encoding: "utf8",
+      env: { ...process.env, CLAUDE_CONFIG_DIR: claude },
     });
     expect(JSON.parse(stdout)).toEqual({
       hookSpecificOutput: {
@@ -129,6 +149,42 @@ describe("hookCommand", () => {
     }).toEqual({
       sessionStartOutput: "",
       notification: "Notification",
+    });
+  });
+
+  test("warns the user once at session start about a broken setup, and still exits with 0", async () => {
+    const repo = await writeTestRepo({
+      "a.md": "---\ndescription: Shell.\nhooks: [SessionStart, PreToolUse]\n---\nA.\n",
+    });
+    const claudeConfigFolder = await writeClaudeFolder(["SessionStart", "UserPromptSubmit"]);
+    const compact = JSON.stringify({ hook_event_name: "SessionStart", source: "compact" });
+    const missing = { repo: "/no/such/repo", claudeConfigFolder };
+    const results = await Promise.all([
+      runHook([], { stdin: sessionStart, ...missing }),
+      runHook([], { stdin: compact, ...missing }),
+      runHook([], { stdin: sessionStart, repo, claudeConfigFolder }),
+    ]);
+    const [moved, compacted, unhooked] = results.map((result) => ({
+      code: result.code,
+      stdout: result.stdout === "" ? "" : JSON.parse(result.stdout),
+    }));
+    expect({ moved, compacted, unhooked }).toEqual({
+      moved: {
+        code: 0,
+        stdout: {
+          systemMessage:
+            "zambil: The configuration repo /no/such/repo does not exist. No note reaches this session. Run zambil doctor to see how to fix it.",
+        },
+      },
+      compacted: { code: 0, stdout: "" },
+      unhooked: {
+        code: 0,
+        stdout: {
+          systemMessage:
+            "zambil: No zambil hook runs at PreToolUse, so notes go missing. Similar notes are off, because the model is missing. Run zambil doctor to see how to fix it.",
+          hookSpecificOutput: expect.objectContaining({ hookEventName: "SessionStart" }),
+        },
+      },
     });
   });
 });

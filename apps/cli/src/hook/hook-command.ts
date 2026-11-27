@@ -1,7 +1,12 @@
 import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
 import { answerHook } from "@zambil/claude-code/answer-hook";
+import type { AnswerHookOptions } from "@zambil/claude-code/answer-hook";
+import type { CliConfig } from "../config.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import { findSimilarNotes } from "@zambil/claude-code/find-similar-notes";
+import { formatSystemMessage } from "@zambil/claude-code/format-hook-output";
+import type { HookInput } from "@zambil/claude-code/parse-hook-input";
+import type { HookList } from "@zambil/claude-code/hook-list";
 import { indexHint } from "../index/index-hint.ts";
 import { loadHookList } from "@zambil/claude-code/load-hook-list";
 import type { Note } from "@zambil/core/note";
@@ -10,6 +15,7 @@ import { parseCommandArgs } from "../parse-command-args.ts";
 import { parseHookInput } from "@zambil/claude-code/parse-hook-input";
 import { repoOptionHelp } from "../parse-command-args.ts";
 import { sharedOptions } from "../parse-command-args.ts";
+import { wrap } from "@zambil/core/either";
 
 interface SimilarToOptions extends CommandRunOptions {
   prompt: string;
@@ -44,9 +50,43 @@ async function similarTo(repo: ConfigurationRepo, options: SimilarToOptions): Pr
   return matches.map((match) => match.note);
 }
 
+/** A `SessionStart` that starts or resumes a session. After `compact`, the session goes on, so it gets no second warning. */
+function isSessionStart(input: HookInput): boolean {
+  const isStart = input.kind === "plain" && input.hookEventName === "SessionStart";
+  return isStart && input.source !== "compact";
+}
+
+/** The short warning that Claude Code shows to the user at the start of a session. */
+function sessionWarning(problems: string[]): string {
+  const text = problems.join(" ");
+  return `zambil: ${text} Run zambil doctor to see how to fix it.`;
+}
+
+interface SetupWarningOptions {
+  config: CliConfig;
+  hookList: HookList;
+  hookEventName: string;
+}
+
+/**
+ * The warning about the setup, if a check finds a problem. The checks load only at the start of a
+ * session, so that the other hooks stay as fast as before. A check that fails gives no warning.
+ */
+async function setupWarning(
+  repo: ConfigurationRepo,
+  options: SetupWarningOptions,
+): Promise<string | undefined> {
+  const loaded = await wrap(import("./session-problems.ts"));
+  if (!loaded.ok) return undefined;
+  const problems = await wrap(loaded.value.findSessionProblems(repo, options));
+  if (!problems.ok || problems.value.length === 0) return undefined;
+  return sessionWarning(problems.value);
+}
+
 /**
  * Claude Code reads exit code 2 as a blocking error, so every path exits with 0. A problem goes to
- * standard error, which Claude Code keeps out of the context.
+ * standard error, which Claude Code keeps out of the context. At the start of a session, a broken
+ * setup also gets a short warning that Claude Code shows to the user.
  */
 async function runHook(options: CommandRunOptions): Promise<ExitCode> {
   const { output } = options;
@@ -55,25 +95,38 @@ async function runHook(options: CommandRunOptions): Promise<ExitCode> {
     output.error(`zambil hook: ${parsed.error}\n${hookCommand.usage}\n`);
     return 0;
   }
-  const { contextHooks } = loadHookList(options.config.environment).list;
-  const request = parseHookInput(await options.input.readAll(), { contextHooks });
+  const { list } = loadHookList(options.config.environment);
+  const request = parseHookInput(await options.input.readAll(), {
+    contextHooks: list.contextHooks,
+  });
   if (!request.ok) {
     output.error(`zambil hook: ${request.error}\n`);
     return 0;
   }
   if (request.value.kind === "ignore") return 0;
+  const { input } = request.value;
+  const isStart = isSessionStart(input);
   const repo = openRepo({ flag: parsed.value.values.repo, config: options.config });
   if (!repo.ok) {
     output.error(`zambil hook: ${repo.error}\n`);
+    const [problem = repo.error] = repo.error.split("\n");
+    const warning = sessionWarning([`${problem} No note reaches this session.`]);
+    if (isStart) output.write(formatSystemMessage(warning));
     return 0;
   }
-  const { input } = request.value;
   const repoFlag = parsed.value.values.repo;
   const similarNotes =
     input.kind === "prompt"
       ? await similarTo(repo.value, { ...options, prompt: input.prompt, repoFlag })
       : [];
-  output.write(answerHook(repo.value, { input, now: options.now, similarNotes }));
+  const { config } = options;
+  const { hookEventName } = input;
+  const systemMessage = isStart
+    ? await setupWarning(repo.value, { config, hookList: list, hookEventName })
+    : undefined;
+  const answerOptions: AnswerHookOptions = { input, now: options.now, similarNotes };
+  if (systemMessage !== undefined) answerOptions.systemMessage = systemMessage;
+  output.write(answerHook(repo.value, answerOptions));
   return 0;
 }
 
@@ -87,6 +140,7 @@ export const hookCommand: Command = {
     "It reads the JSON that Claude Code sends to a hook on standard input, and prints the notes that apply.",
     "At UserPromptSubmit it also adds the notes whose description is similar to the prompt. It never downloads the model, so run zambil index once first.",
     "It prints nothing when no note applies, and it always exits with 0, so that it never blocks a session.",
+    "At SessionStart, it warns the user in one line when the setup is broken, for example a moved notes folder, and points to zambil doctor.",
     "Run `zambil install` to set up the hooks. The file packages/claude-code/README.md in the zambil repo describes them.",
   ].join("\n"),
   run: runHook,
