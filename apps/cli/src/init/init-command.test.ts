@@ -92,8 +92,8 @@ describe("zambil init", () => {
       first: {
         code: 0,
         stdout: [
-          `Saved the configuration repo ${notes} in ${machine.userConfig}.`,
           `Wrote the starter note zambil-welcome.md in ${notes}.`,
+          `Saved the configuration repo ${notes} in ${machine.userConfig}.`,
           "Skipped the hook list and the model, because of --offline. Run zambil index when you are online.",
           `Installed the zambil hooks (SessionStart, UserPromptSubmit) in ${machine.settings}.`,
           `The hooks read the configuration repo ${notes}.`,
@@ -127,9 +127,9 @@ describe("zambil init", () => {
       list: 0,
       afterDelete: {
         code: 0,
-        firstLine: `Kept ${notes} as it is. It is already your notes folder, so zambil wrote no starter note.`,
+        firstLine: `Wrote the starter note zambil-welcome.md in ${notes}.`,
       },
-      filesAfterDelete: [],
+      filesAfterDelete: ["zambil-welcome.md"],
     });
   });
 
@@ -157,8 +157,8 @@ describe("zambil init", () => {
     }).toEqual({
       code: 0,
       stdout: [
-        `Saved the configuration repo ${vault} in ${machine.userConfig}. It named ${machine.home}/old-notes before.`,
         `Kept ${vault} as it is. It already has files, so zambil wrote no starter note.`,
+        `Saved the configuration repo ${vault} in ${machine.userConfig}. It named ${machine.home}/old-notes before.`,
       ],
       hasNextFolderHint: false,
       files: [".obsidian", "deploy.md"],
@@ -168,18 +168,23 @@ describe("zambil init", () => {
     });
   });
 
-  test("changes nothing when the user config is not JSON or the folder is a file", async () => {
+  test("changes nothing when the user config is not JSON, the folder is a file or cannot be made", async () => {
     const machine = await testMachine();
     await mkdir(join(machine.home, ".config", "zambil"), { recursive: true });
     await writeFile(machine.userConfig, "{ repo: notes\n");
     const broken = await run({ config: machine.config, args: ["notes", "--offline"] });
     await writeFile(join(machine.home, "file.md"), "text\n");
     const file = await run({ config: machine.config, args: ["file.md", "--offline"] });
+    await writeFile(machine.userConfig, '{ "repo": "~/locked/notes" }\n');
+    await mkdir(join(machine.home, "locked"), { mode: 0o555 });
+    const locked = await run({ config: machine.config, args: ["--offline"] });
     expect({
       broken: { code: broken.code, stderr: broken.stderr },
       file: { code: file.code, stderr: file.stderr },
+      locked: { code: locked.code, stderr: locked.stderr.split("\n").slice(1) },
       hasFolder: existsSync(join(machine.home, "notes")),
       hasSettings: existsSync(machine.settings),
+      userConfig: await readFile(machine.userConfig, "utf8"),
     }).toEqual({
       broken: {
         code: 1,
@@ -189,8 +194,13 @@ describe("zambil init", () => {
         code: 2,
         stderr: `${machine.home}/file.md is a file, not a folder. Run zambil init <folder> with a folder.\n`,
       },
+      locked: {
+        code: 1,
+        stderr: ["To keep the notes in another folder, run zambil init <folder>.", ""],
+      },
       hasFolder: false,
       hasSettings: false,
+      userConfig: '{ "repo": "~/locked/notes" }\n',
     });
   });
 });

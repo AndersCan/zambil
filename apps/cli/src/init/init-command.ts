@@ -1,3 +1,4 @@
+import { checkRepoCanBeSaved, rememberRepo } from "../user-config/remember-repo.ts";
 import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
 import { createNotesFolder, folderState } from "./notes-folder.ts";
 import type { CliConfig } from "../config.ts";
@@ -12,11 +13,10 @@ import { loadHookList } from "@zambil/claude-code/load-hook-list";
 import { loadRepo } from "@zambil/core/load-repo";
 import { locateRepo } from "@zambil/core/locate-repo";
 import { parseCommandArgs } from "../parse-command-args.ts";
-import { rememberRepo } from "../install/remember-repo.ts";
-import type { RememberResult } from "../install/remember-repo.ts";
+import type { ProblemLevel } from "../install/report-problems.ts";
 import { reportProblems } from "../install/report-problems.ts";
 import { right } from "@zambil/core/either";
-import { savedRepoPath } from "../install/user-config-file.ts";
+import { savedRepoPath } from "../user-config/user-config-file.ts";
 import { setUpClaudeCode } from "../install/set-up-claude-code.ts";
 import { sharedOptions } from "../parse-command-args.ts";
 import { starterNoteName } from "./starter-note.ts";
@@ -25,6 +25,8 @@ const initOptions = {
   ...sharedOptions,
   offline: { type: "boolean" },
 } as const;
+
+const otherFolderHint = "To keep the notes in another folder, run zambil init <folder>.\n";
 
 /** The folder name in the home folder when the user names no folder and zambil knows no repo. */
 const defaultFolderName = "zambil-notes";
@@ -58,17 +60,11 @@ function chooseFolder(
   return right({ root: join(environment.home, defaultFolderName), source: "default" });
 }
 
-/** `saved-before`: the folder is empty, but it was the saved repo before, so the user deleted the note. */
-type StarterOutcome = "written" | "has-files" | "saved-before";
+/** `written` when the folder was new or empty. A folder with files gets no starter note. */
+type StarterOutcome = "written" | "has-files";
 
-interface StarterOutcomeOptions {
-  remembered: RememberResult;
-}
-
-function starterOutcome(state: FolderState, options: StarterOutcomeOptions): StarterOutcome {
-  if (state === "has-files") return "has-files";
-  const isSavedBefore = state === "empty" && options.remembered === "unchanged";
-  return isSavedBefore ? "saved-before" : "written";
+function starterOutcome(state: FolderState): StarterOutcome {
+  return state === "has-files" ? "has-files" : "written";
 }
 
 interface DescribeFolderOptions {
@@ -82,8 +78,6 @@ function describeFolder(outcome: StarterOutcome, options: DescribeFolderOptions)
       return `Wrote the starter note ${starterNoteName}.md in ${root}.`;
     case "has-files":
       return `Kept ${root} as it is. It already has files, so zambil wrote no starter note.`;
-    case "saved-before":
-      return `Kept ${root} as it is. It is already your notes folder, so zambil wrote no starter note.`;
     default:
       return isNever(outcome);
   }
@@ -92,14 +86,20 @@ function describeFolder(outcome: StarterOutcome, options: DescribeFolderOptions)
 interface NextStepsOptions {
   outcome: StarterOutcome;
   folder: NotesFolder;
+  level: ProblemLevel;
+}
+
+function sessionStep(options: NextStepsOptions): string {
+  if (options.level === "errors") return "Fix the errors above, then run zambil init again.";
+  if (options.outcome === "has-files") {
+    return "Start a new Claude Code session. Each note that names a hook reaches the agent at that hook.";
+  }
+  return `Start a new Claude Code session. Its first reply says that the ${starterNoteName} note reached it.`;
 }
 
 function nextSteps(options: NextStepsOptions): string {
-  const { outcome, folder } = options;
-  const session =
-    outcome === "written"
-      ? `Start a new Claude Code session. Its first reply says that the ${starterNoteName} note reached it.`
-      : "Start a new Claude Code session. Each note that names a hook reaches the agent at that hook.";
+  const { folder } = options;
+  const session = sessionStep(options);
   const lines = [
     "",
     "Next:",
@@ -108,9 +108,7 @@ function nextSteps(options: NextStepsOptions): string {
     `  3. Open ${folder.root} in Obsidian to read and edit the notes.`,
   ];
   lines.push("", "Run zambil init again after you change the version of Node.");
-  if (folder.source !== "given") {
-    lines.push("To keep the notes in another folder, run zambil init <folder>.");
-  }
+  if (folder.source !== "given") lines.push(otherFolderHint.trimEnd());
   lines.push("");
   return lines.join("\n");
 }
@@ -170,16 +168,19 @@ async function runInit(options: CommandRunOptions): Promise<ExitCode> {
     return 2;
   }
 
-  const remembered = await rememberRepo(root, { config, output });
-  if (remembered === "failed") return 1;
-  const outcome = starterOutcome(state.value, { remembered });
+  const canSave = await checkRepoCanBeSaved({ config, output });
+  if (canSave === "failed") return 1;
+  const outcome = starterOutcome(state.value);
   const starter = outcome === "written" ? "write" : "skip";
   const created = await createNotesFolder(root, { starter });
   if (!created.ok) {
-    output.error(`${created.error}\n`);
+    const other = folder.value.source === "given" ? "" : otherFolderHint;
+    output.error(`${created.error}\n${other}`);
     return 1;
   }
   output.write(`${describeFolder(outcome, { root })}\n`);
+  const remembered = await rememberRepo(root, { config, output });
+  if (remembered === "failed") return 1;
   const repo = loadRepo(root);
   if (!repo.ok) {
     output.error(`zambil cannot read ${root}: ${repo.error.message}\n`);
@@ -194,17 +195,18 @@ async function runInit(options: CommandRunOptions): Promise<ExitCode> {
   }
   const { list } = loadHookList(config.environment);
   const level = reportProblems(repo.value, { hookList: list, output });
-  output.write(nextSteps({ outcome, folder: folder.value }));
+  output.write(nextSteps({ outcome, folder: folder.value, level }));
   return level === "errors" ? 1 : 0;
 }
 
 /** `zambil init`: sets up zambil for a new user in one run. */
 export const initCommand: Command = {
   summary: "Set up zambil: a notes folder, the user config file and the Claude Code hooks.",
-  usage: "Usage: zambil init [<folder>] [--offline]",
+  usage: "Usage: zambil init [<folder>] [--repo <folder>] [--offline]",
   details: [
-    "It uses <folder> (or --repo <folder>), or the repo that zambil already knows, or ~/zambil-notes. It creates the folder if it is missing.",
-    "In a new folder, it writes one starter note that shows up in the next Claude Code session. A folder with files, such as an Obsidian vault, stays as it is.",
+    "It uses <folder>, or the repo that zambil already knows, or ~/zambil-notes. It creates the folder if it is missing.",
+    "In a new or empty folder, it writes one starter note that shows up in the next Claude Code session. Hidden entries such as .obsidian do not count.",
+    "A folder with notes or other files, such as an Obsidian vault in use, stays as it is.",
     "It saves the folder in the user config file and keeps the other keys, then does what `zambil install` does and checks the notes.",
     "--offline skips the hook list and the model download. Run `zambil index` later for similar notes.",
     "It exits with 1 if a note has an error. The hooks are installed then too.",

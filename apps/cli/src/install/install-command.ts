@@ -4,7 +4,7 @@ import { linkHint } from "./link-hint.ts";
 import { loadHookList } from "@zambil/claude-code/load-hook-list";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
-import { rememberRepo } from "./remember-repo.ts";
+import { rememberRepo } from "../user-config/remember-repo.ts";
 import { reportProblems } from "./report-problems.ts";
 import { setUpClaudeCode } from "./set-up-claude-code.ts";
 import { sharedOptions } from "../parse-command-args.ts";

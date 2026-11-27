@@ -1,5 +1,5 @@
 import { locateRepo, userConfigPath } from "@zambil/core/locate-repo";
-import { changeSettings } from "./settings-file.ts";
+import { changeSettings } from "../install/settings-file.ts";
 import type { Either } from "@zambil/core/either";
 import { right } from "@zambil/core/either";
 import type { UserEnvironment } from "@zambil/core/locate-repo";
@@ -36,4 +36,14 @@ export async function saveRepoPath(
   });
   if (!saved.ok) return saved;
   return right({ kind: "changed", before });
+}
+
+/** Why the user config file cannot take a new `repo` key, so that a caller can stop before it changes anything. */
+export async function checkUserConfig(
+  environment: UserEnvironment,
+): Promise<Either<string, undefined>> {
+  const path = userConfigPath(environment);
+  const read = await changeSettings(path, { change: (config) => right(config) });
+  if (!read.ok) return read;
+  return right(undefined);
 }
