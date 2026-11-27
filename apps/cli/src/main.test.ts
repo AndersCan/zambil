@@ -1,8 +1,17 @@
-import { cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
+import { delimiter, dirname, join } from "node:path";
 import { describe, expect, test } from "vite-plus/test";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { join } from "node:path";
+import { text } from "node:stream/consumers";
 import { tmpdir } from "node:os";
 
 const main = fileURLToPath(new URL("main.ts", import.meta.url));
@@ -55,5 +64,32 @@ describe("zambil", () => {
       { status: 1, firstLine },
       { status: 1, firstLine },
     ]);
+  });
+
+  test("runs init to the end without a stack trace when the reader of its output exits", async () => {
+    const home = realpathSync(mkdtempSync(join(tmpdir(), "zambil-home-")));
+    mkdirSync(join(home, "bin"));
+    symlinkSync(main, join(home, "bin", "zambil"));
+    const claude = join(home, ".claude");
+    const bin = join(home, "bin");
+    const nodeFolder = dirname(process.execPath);
+    const env = { HOME: home, PATH: `${bin}${delimiter}${nodeFolder}`, CLAUDE_CONFIG_DIR: claude };
+    const child = spawn(main, ["init", join(home, "notes"), "--offline"], { env });
+    child.stdout.destroy();
+    const [stderr, code] = await Promise.all([
+      text(child.stderr),
+      new Promise((resolve) => child.on("close", resolve)),
+    ]);
+    const files = {
+      settings: existsSync(join(claude, "settings.json")),
+      skill: existsSync(join(claude, "skills", "zambil-save", "SKILL.md")),
+      userConfig: existsSync(join(home, ".config", "zambil", "config.json")),
+    };
+    rmSync(home, { recursive: true });
+    expect({ code, stderr, files }).toEqual({
+      code: 0,
+      stderr: "",
+      files: { settings: true, skill: true, userConfig: true },
+    });
   });
 });

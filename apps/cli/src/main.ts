@@ -3,16 +3,14 @@ import { missingDependencyProblem, nodeVersionProblem } from "./startup/startup-
 import type { Either } from "@zambil/core/either";
 import { enableCompileCache } from "node:module";
 import type { ExitCode } from "./command.ts";
+import { processOutput } from "./process-output.ts";
 import { text as readStream } from "node:stream/consumers";
 import { resolve } from "node:path";
 
 /** Loads the CLI and runs it. A type import of `@zambil/core` is erased, but a value import fails without the dependencies. */
 async function runZambil(): Promise<ExitCode> {
   const [config, cli] = await Promise.all([import("./config.ts"), import("./run-cli.ts")]);
-  const output = {
-    write: (text: string) => process.stdout.write(text),
-    error: (text: string) => process.stderr.write(text),
-  };
+  const output = processOutput();
   const input = {
     readAll: () => (process.stdin.isTTY ? Promise.resolve("") : readStream(process.stdin)),
   };
