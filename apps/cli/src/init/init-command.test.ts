@@ -178,6 +178,7 @@ describe("zambil init", () => {
     });
     const atVault = await run({ config: machine.config, args: [vault, "--offline"] });
     const plain = await run({ config: machine.config, args: ["notes", "--offline"] });
+    const starter = await readFile(join(vault, "zambil", "zambil-welcome.md"), "utf8");
     function obsidianStep(result: RunResult): string | undefined {
       return result.stdout.split("\n").find((line) => line.startsWith("  3. "));
     }
@@ -185,10 +186,13 @@ describe("zambil init", () => {
       inVault: obsidianStep(inVault),
       atVault: obsidianStep(atVault),
       plain: obsidianStep(plain),
+      starterObsidianLine: starter.split("\n").find((line) => line.includes("Obsidian")),
     }).toEqual({
       inVault: `  3. Open the Obsidian vault ${vault} to read and edit the notes. They are in its folder zambil.`,
       atVault: `  3. Open ${vault} in Obsidian to read and edit the notes.`,
       plain: `  3. Open ${join(machine.home, "notes")} in Obsidian to read and edit the notes.`,
+      starterObsidianLine:
+        "- The notes folder opens in Obsidian, as a vault or as a folder in a vault.",
     });
   });
 

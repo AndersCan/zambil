@@ -17,7 +17,8 @@ export interface InstallHintOptions {
 
 /**
  * What to print when the note names a hook that install adds but that has no zambil hook in the Claude
- * Code settings yet. A hook that is already there, such as `SessionStart`, needs no install.
+ * Code settings yet. A hook that is already there, such as `SessionStart`, needs no install. Without
+ * any zambil hook in the user settings, the hooks can come from project settings, so it says nothing.
  */
 export async function installHint(
   note: Note,
@@ -29,7 +30,8 @@ export async function installHint(
   const path = settingsPath(config);
   const settings = await readSettings(path);
   const installed = settings.ok ? listZambilHooks(settings.value) : settings;
-  if (!installed.ok) return undefined;
+  const isInstalledHere = installed.ok && Object.keys(installed.value).length > 0;
+  if (!installed.ok || !isInstalledHere) return undefined;
   const missing: string[] = [];
   for (const hook of note.hooks) {
     const isMissing = expected.includes(hook) && !Object.hasOwn(installed.value, hook);

@@ -22,6 +22,6 @@ export const starterNoteText = [
   '- To write a note, ask the agent, for example "Write a zambil note that we use pnpm, never npm". The agent uses the zambil-save skill.',
   "- A note with `hooks: [SessionStart]` reaches the agent at the start of each session, like this one.",
   "- `z:<name>` in a prompt adds the note with that name next to the prompt.",
-  "- The notes folder opens as a vault in Obsidian.",
+  "- The notes folder opens in Obsidian, as a vault or as a folder in a vault.",
   "",
 ].join("\n");
