@@ -15,6 +15,7 @@ interface HookRunOptions {
   stdin: string;
   repo: string | undefined;
   claudeConfigFolder?: string;
+  cacheHome?: string;
 }
 
 async function runHook(args: string[], options: HookRunOptions) {
@@ -27,7 +28,8 @@ async function runHook(args: string[], options: HookRunOptions) {
       printed.stderr += text;
     },
   };
-  const environment = { home: "/home/ada", workingFolder: "/", configHome: "/nowhere" };
+  const cacheHome = options.cacheHome ?? (await mkdtemp(join(tmpdir(), "zambil-cache-")));
+  const environment = { home: "/home/ada", workingFolder: "/", configHome: "/nowhere", cacheHome };
   const withRepo =
     options.repo === undefined ? environment : { ...environment, repo: options.repo };
   const config: CliConfig = { environment: withRepo };
@@ -51,6 +53,12 @@ async function writeClaudeFolder(hookNames: string[]): Promise<string> {
   if (!settings.ok) throw new Error(settings.error);
   await writeFile(join(folder, "settings.json"), JSON.stringify(settings.value));
   return folder;
+}
+
+const ids = { session_id: "s1", cwd: "/home/ada/shop" };
+
+function prompt(text: string): string {
+  return JSON.stringify({ ...ids, hook_event_name: "UserPromptSubmit", prompt: text });
 }
 
 const userPrompt = JSON.stringify({ hook_event_name: "UserPromptSubmit", prompt: "Hi" });
@@ -198,5 +206,43 @@ describe("hookCommand", () => {
       },
       projectHooks: { code: 0, stdout: "" },
     });
+  });
+
+  test("adds a note once in each context window, a z:<name> each time, and all notes again after a compact", async () => {
+    const repo = await writeTestRepo({
+      "a.md": "---\nhooks: [UserPromptSubmit, PreToolUse]\n---\nA.\n",
+      "b.md": "B.\n",
+      "s.md": "---\nhooks: SessionStart\n---\nS.\n",
+    });
+    const cacheHome = await mkdtemp(join(tmpdir(), "zambil-cache-"));
+    const claudeConfigFolder = await writeClaudeFolder(["SessionStart", "UserPromptSubmit"]);
+    const subagentTool = JSON.stringify({
+      ...ids,
+      agent_id: "agent1",
+      hook_event_name: "PreToolUse",
+      tool_name: "Bash",
+    });
+    const compact = JSON.stringify({ ...ids, hook_event_name: "SessionStart", source: "compact" });
+    const payloads = [
+      prompt("Hi"),
+      prompt("Hi"),
+      prompt("Use z:b"),
+      prompt("Use z:b"),
+      subagentTool,
+      subagentTool,
+      compact,
+      prompt("Hi"),
+    ];
+    const names: string[][] = [];
+    // Each hook reads the file that the hook before it wrote, so they run in order.
+    for (const stdin of payloads) {
+      const result = await runHook([], { stdin, repo, claudeConfigFolder, cacheHome });
+      names.push(
+        [...result.stdout.matchAll(/<note name=\\"(?<name>\w+)\\"/g)].map(
+          (match) => match.groups?.name ?? "",
+        ),
+      );
+    }
+    expect(names).toEqual([["a"], [], ["b"], ["b"], ["a"], [], ["s"], ["a"]]);
   });
 });

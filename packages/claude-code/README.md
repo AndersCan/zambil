@@ -16,6 +16,8 @@ It adds three kinds of note:
 2. At `UserPromptSubmit`, each note that the user names with `z:<name>` in the prompt. See [Name a note in a prompt](#name-a-note-in-a-prompt).
 3. At `UserPromptSubmit`, each current note whose description is similar to the prompt. See [Similar notes](#similar-notes).
 
+zambil adds each note once in a context. See [A note comes once in a context](#a-note-comes-once-in-a-context).
+
 Only some hooks can add context. zambil reads which ones from the hooks reference. See [The hook list](#the-hook-list). On 2026-11-27, the list was:
 
 | Hook                                                     | What zambil reads                                                                                       |
@@ -69,6 +71,21 @@ An expired note is left out at a hook. For an expired note that you name with `z
 ## How much text one hook adds
 
 Claude Code saves a hook text over 10,000 characters to a file and gives the agent only a preview. So zambil keeps each text under 9,500 characters. Full notes use up to 8,000 characters, in order: first the notes that the prompt names, then the notes of the hook, then the similar notes. Each note that does not fit is one line at the end that tells the agent how to read it with `zambil show`. When no note applies, the hook prints nothing and adds nothing.
+
+## A note comes once in a context
+
+A note that a hook added stays in the context of the agent. So zambil adds each note once in a context, and not again at each prompt or tool call. A context is a session, or a subagent in it. Each subagent has its own context, so it gets the notes again.
+
+zambil keeps one small file for each context in `$XDG_CACHE_HOME/zambil/sessions/`, or in `~/.cache/zambil/sessions/`. The file has the name of the `session_id` of the hook input, and the `agent_id` in a subagent. It lists the name and a hash of each note that a hook added in full. At the next hook, zambil leaves out each note with the same name and the same hash. These rules apply:
+
+- A note that you change gets a new hash, so it comes again.
+- A note that you name with `z:<name>` always comes, because you asked for it.
+- A note that did not fit, and became one line in the list at the end, is not in the file. It can come in full at a later hook.
+- `SessionStart` starts the list again, for each `source`: `startup`, `resume`, `clear` and `compact`. After `clear` or `compact`, the context lost the notes. After `resume`, zambil adds them again, because a repeat costs less than a lost note. `SubagentStart` starts the list of its subagent.
+- `SessionStart` also removes the files that no hook changed for 7 days.
+- A hook input without `session_id` gets no file, so the hook adds every note that applies.
+
+If zambil cannot write the file, it prints why on standard error. The next hook can then add the notes again.
 
 ## The hook list
 
@@ -158,5 +175,6 @@ The table above was measured before the similarity search. At `UserPromptSubmit`
 - `src/hook-notes/`: the notes that name the hook that runs.
 - `src/recall/`: `z:<name>` in a prompt.
 - `src/context/`: the wording for Claude Code, the size budget and the JSON output.
+- `src/session/`: the file for each context that lists the notes that a hook added.
 
 The tests use payloads in the shape that Claude Code 2.1.332 sent in a recorded session, in `src/hook-input/hook-payloads.ts`.

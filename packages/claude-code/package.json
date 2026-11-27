@@ -17,6 +17,7 @@
     "./parse-hook-input": "./src/hook-input/parse-hook-input.ts",
     "./refresh-hook-list": "./src/hook-list/refresh-hook-list.ts",
     "./save-skill": "./src/install/save-skill.ts",
+    "./session-notes": "./src/session/session-notes.ts",
     "./settings-hooks": "./src/install/settings-hooks.ts"
   },
   "dependencies": {

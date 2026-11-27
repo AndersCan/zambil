@@ -5,6 +5,7 @@ import { findRecalls } from "../recall/find-recalls.ts";
 import { isNever } from "@zambil/core/is-never";
 import { nameKey } from "@zambil/core/index-names";
 import type { Note } from "@zambil/core/note";
+import { noteVersion } from "../session/shown-notes.ts";
 import { parseLinkTarget } from "@zambil/core/parse-link-target";
 import { renderNote } from "@zambil/core/render-note";
 import type { RenderWording } from "@zambil/core/render-wording";
@@ -71,7 +72,8 @@ export function similarSection(repo: SectionRepo, options: SimilarSectionOptions
     const open = wording.openNote(note.name);
     const pointer = `[[${note.name}]]: ${description} ${open}`;
     const intro = introduce(note);
-    blocks.push({ key, text: `${intro}${rendered.text}`, pointer });
+    const version = noteVersion(rendered.text);
+    blocks.push({ key, text: `${intro}${rendered.text}`, pointer, version });
   }
   return { heading, blocks };
 }

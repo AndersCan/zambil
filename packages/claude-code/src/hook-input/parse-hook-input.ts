@@ -15,8 +15,24 @@ export type HookInput =
   | { kind: "prompt"; hookEventName: "UserPromptSubmit"; prompt: string }
   | { kind: "tool"; hookEventName: ToolHookName; toolNames: string[] };
 
+/**
+ * The context window that a hook adds to: the session, and the subagent when the hook runs in one. A
+ * subagent starts with a context of its own, so it has its own `agentId`.
+ */
+export interface HookSession {
+  sessionId: string;
+  agentId?: string;
+}
+
+/** The input to answer, and its session when the payload names one. */
+export interface HookAnswerRequest {
+  kind: "answer";
+  input: HookInput;
+  session?: HookSession;
+}
+
 /** `ignore`: the hook cannot add context, or adding it now would loop. zambil then prints nothing. */
-export type HookRequest = { kind: "answer"; input: HookInput } | { kind: "ignore" };
+export type HookRequest = HookAnswerRequest | { kind: "ignore" };
 
 function unsafeParseJson(text: string): unknown {
   return JSON.parse(text);
@@ -68,6 +84,36 @@ function parseToolInput(
   return right({ kind: "answer", input: { kind: "tool", hookEventName, toolNames: [name] } });
 }
 
+interface ReadRequestOptions {
+  hookEventName: string;
+}
+
+function readRequest(
+  record: Record<string, unknown>,
+  options: ReadRequestOptions,
+): Either<string, HookRequest> {
+  const { hookEventName } = options;
+  if (isToolHookName(hookEventName)) return parseToolInput(record, { hookEventName });
+  if (hookEventName === "UserPromptSubmit") {
+    const { prompt } = record;
+    if (typeof prompt !== "string") return left("UserPromptSubmit input has no prompt");
+    return right({ kind: "answer", input: { kind: "prompt", hookEventName, prompt } });
+  }
+  const isRepeatedStop = record.stop_hook_active === true;
+  if (isRepeatedStop) return right({ kind: "ignore" });
+  const input: HookInput = { kind: "plain", hookEventName };
+  if (typeof record.source === "string") input.source = record.source;
+  return right({ kind: "answer", input });
+}
+
+function readSession(record: Record<string, unknown>): HookSession | undefined {
+  const { session_id: sessionId, agent_id: agentId } = record;
+  if (typeof sessionId !== "string" || sessionId === "") return undefined;
+  const session: HookSession = { sessionId };
+  if (typeof agentId === "string" && agentId !== "") session.agentId = agentId;
+  return session;
+}
+
 /** The hooks that can add context, from `loadHookList`. */
 export interface ParseHookInputOptions {
   contextHooks: string[];
@@ -89,15 +135,9 @@ export function parseHookInput(
   const hookEventName = record.hook_event_name;
   if (typeof hookEventName !== "string") return left("the input has no hook_event_name");
   if (!options.contextHooks.includes(hookEventName)) return right({ kind: "ignore" });
-  if (isToolHookName(hookEventName)) return parseToolInput(record, { hookEventName });
-  if (hookEventName === "UserPromptSubmit") {
-    const { prompt } = record;
-    if (typeof prompt !== "string") return left("UserPromptSubmit input has no prompt");
-    return right({ kind: "answer", input: { kind: "prompt", hookEventName, prompt } });
-  }
-  const isRepeatedStop = record.stop_hook_active === true;
-  if (isRepeatedStop) return right({ kind: "ignore" });
-  const input: HookInput = { kind: "plain", hookEventName };
-  if (typeof record.source === "string") input.source = record.source;
-  return right({ kind: "answer", input });
+  const request = readRequest(record, { hookEventName });
+  if (!request.ok || request.value.kind === "ignore") return request;
+  const session = readSession(record);
+  if (session === undefined) return request;
+  return right({ ...request.value, session });
 }

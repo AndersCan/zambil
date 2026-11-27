@@ -1,4 +1,5 @@
 import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
+import { keepSessionNotes, readSessionNotes } from "@zambil/claude-code/session-notes";
 import { answerHook } from "@zambil/claude-code/answer-hook";
 import type { AnswerHookOptions } from "@zambil/claude-code/answer-hook";
 import type { CliConfig } from "../config.ts";
@@ -124,9 +125,22 @@ async function runHook(options: CommandRunOptions): Promise<ExitCode> {
   const systemMessage = isStart
     ? await setupWarning(repo.value, { config, hookList: list, hookEventName })
     : undefined;
-  const answerOptions: AnswerHookOptions = { input, now: options.now, similarNotes };
+  const sessionOptions = { environment: config.environment, now: options.now };
+  const before = await readSessionNotes(request.value, sessionOptions);
+  const answerOptions: AnswerHookOptions = { input, now: options.now, similarNotes, shown: before };
   if (systemMessage !== undefined) answerOptions.systemMessage = systemMessage;
-  output.write(answerHook(repo.value, answerOptions));
+  const answer = answerHook(repo.value, answerOptions);
+  output.write(answer.output);
+  const kept = await keepSessionNotes(request.value, {
+    ...sessionOptions,
+    before,
+    added: answer.shown,
+  });
+  if (!kept.ok) {
+    output.error(
+      `zambil hook: cannot keep the notes of this session, so the next hook can add them again: ${kept.error}\n`,
+    );
+  }
   return 0;
 }
 
@@ -139,6 +153,7 @@ export const hookCommand: Command = {
   details: [
     "It reads the JSON that Claude Code sends to a hook on standard input, and prints the notes that apply.",
     "At UserPromptSubmit it also adds the notes whose description is similar to the prompt. It never downloads the model, so run zambil index once first.",
+    "It adds each note once in a session or subagent, and keeps the list in the cache folder. A note that the prompt names with z:<name> comes each time.",
     "It prints nothing when no note applies and the setup works, and it always exits with 0, so that it never blocks a session.",
     "At SessionStart, it warns the user in one line when the setup is broken, for example a moved notes folder, and points to zambil doctor.",
     "Run `zambil install` to set up the hooks. The file packages/claude-code/README.md in the zambil repo describes them.",
