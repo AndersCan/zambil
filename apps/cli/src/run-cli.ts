@@ -104,9 +104,12 @@ async function formatHelp(config: CliConfig): Promise<string> {
 function formatUsage(command: Command): string {
   const lines = [command.usage, "", command.summary];
   if (command.details !== undefined) lines.push(command.details);
-  const options = [...(command.options ?? []), helpOption];
-  const rows = options.map((option) => ({ name: option.flag, text: option.text }));
-  lines.push("", "Options:", ...formatRows(rows), "");
+  if (command.options !== undefined) {
+    const options = [...command.options, helpOption];
+    const rows = options.map((option) => ({ name: option.flag, text: option.text }));
+    lines.push("", "Options:", ...formatRows(rows));
+  }
+  lines.push("");
   return lines.join("\n");
 }
 
@@ -118,20 +121,32 @@ function commandNameIn(args: string[]): string | undefined {
   return undefined;
 }
 
-function noSuchCommand(name: string): string {
-  const suggestion = closestMatch(name, { candidates: Object.keys(commands) });
+/** `run`: the name came first, so `help` is a candidate too. `help`: the name came after `zambil help`. */
+type CommandPosition = "run" | "help";
+
+interface NoSuchCommandOptions {
+  position: CommandPosition;
+}
+
+function noSuchCommand(name: string, options: NoSuchCommandOptions): string {
+  const names = Object.keys(commands);
+  const candidates = options.position === "run" ? [...names, "help"] : names;
+  const suggestion = closestMatch(name, { candidates });
+  const prefix = options.position === "run" ? "zambil" : "zambil help";
   const first = `zambil has no command "${name}".`;
-  const guess = suggestion === undefined ? "" : ` Did you mean \`zambil ${suggestion}\`?`;
+  const guess = suggestion === undefined ? "" : ` Did you mean \`${prefix} ${suggestion}\`?`;
   return `${first}${guess}\n${seeCommands}\n`;
 }
 
 function unknownCommandMessage(args: string[]): string {
   const [first = ""] = args;
-  if (!first.startsWith("-")) return noSuchCommand(first);
+  if (!first.startsWith("-")) return noSuchCommand(first, { position: "run" });
   const isSharedOption = first === "--repo" || first.startsWith("--repo=");
   if (!isSharedOption) return `zambil has no option "${first}".\n${seeCommands}\n`;
-  const command = commandNameIn(args) ?? "<command>";
-  const words = ["zambil", command];
+  const command = commandNameIn(args);
+  const word = firstWord(args, { after: 0 });
+  if (command === undefined && word !== undefined) return noSuchCommand(word, { position: "run" });
+  const words = ["zambil", command ?? "<command>"];
   for (const argument of args) {
     if (argument !== command) words.push(quoteArgument(argument));
   }
@@ -156,13 +171,13 @@ function helpRequest(args: string[]): HelpRequest | undefined {
 
 async function printHelp(request: HelpRequest, options: RunCliOptions): Promise<ExitCode> {
   const { topic } = request;
-  if (topic === undefined) {
+  if (topic === undefined || topic === "help") {
     options.output.write(await formatHelp(options.config));
     return 0;
   }
   const load = Object.hasOwn(commands, topic) ? commands[topic] : undefined;
   if (load === undefined) {
-    options.output.error(noSuchCommand(topic));
+    options.output.error(noSuchCommand(topic, { position: "help" }));
     return 2;
   }
   options.output.write(formatUsage(await load()));
@@ -170,8 +185,7 @@ async function printHelp(request: HelpRequest, options: RunCliOptions): Promise<
 }
 
 function asksForVersion(args: string[]): boolean {
-  const flags = flagsOf(args);
-  return flags.includes("--version") && firstWord(flags, { after: 0 }) === undefined;
+  return flagsOf(args)[0] === "--version";
 }
 
 /** Runs `zambil` with the arguments after the program name, and returns the exit code. */

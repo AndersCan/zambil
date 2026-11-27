@@ -2,7 +2,9 @@ import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
 import type { ExpiryChoice, SavedNote, SaveRefusal, SaveRequest } from "@zambil/core/save-note";
 import { left, right } from "@zambil/core/either";
 import type { Either } from "@zambil/core/either";
+import { findRecalls } from "@zambil/claude-code/find-recalls";
 import { isNever } from "@zambil/core/is-never";
+import { nameKey } from "@zambil/core/index-names";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
 import { quoteArgument } from "@zambil/core/quote-argument";
@@ -145,19 +147,20 @@ function describeSaved(saved: SavedNote): string {
   }
 }
 
-/** A plain `z:<name>` ends at a space, a comma or a backtick, so such a name needs `z:[[<name>]]`. */
-const endsPlainRecall = /[\s,`]/u;
+/** The warning for a name that a plain `z:<name>` in a prompt does not recall, as the hook reads the prompt. */
+function recallWarning(name: string): string | undefined {
+  const [recall] = findRecalls(`z:${name}`);
+  if (recall !== undefined && nameKey(recall.target) === nameKey(name)) return undefined;
+  const result = recall === undefined ? "nothing" : `"${recall.target}"`;
+  return `A plain z:${name} in a prompt recalls ${result}, not this note. Write z:[[${name}]] to recall it.`;
+}
 
 /** Warnings that `zambil check` does not give: a name that `z:<name>` cannot recall, and a missing description. */
 function usabilityWarnings(saved: SavedNote): string[] {
   const { note } = saved;
   const warnings: string[] = [];
-  const isNew = saved.mode === "create";
-  if (isNew && endsPlainRecall.test(note.name)) {
-    warnings.push(
-      `In a prompt, write z:[[${note.name}]] to recall this note. A plain z:<name> ends at a space, a comma or a backtick.`,
-    );
-  }
+  const recalled = recallWarning(note.name);
+  if (saved.mode === "create" && recalled !== undefined) warnings.push(recalled);
   if (saved.mode !== "verify" && note.description === undefined) {
     warnings.push(
       "The note has no description, so zambil search and the similar notes in a prompt never find it. Add `description: <one sentence>` to its frontmatter.",

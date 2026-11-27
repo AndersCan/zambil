@@ -7,8 +7,10 @@ interface DistanceOptions {
   to: string;
 }
 
+/** The edits from one word to the other, where a swap of two neighbouring characters is one edit. */
 function editDistance(first: string, options: DistanceOptions): number {
   const second = options.to;
+  let beforePrevious: number[] = [];
   let previous = Array.from({ length: second.length + 1 }, (_, position) => position);
   for (const [row, firstCharacter] of first.split("").entries()) {
     const current = [row + 1];
@@ -16,8 +18,11 @@ function editDistance(first: string, options: DistanceOptions): number {
       const substitution = (previous[column] ?? 0) + (firstCharacter === secondCharacter ? 0 : 1);
       const insertion = (current[column] ?? 0) + 1;
       const deletion = (previous[column + 1] ?? 0) + 1;
-      current.push(Math.min(substitution, insertion, deletion));
+      const isSwap = first[row - 1] === secondCharacter && second[column - 1] === firstCharacter;
+      const swap = isSwap ? (beforePrevious[column - 1] ?? 0) + 1 : Infinity;
+      current.push(Math.min(substitution, insertion, deletion, swap));
     }
+    beforePrevious = previous;
     previous = current;
   }
   return previous[second.length] ?? 0;

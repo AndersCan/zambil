@@ -119,7 +119,7 @@ describe("runCli", () => {
       stderr: [
         "zambil does not know where your configuration repo is.",
         "Run `zambil init` to set up zambil.",
-        "To use a repo for one command, add --repo <path>, or set ZAMBIL_REPO=<path>.",
+        'Or write {"repo": "<path>"} to /nowhere/zambil/config.json, set ZAMBIL_REPO=<path>, or add --repo <path> to the command.',
         "",
       ].join("\n"),
     });
@@ -138,7 +138,7 @@ describe("runCli", () => {
       {
         code: 2,
         stdout: "",
-        stderr: `The configuration repo ${root}/notes.md is a file, not a folder.\nThe path comes from --repo "${root}/notes.md". Fix the path, or create the folder.\n`,
+        stderr: `The configuration repo ${root}/notes.md is not a folder.\nThe path comes from --repo "${root}/notes.md". Fix the path.\n`,
       },
     ]);
   });
@@ -196,8 +196,9 @@ describe("runCli", () => {
     const agentHeading = "Commands that the agent and its hooks run. You do not need to run them:";
     const bare = await run([]);
     const help = await run(["help"]);
+    const helpHelp = await run(["help", "help"]);
     expect({
-      same: bare.stdout === help.stdout,
+      same: bare.stdout === help.stdout && helpHelp.stdout === help.stdout,
       code: help.code,
       top: help.stdout.split("\n").slice(0, 8),
       user: namesUnder(help.stdout, { heading: "Commands:" }),
@@ -273,33 +274,39 @@ describe("runCli", () => {
     );
   });
 
-  test("prints the version", async () => {
-    const version = await run(["--version"]);
-    expect({ ...version, stdout: version.stdout.replace(/\d+\.\d+\.\d+/, "<version>") }).toEqual({
-      code: 0,
-      stdout: "zambil <version>\n",
-      stderr: "",
-    });
+  test("prints the version, also before a command", async () => {
+    const results = await Promise.all(
+      [["--version"], ["--version", "list"]].map((args) => run(args)),
+    );
+    const shown = results.map((result) => ({
+      ...result,
+      stdout: result.stdout.replace(/\d+\.\d+\.\d+/, "<version>"),
+    }));
+    const version = { code: 0, stdout: "zambil <version>\n", stderr: "" };
+    expect(shown).toEqual([version, version]);
   });
 
   test("answers a mistyped or unknown command in two lines, also for help", async () => {
-    const results = await Promise.all(
-      [["lst"], ["deploy"], ["help", "lst"], ["deploy", "--help"]].map((args) => run(args)),
-    );
+    const typed = [
+      ["lsit"],
+      ["hepl"],
+      ["deploy"],
+      ["help", "lst"],
+      ["deploy", "--help"],
+      ["--repo", "x", "lst"],
+    ];
+    const results = await Promise.all(typed.map((args) => run(args)));
     const seeHelp = "Run `zambil help` to see every command.\n";
+    function refused(stderr: string) {
+      return { code: 2, stdout: "", stderr: `${stderr}\n${seeHelp}` };
+    }
     expect(results).toEqual([
-      {
-        code: 2,
-        stdout: "",
-        stderr: `zambil has no command "lst". Did you mean \`zambil list\`?\n${seeHelp}`,
-      },
-      { code: 2, stdout: "", stderr: `zambil has no command "deploy".\n${seeHelp}` },
-      {
-        code: 2,
-        stdout: "",
-        stderr: `zambil has no command "lst". Did you mean \`zambil list\`?\n${seeHelp}`,
-      },
-      { code: 2, stdout: "", stderr: `zambil has no command "deploy".\n${seeHelp}` },
+      refused('zambil has no command "lsit". Did you mean `zambil list`?'),
+      refused('zambil has no command "hepl". Did you mean `zambil help`?'),
+      refused('zambil has no command "deploy".'),
+      refused('zambil has no command "lst". Did you mean `zambil help list`?'),
+      refused('zambil has no command "deploy".'),
+      refused('zambil has no command "lst". Did you mean `zambil list`?'),
     ]);
   });
 

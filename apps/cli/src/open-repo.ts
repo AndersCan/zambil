@@ -30,28 +30,24 @@ function describeLocateError(error: LocateRepoError): string {
       return [
         "zambil does not know where your configuration repo is.",
         "Run `zambil init` to set up zambil.",
-        "To use a repo for one command, add --repo <path>, or set ZAMBIL_REPO=<path>.",
+        `Or write {"repo": "<path>"} to ${error.configPath}, set ZAMBIL_REPO=<path>, or add --repo <path> to the command.`,
       ].join("\n");
     default:
       return isNever(error);
   }
 }
 
-interface ProblemOptions {
-  kind: LoadRepoError["kind"];
-  message: string;
-}
-
-function describeProblem(root: string, options: ProblemOptions): string {
-  switch (options.kind) {
+function describeProblem(error: LoadRepoError): string {
+  const { root } = error;
+  switch (error.kind) {
     case "missing-root":
       return `The configuration repo ${root} does not exist.`;
     case "not-a-folder":
-      return `The configuration repo ${root} is a file, not a folder.`;
+      return `The configuration repo ${root} is not a folder.`;
     case "unreadable-root":
-      return `zambil cannot read the configuration repo ${root}: ${options.message}`;
+      return `zambil cannot read the configuration repo ${root}: ${error.message}`;
     default:
-      return isNever(options.kind);
+      return isNever(error.kind);
   }
 }
 
@@ -68,14 +64,20 @@ function configPathAdvice(written: string): string | undefined {
 
 interface SourceOptions {
   configPath: string;
+  problem: LoadRepoError["kind"];
 }
 
 /** Where the path came from, and how to change it. For the configuration file, also how zambil reads the path. */
 function describeSource(location: RepoLocation, options: SourceOptions): string[] {
   const written = JSON.stringify(location.written);
   switch (location.source) {
-    case "flag":
-      return [`The path comes from --repo ${written}. Fix the path, or create the folder.`];
+    case "flag": {
+      const fix =
+        options.problem === "missing-root"
+          ? "Fix the path, or create the folder."
+          : "Fix the path.";
+      return [`The path comes from --repo ${written}. ${fix}`];
+    }
     case "environment":
       return [`The path comes from ZAMBIL_REPO=${written}. Fix ZAMBIL_REPO, or ${initStep}`];
     case "user-config": {
@@ -98,8 +100,7 @@ export function openRepo(options: OpenRepoOptions): Either<string, Configuration
 
   const repo = loadRepo(location.value.root);
   if (repo.ok) return right(repo.value);
-  const { root, kind, message } = repo.error;
   const configPath = userConfigPath(config.environment);
-  const source = describeSource(location.value, { configPath });
-  return left([describeProblem(root, { kind, message }), ...source].join("\n"));
+  const source = describeSource(location.value, { configPath, problem: repo.error.kind });
+  return left([describeProblem(repo.error), ...source].join("\n"));
 }

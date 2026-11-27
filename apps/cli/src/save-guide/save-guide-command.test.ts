@@ -1,7 +1,33 @@
 import { describe, expect, test } from "vite-plus/test";
 import { saveGuideCommand } from "./save-guide-command.ts";
+import { saveSkillText } from "@zambil/claude-code/save-skill";
+
+function runGuide(args: string[]) {
+  const printed: string[] = [];
+  const output = {
+    write: (text: string) => printed.push(text),
+    error: (text: string) => printed.push(text),
+  };
+  return saveGuideCommand.run({
+    args,
+    config: { environment: { home: "/home/ada", workingFolder: "/" } },
+    input: { readAll: () => Promise.reject(new Error("read standard input")) },
+    output,
+    now: new Date(),
+  });
+}
 
 describe("saveGuideCommand", () => {
+  test("accepts the command line that the zambil-save skill tells the agent to run", async () => {
+    const skill = saveSkillText({ repoRoot: "/home/ada/notes" });
+    const line = /`zambil save-guide(?<args>[^`]*)`/.exec(skill)?.groups?.args ?? "";
+    const args = line.trim().split(" ");
+    expect({ args, code: await runGuide(args) }).toEqual({
+      args: ["--repo", "/home/ada/notes"],
+      code: 0,
+    });
+  });
+
   test("prints the rules for writing a note", async () => {
     const printed: string[] = [];
     const output = {

@@ -1,5 +1,6 @@
 import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
+import { sharedOptions } from "../parse-command-args.ts";
 
 const guide = `Before you write a zambil note
 
@@ -37,10 +38,8 @@ To see if a note exists, run \`zambil list\`. Then save the when-expired note an
 --rewrite keeps the properties that the new text does not set. --verified records that the claims still hold: give it a new expires date: the date when its claims are likely to change next. It keeps the content.
 `;
 
-const guideOptions = { help: { type: "boolean", short: "h" } } as const;
-
 function runSaveGuide(options: CommandRunOptions): ExitCode {
-  const parsed = parseCommandArgs({ args: options.args, options: guideOptions });
+  const parsed = parseCommandArgs({ args: options.args, options: sharedOptions });
   if (!parsed.ok) {
     options.output.error(`${parsed.error}\n${saveGuideCommand.usage}\n`);
     return 2;
@@ -52,8 +51,14 @@ function runSaveGuide(options: CommandRunOptions): ExitCode {
 /** `zambil save-guide`: what an agent must know before it writes a note. */
 export const saveGuideCommand: Command = {
   summary: "Print what an agent must know before it writes a note.",
-  usage: "Usage: zambil save-guide",
-  details: "The zambil-save skill tells the agent to run it. It does not read the repo.",
+  usage: "Usage: zambil save-guide [--repo <path>]",
+  details: "The zambil-save skill tells the agent to run it.",
   audience: "agent",
+  options: [
+    {
+      flag: "--repo <path>",
+      text: "Accepted, so that the zambil-save skill can pass it. The guide is the same for every repo.",
+    },
+  ],
   run: runSaveGuide,
 };
