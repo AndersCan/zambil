@@ -46,10 +46,18 @@ async function runHook(args: string[], options: HookRunOptions) {
   return { code, ...printed };
 }
 
-/** A Claude Code folder whose settings run `zambil hook` at these hooks. */
-async function writeClaudeFolder(hookNames: string[]): Promise<string> {
+interface ClaudeFolderOptions {
+  matchers: Record<string, string>;
+}
+
+/** A Claude Code folder whose settings run `zambil hook` at these hooks, with these tool matchers. */
+async function writeClaudeFolder(
+  hookNames: string[],
+  options: ClaudeFolderOptions = { matchers: {} },
+): Promise<string> {
   const folder = await mkdtemp(join(tmpdir(), "zambil-claude-"));
-  const settings = installHooks({}, { command: "zambil hook", hookNames });
+  const { matchers } = options;
+  const settings = installHooks({}, { command: "zambil hook", hookNames, matchers });
   if (!settings.ok) throw new Error(settings.error);
   await writeFile(join(folder, "settings.json"), JSON.stringify(settings.value));
   return folder;
@@ -350,6 +358,25 @@ describe("hookCommand", () => {
       ["all", "shop"],
       ["all"],
       ["all"],
+    ]);
+  });
+
+  test("warns at session start when the matcher of a tool hook leaves out a tool that a note needs", async () => {
+    const repo = await writeTestRepo({
+      "style.md": "---\nhooks: PreToolUse\ntools: [Bash, Edit]\n---\nStyle.\n",
+    });
+    const hookNames = ["SessionStart", "UserPromptSubmit", "PreToolUse", "SubagentStart"];
+    const [narrow, wide] = await Promise.all([
+      writeClaudeFolder(hookNames, { matchers: { PreToolUse: "Bash" } }),
+      writeClaudeFolder(hookNames, { matchers: { PreToolUse: "Bash|Edit|Read" } }),
+    ]);
+    const results = await Promise.all([
+      runHook([], { stdin: sessionStart, repo, claudeConfigFolder: narrow }),
+      runHook([], { stdin: sessionStart, repo, claudeConfigFolder: wide }),
+    ]);
+    expect(results.map((result) => result.stdout)).toEqual([
+      `${JSON.stringify({ systemMessage: "zambil: Some notes for PreToolUse do not reach the agent, because the zambil hook there runs only for some tools. Run zambil doctor to see the fix." })}\n`,
+      "",
     ]);
   });
 });

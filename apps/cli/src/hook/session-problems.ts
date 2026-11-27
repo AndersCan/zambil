@@ -1,9 +1,10 @@
+import { isMatchedHook, matcherCovers, toolMatchers } from "@zambil/claude-code/tool-matchers";
+import { listZambilHooks, listZambilMatchers } from "@zambil/claude-code/settings-hooks";
 import { checkModel } from "@zambil/embed/check-search-files";
 import type { CliConfig } from "../config.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import type { HookList } from "@zambil/claude-code/hook-list";
 import { hooksToInstall } from "@zambil/claude-code/hooks-to-install";
-import { listZambilHooks } from "@zambil/claude-code/settings-hooks";
 import type { ModelState } from "@zambil/embed/check-search-files";
 import type { Note } from "@zambil/core/note";
 import { readSettings } from "../install/settings-file.ts";
@@ -23,6 +24,30 @@ function needsModel(repo: ConfigurationRepo, options: SessionProblemsOptions): P
 }
 
 const subagentStart = "SubagentStart";
+
+interface NarrowHooksOptions {
+  notes: Note[];
+  installed: Record<string, string | undefined>;
+}
+
+/** The installed tool hooks whose matcher leaves out a tool that a note needs. */
+function narrowHooks(expected: string[], options: NarrowHooksOptions): string[] {
+  const needed = toolMatchers(options.notes, { hookNames: expected });
+  const narrow: string[] = [];
+  for (const [hook, matcher] of Object.entries(options.installed)) {
+    const isNeeded = isMatchedHook(hook) && expected.includes(hook);
+    if (isNeeded && !matcherCovers(matcher, { needed: needed[hook] })) narrow.push(hook);
+  }
+  return narrow;
+}
+
+function narrowHookProblems(narrow: string[]): string[] {
+  if (narrow.length === 0) return [];
+  const names = narrow.join(", ");
+  return [
+    `Some notes for ${names} do not reach the agent, because the zambil hook there runs only for some tools.`,
+  ];
+}
 
 interface MissingHookOptions {
   notes: Note[];
@@ -75,6 +100,11 @@ export async function findSessionProblems(
       (hook) => hook !== options.hookEventName && hooks.value[hook] === undefined,
     );
     problems.push(...missingHookProblems(missing, { notes: repo.notes }));
+    const installed = settings.ok ? listZambilMatchers(settings.value) : settings;
+    if (installed.ok) {
+      const narrow = narrowHooks(expected, { notes: repo.notes, installed: installed.value });
+      problems.push(...narrowHookProblems(narrow));
+    }
   }
   if (model === "missing") problems.push("Similar notes are off, because the model is missing.");
   return problems;

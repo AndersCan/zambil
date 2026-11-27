@@ -19,7 +19,8 @@
     "./save-skill": "./src/install/save-skill.ts",
     "./session-notes": "./src/session/session-notes.ts",
     "./settings-hooks": "./src/install/settings-hooks.ts",
-    "./shown-notes": "./src/session/shown-notes.ts"
+    "./shown-notes": "./src/session/shown-notes.ts",
+    "./tool-matchers": "./src/install/tool-matchers.ts"
   },
   "dependencies": {
     "@zambil/core": "workspace:*",

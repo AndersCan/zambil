@@ -14,6 +14,7 @@ import { loadHookList } from "@zambil/claude-code/load-hook-list";
 import type { Note } from "@zambil/core/note";
 import type { SaveResult } from "./settings-file.ts";
 import { saveSkillText } from "@zambil/claude-code/save-skill";
+import { toolMatchers } from "@zambil/claude-code/tool-matchers";
 
 /** `offline` skips the hook list from the Claude Code docs and the model download. */
 export type NetworkMode = "online" | "offline";
@@ -107,6 +108,18 @@ function skippedHooks(notes: Note[], options: SkippedHooksOptions): string[] {
   return [...skipped];
 }
 
+interface DescribeHookOptions {
+  matchers: Record<string, string>;
+}
+
+/** A hook with a matcher names its tools, for example `PreToolUse (Bash, Edit)`. */
+function describeHook(hook: string, options: DescribeHookOptions): string {
+  const matcher = options.matchers[hook];
+  if (matcher === undefined) return hook;
+  const tools = matcher.split("|").join(", ");
+  return `${hook} (${tools})`;
+}
+
 interface InstallHandlersOptions {
   zambilPath: string;
   run: CommandRunOptions;
@@ -119,14 +132,16 @@ async function installHandlers(
   const { config, output } = options.run;
   const { list } = loadHookList(config.environment);
   const hookNames = hooksToInstall(repo.notes, { hookList: list });
+  const matchers = toolMatchers(repo.notes, { hookNames });
   const { zambilPath } = options;
   const command = await installHookCommand(repo.root, { config, zambilPath });
   const path = settingsPath(config);
   const saved = await changeSettings(path, {
-    change: (settings) => installHooks(settings, { command, hookNames }),
+    change: (settings) => installHooks(settings, { command, hookNames, matchers }),
   });
   if (!saved.ok) return left(`zambil changed nothing in ${path}: ${saved.error}`);
-  const hookText = hookNames.join(", ");
+  const described = hookNames.map((hook) => describeHook(hook, { matchers }));
+  const hookText = described.join(", ");
   const hooks = `the zambil hooks (${hookText})`;
   const hooksMessage = describeSave(saved.value, {
     changed: `Installed ${hooks} in ${path}.`,

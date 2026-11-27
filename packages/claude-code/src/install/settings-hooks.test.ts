@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vite-plus/test";
-import { installHooks, listZambilHooks, uninstallHooks } from "./settings-hooks.ts";
+import {
+  installHooks,
+  listZambilHooks,
+  listZambilMatchers,
+  uninstallHooks,
+} from "./settings-hooks.ts";
 
 const command =
   "NODE_COMPILE_CACHE=/home/ada/.cache/zambil/node-compile-cache /home/ada/.local/bin/zambil hook --repo /home/ada/notes";
@@ -95,6 +100,74 @@ describe("installHooks", () => {
         value: { hooks: { Stop: [{ hooks: [zambil, lint] }], PreToolUse: [{ hooks: [zambil] }] } },
       },
     ]);
+  });
+
+  test("writes the matcher of a tool hook, and keeps the place and fields of the handler when the matcher changes", () => {
+    const hookNames = ["PreToolUse", "Stop"];
+    const narrow = installHooks(settings, {
+      command,
+      hookNames,
+      matchers: { PreToolUse: "Bash|Edit" },
+    });
+    if (!narrow.ok) throw new Error(narrow.error);
+    const again = installHooks(narrow.value, {
+      command,
+      hookNames,
+      matchers: { PreToolUse: "Bash|Edit" },
+    });
+    const wider = installHooks(narrow.value, { command, hookNames });
+    if (!wider.ok) throw new Error(wider.error);
+    const custom = { ...zambil, timeout: 30, statusMessage: "zambil notes" };
+    const tuned = { hooks: { PreToolUse: [{ matcher: "Bash", hooks: [lint, custom] }] } };
+    const moved = installHooks(tuned, {
+      command,
+      hookNames: ["PreToolUse"],
+      matchers: { PreToolUse: "Bash|Edit" },
+    });
+    expect({
+      narrow: narrow.value.hooks,
+      again: again.ok && again.value.hooks,
+      wider: wider.value.hooks,
+      matchers: [listZambilMatchers(narrow.value), listZambilMatchers(wider.value)],
+      moved,
+    }).toEqual({
+      narrow: {
+        PreToolUse: [
+          { matcher: "Bash", hooks: [lint] },
+          { matcher: "Bash|Edit", hooks: [zambil] },
+        ],
+        Stop: [{ hooks: [lint, zambil] }],
+        SessionEnd: [],
+      },
+      again: {
+        PreToolUse: [
+          { matcher: "Bash", hooks: [lint] },
+          { matcher: "Bash|Edit", hooks: [zambil] },
+        ],
+        Stop: [{ hooks: [lint, zambil] }],
+        SessionEnd: [],
+      },
+      wider: {
+        PreToolUse: [{ matcher: "Bash", hooks: [lint] }, { hooks: [zambil] }],
+        Stop: [{ hooks: [lint, zambil] }],
+        SessionEnd: [],
+      },
+      matchers: [
+        { ok: true, value: { PreToolUse: "Bash|Edit", Stop: undefined } },
+        { ok: true, value: { PreToolUse: undefined, Stop: undefined } },
+      ],
+      moved: {
+        ok: true,
+        value: {
+          hooks: {
+            PreToolUse: [
+              { matcher: "Bash", hooks: [lint] },
+              { matcher: "Bash|Edit", hooks: [custom] },
+            ],
+          },
+        },
+      },
+    });
   });
 
   test("refuses settings whose hooks it cannot read", () => {

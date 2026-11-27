@@ -131,7 +131,9 @@ The first part runs when `zambil` is gone, for example after the clone moved. Wi
 
 `zambil` starts with `#!/usr/bin/env node`, and Claude Code can start without `node` on its `PATH`, for example when a version manager adds `node` only in the profile of your shell. So the command puts two folders first on the `PATH`: the folder of the `node` that your shell finds, and the folder of the file that it links to. The first one stays valid when Homebrew, asdf, Volta or the shims of mise change the version. If the folder itself is a link that lives only as long as one shell, as with fnm, zambil uses only the second one. The folders of nvm and of `mise activate` hold one version, so they go stale when you remove that version. Then the `PATH` of Claude Code still applies. Run `zambil install` again after you change the version of Node.
 
-`NODE_COMPILE_CACHE` lets Node keep the compiled code between runs. It must be set before Node starts. With the full path of `zambil`, the hook does not depend on the `PATH` of Claude Code to find `zambil`. The full path of the repo makes it work from every project folder. `--repo` comes after `hook`, because `zambil --repo <path> hook` is a usage error that exits with 2, and Claude Code then blocks the event. The handler has no `matcher`, because zambil filters by the `tools` of each note. Its `timeout` is 10 seconds.
+`NODE_COMPILE_CACHE` lets Node keep the compiled code between runs. It must be set before Node starts. With the full path of `zambil`, the hook does not depend on the `PATH` of Claude Code to find `zambil`. The full path of the repo makes it work from every project folder. `--repo` comes after `hook`, because `zambil --repo <path> hook` is a usage error that exits with 2, and Claude Code then blocks the event. Its `timeout` is 10 seconds.
+
+At `PreToolUse`, `PostToolUse` and `PostToolUseFailure`, Claude Code starts the handler only for the tools in its `matcher`. Each start of `zambil hook` costs 40 ms to 150 ms. So when each note on such a hook has a `tools` property, the handler gets a `matcher` with all of those tools, for example `Bash|Edit`. If one note on the hook has no `tools`, the handler has no matcher and runs for every tool. A tool name with a character other than a letter, a digit, `_` or `-` also gives no matcher, because Claude Code reads such a matcher as a pattern. `PostToolBatch` never gets a matcher. zambil still filters by `tools` itself. After a note changes its `tools`, run `zambil install` again. `zambil doctor` reports a matcher that differs from what install writes now.
 
 zambil knows its handlers by the words `zambil hook` in the command. `zambil uninstall` removes each such handler and the `zambil-save` skill. If zambil emptied an event or the `hooks` object, it removes that too. It keeps an event that was empty before.
 
@@ -152,6 +154,7 @@ At `SessionStart`, the hook also checks the setup and warns the user in one shor
 - zambil cannot find or read the notes folder, for example after you moved it.
 - A note names a hook that has no zambil handler in the user settings, for example after a new note. If the user settings have no zambil handler at all, the hook runs from other settings, such as those of a project, and this case gives no warning.
 - A note names `SessionStart`, but the user settings have no zambil handler at `SubagentStart`, so subagents do not get it. An install from before zambil added `SessionStart` notes to subagents has this problem.
+- The `matcher` of a zambil handler leaves out a tool that a note names, for example after a note added `Edit` to its `tools`.
 - zambil cannot read the user settings of Claude Code.
 - A note has a description, but the model for similar notes is missing.
 

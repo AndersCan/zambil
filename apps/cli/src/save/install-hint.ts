@@ -1,8 +1,9 @@
+import { listZambilHooks, listZambilMatchers } from "@zambil/claude-code/settings-hooks";
 import type { CliConfig } from "../config.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import { hooksToInstall } from "@zambil/claude-code/hooks-to-install";
-import { listZambilHooks } from "@zambil/claude-code/settings-hooks";
 import { loadHookList } from "@zambil/claude-code/load-hook-list";
+import { matcherCovers } from "@zambil/claude-code/tool-matchers";
 import type { Note } from "@zambil/core/note";
 import { parseHookCommand } from "../doctor/parse-hook-command.ts";
 import { readSettings } from "../install/settings-file.ts";
@@ -35,16 +36,21 @@ export async function installHint(
   const commands = Object.values(installed.value).flat();
   const servesRepo = commands.some((command) => parseHookCommand(command).repoRoot === repo.root);
   if (!servesRepo) return undefined;
+  const listed = settings.ok ? listZambilMatchers(settings.value) : settings;
+  const matchers = listed.ok ? listed.value : {};
+  const needed = note.tools.length === 0 ? undefined : note.tools.join("|");
   const missing: string[] = [];
   for (const hook of note.hooks) {
-    const isMissing = expected.includes(hook) && !Object.hasOwn(installed.value, hook);
+    const isInstalled = Object.hasOwn(installed.value, hook);
+    const isNarrow = isInstalled && !matcherCovers(matchers[hook], { needed });
+    const isMissing = expected.includes(hook) && (!isInstalled || isNarrow);
     if (isMissing) missing.push(hook);
   }
   if (missing.length === 0) return undefined;
   const names = missing.join(", ");
   const install = zambilCommand("install", { repoFlag: options.repoFlag });
   return [
-    `The note names ${names}, but the zambil hooks in ${path} do not run there yet.`,
+    `The note names ${names}, but the zambil hooks in ${path} do not run there yet for this note.`,
     `To connect it, the user runs: ${install}`,
     "Then the note reaches the agent from the next Claude Code session on.",
   ].join("\n");
