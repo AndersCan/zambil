@@ -91,16 +91,17 @@ Quote every path. Use `set -euo pipefail` in scripts.
 
 These commands help you work with the notes:
 
-| Command                | What it does                                                    |
-| ---------------------- | --------------------------------------------------------------- |
-| `zambil list`          | Lists every note with its kind, path and description.           |
-| `zambil check`         | Reports invalid notes and hook names that zambil never answers. |
-| `zambil show <name>`   | Prints a note as the agent gets it.                             |
-| `zambil search <text>` | Lists the notes with a description that is similar to the text. |
-| `zambil index`         | Indexes the descriptions again, so that the search is fast.     |
-| `zambil save <name>`   | Writes a note from standard input. The agent uses it.           |
-| `zambil install`       | Installs the hooks and the skill in Claude Code.                |
-| `zambil uninstall`     | Removes them.                                                   |
+| Command                | What it does                                                           |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `zambil list`          | Lists every note with its kind, path and description.                  |
+| `zambil check`         | Reports invalid notes and hook names that zambil never answers.        |
+| `zambil doctor`        | Checks the whole setup and prints the command that fixes each problem. |
+| `zambil show <name>`   | Prints a note as the agent gets it.                                    |
+| `zambil search <text>` | Lists the notes with a description that is similar to the text.        |
+| `zambil index`         | Indexes the descriptions again, so that the search is fast.            |
+| `zambil save <name>`   | Writes a note from standard input. The agent uses it.                  |
+| `zambil install`       | Installs the hooks and the skill in Claude Code.                       |
+| `zambil uninstall`     | Removes them.                                                          |
 
 To write a note with the agent, ask for it in a prompt, for example `Write a note that we use pnpm, never npm`. The agent uses the `zambil-save` skill. It chooses a name, an expiry and a description, and saves the note with `zambil save`. It writes a note only on your request.
 
