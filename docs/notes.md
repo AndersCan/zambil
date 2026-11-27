@@ -258,6 +258,10 @@ The core names no agent tool. The caller passes a `RenderWording` with three fun
 
 `zambil show` exits with 1 when the name, the heading or the block does not resolve. For an expired note it exits with 0, because the warning is the answer.
 
+## Claude Code
+
+`packages/claude-code` is the adapter for Claude Code, and `zambil hook` runs it. At each hook, it adds the current notes whose `hooks` name that hook, filtered by `tools` at a tool hook. At `UserPromptSubmit`, it also adds each note that the prompt names with `z:<name>`. Its README describes the rules, the `z:<name>` syntax and the hook configuration.
+
 ## The core library
 
 Later features import from `@zambil/core`. Each export is one file. A new export gets its own line in this list, in alphabetical order:
