@@ -8,28 +8,33 @@ export interface NoteIndex {
 }
 
 /** The version of the index file. A file with another version is ignored and rebuilt. */
-export const indexFormat = 1;
+export const indexFormat = 2;
 
 function unsafeParseJson(text: string): unknown {
   return JSON.parse(text);
 }
 
-function decodeVector(base64: string): Float32Array {
+function decodeVector(base64: string): Float32Array | undefined {
   const bytes = Buffer.from(base64, "base64");
-  return new Float32Array(
-    bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
-  );
+  if (bytes.byteLength % Float32Array.BYTES_PER_ELEMENT !== 0) return undefined;
+  const start = bytes.byteOffset;
+  return new Float32Array(bytes.buffer.slice(start, start + bytes.byteLength));
 }
 
+/** Every vector, or `undefined` when an entry is not a description and a vector of the same length as the others. */
 function readEntries(entries: unknown): Map<string, Float32Array> | undefined {
   if (!Array.isArray(entries)) return undefined;
   const vectors = new Map<string, Float32Array>();
+  let dimensions: number | undefined;
   for (const entry of entries) {
-    const record = asRecord(entry);
-    const { description, vector } = record ?? {};
+    const { description, vector } = asRecord(entry) ?? {};
     const isEntry = typeof description === "string" && typeof vector === "string";
     if (!isEntry) return undefined;
-    vectors.set(description, decodeVector(vector));
+    const decoded = decodeVector(vector);
+    if (decoded === undefined) return undefined;
+    dimensions ??= decoded.length;
+    if (decoded.length !== dimensions) return undefined;
+    vectors.set(description, decoded);
   }
   return vectors;
 }

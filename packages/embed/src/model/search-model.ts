@@ -25,7 +25,7 @@ export const searchModel: EmbeddingModel = {
 };
 
 /**
- * The lowest score that counts as a match. It is just above the best score of a wrong note in every
+ * The lowest score that counts as a match. It is 0.02 above the best score of a wrong note in every
  * prose case, because a false match costs more than a miss: the agent reads each match.
  */
 export const minimumScore = 0.42;

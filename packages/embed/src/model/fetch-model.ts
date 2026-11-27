@@ -1,8 +1,8 @@
 import { basename, dirname, join } from "node:path";
+import { createHash, randomUUID } from "node:crypto";
 import type { EmbeddingModel, ModelFile } from "./embedding-model.ts";
 import { left, right, wrap } from "@zambil/core/either";
 import { mkdir, rename, writeFile } from "node:fs/promises";
-import { createHash } from "node:crypto";
 import type { Either } from "@zambil/core/either";
 import { statSync } from "node:fs";
 
@@ -17,6 +17,9 @@ export interface FetchModelOptions {
   cacheFolder: string;
   report: (message: string) => void;
 }
+
+/** The longest time that one model file can take to download, in milliseconds. */
+const downloadTimeout = 600_000;
 
 function sizeOf(path: string): number | undefined {
   return statSync(path, { throwIfNoEntry: false })?.size;
@@ -49,8 +52,13 @@ async function download(
 ): Promise<Either<string, string>> {
   const { file, target } = options;
   const url = `https://huggingface.co/${model.repository}/resolve/${model.revision}/${file.path}`;
-  const response = await wrap(fetch(url));
-  if (!response.ok) return left(`cannot download ${url}: ${describe(response.error)}`);
+  const response = await wrap(fetch(url, { signal: AbortSignal.timeout(downloadTimeout) }));
+  if (!response.ok) {
+    const reason = describe(response.error);
+    return left(
+      `cannot download ${url}: ${reason}. Check the connection to huggingface.co and run the command again.`,
+    );
+  }
   if (!response.value.ok) return left(`cannot download ${url}: HTTP ${response.value.status}`);
   const body = await wrap(response.value.arrayBuffer());
   if (!body.ok) return left(`cannot download ${url}: ${describe(body.error)}`);
@@ -62,7 +70,7 @@ async function download(
       `${url} has ${bytes.byteLength} bytes with SHA-256 ${sha256}, not ${file.bytes} bytes with ${file.sha256}`,
     );
   }
-  const partial = `${target}.${process.pid}.partial`;
+  const partial = `${target}.${randomUUID()}.partial`;
   const written = await wrap(
     mkdir(dirname(target), { recursive: true }).then(() => writeFile(partial, bytes)),
   );

@@ -42,21 +42,15 @@ async function runSearch(options: CommandRunOptions): Promise<ExitCode> {
     output.error(`${repo.error}\n`);
     return 2;
   }
-  const { cacheFolder } = await import("@zambil/embed/cache-folder");
-  const { openEmbedder } = await import("@zambil/embed/open-embedder");
-  const { searchModel } = await import("@zambil/embed/search-model");
-  const { searchNotes } = await import("@zambil/embed/search-notes");
-  const folder = cacheFolder(options.config.environment);
-  const embedder = await openEmbedder(searchModel, {
-    cacheFolder: folder,
+  const { openNoteSearch } = await import("@zambil/embed/open-note-search");
+  const noteSearch = await openNoteSearch(options.config.environment, {
     report: (message) => output.error(`${message}\n`),
   });
-  if (!embedder.ok) {
-    output.error(`zambil cannot load its model: ${embedder.error}\n`);
+  if (!noteSearch.ok) {
+    output.error(`zambil cannot load its model: ${noteSearch.error}\n`);
     return 1;
   }
-  const searchOptions = { text, now: options.now, embedder: embedder.value, cacheFolder: folder };
-  const result = await searchNotes(repo.value, searchOptions);
+  const result = await noteSearch.value.search(repo.value, { text, now: options.now });
   if (!result.ok) {
     output.error(`zambil cannot search the notes: ${result.error}\n`);
     return 1;
@@ -65,9 +59,8 @@ async function runSearch(options: CommandRunOptions): Promise<ExitCode> {
   output.write(matches.length === 0 ? "No note matches.\n" : `${formatMatches(matches)}\n`);
   if (unindexed > 0) {
     const hint = indexHint(flag);
-    output.error(
-      `${unindexed} descriptions are not in the index. Run \`${hint}\` to make search faster.\n`,
-    );
+    const count = unindexed === 1 ? "1 description is" : `${unindexed} descriptions are`;
+    output.error(`${count} not in the index. Run \`${hint}\` to make search faster.\n`);
   }
   return 0;
 }

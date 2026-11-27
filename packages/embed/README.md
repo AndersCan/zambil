@@ -10,6 +10,8 @@ zambil uses all-MiniLM-L6-v2, quantized to 8 bits (23 MB), from the `Xenova/all-
 
 zambil downloads the model the first time that it needs it. It does not use a model that is already on the machine. The files go to `$XDG_CACHE_HOME/zambil/models/`. If `XDG_CACHE_HOME` is not set, the folder is `~/.cache/zambil/models/`. A download is written to a temporary file first. zambil gives it its final name only after the size and the SHA-256 match the pins. So a file in the cache is always complete. If a download fails, the command stops with an error and keeps no file.
 
+ONNX Runtime also writes a small `Microsoft/DeveloperTools` folder in `$XDG_CACHE_HOME`, outside the `zambil` folder.
+
 The `onnxruntime-node` package has prebuilt binaries for Linux (x64, arm64), macOS (arm64) and Windows. Its install script only adds GPU support, so `pnpm-workspace.yaml` skips that script.
 
 ## Index and search
@@ -18,28 +20,21 @@ The `onnxruntime-node` package has prebuilt binaries for Linux (x64, arm64), mac
 
 `zambil search` loads the repo, leaves out each expired note, and scores the description of each other note against the text. The score is the cosine similarity, from -1 to 1. It returns at most 3 notes that score 0.42 or more, best first. It checks expiry each time it runs, never in the index, so a note that expires after `zambil index` is left out at once. If a description is not in the index, search embeds it at query time. The result is the same, only slower, and the command tells you to run `zambil index`.
 
+The model embeds one text at a time. The 8-bit model scales its numbers over a whole batch, so a text in a batch of 16 gets a vector that differs by up to 0.035 in score. One text at a time gives each description one vector, with or without an index.
+
 ## Use it from another package
 
 An adapter, such as the later Claude Code adapter, loads the model once and then searches:
 
 ```ts
-import { cacheFolder } from "@zambil/embed/cache-folder";
-import { openEmbedder } from "@zambil/embed/open-embedder";
-import { searchModel } from "@zambil/embed/search-model";
-import { searchNotes } from "@zambil/embed/search-notes";
+import { openNoteSearch } from "@zambil/embed/open-note-search";
 
-const folder = cacheFolder(environment);
-const embedder = await openEmbedder(searchModel, { cacheFolder: folder, report: console.error });
-if (!embedder.ok) return embedder;
-const result = await searchNotes(repo, {
-  text: prompt,
-  now: new Date(),
-  embedder: embedder.value,
-  cacheFolder: folder,
-});
+const noteSearch = await openNoteSearch(environment, { report: console.error });
+if (!noteSearch.ok) return noteSearch;
+const result = await noteSearch.value.search(repo, { text: prompt, now: new Date() });
 ```
 
-`environment` is the `UserEnvironment` from `@zambil/core/locate-repo`, and `repo` comes from `loadRepo`. `result.value.matches` holds each matching note with its score. `report` gets a message before each download.
+`environment` is the `UserEnvironment` from `@zambil/core/locate-repo`, and `repo` comes from `loadRepo`. `result.value.matches` holds each matching note with its score. `report` gets a message before each download. `noteSearch.value.index(repo)` does what `zambil index` does. `openNoteSearch` uses the model, the threshold and the cache folder that belong together, so a caller cannot mix them.
 
 ## How the model was chosen
 
@@ -47,12 +42,12 @@ const result = await searchNotes(repo, {
 
 These are the results:
 
-- all-MiniLM-L6-v2 and bge-small-en-v1.5 put the right note first in 20 of 21 cases.
-- A false match costs more than a miss, because the next step adds each match to every prompt. So the threshold must be above the score of every wrong note. At that threshold, all-MiniLM-L6-v2 finds 9 of 21 notes, and bge-small-en-v1.5 finds 13 of 21.
-- all-MiniLM-L6-v2 is faster. It loads in 52 ms, against 81 ms. A 300-word prompt takes 64 ms, against 78 ms.
+- bge-small-en-v1.5 puts the right note first in 21 of 21 cases, and all-MiniLM-L6-v2 in 20 of 21.
+- A false match costs more than a miss, because the next step adds each match to every prompt. So the threshold must be above the score of every wrong note. At that threshold, all-MiniLM-L6-v2 finds 9 of 21 notes, and bge-small-en-v1.5 finds 12 of 21.
+- all-MiniLM-L6-v2 is faster. It loads in 53 ms, against 82 ms. A 300-word prompt takes 21 ms, against 80 ms.
 - The 32-bit version of all-MiniLM-L6-v2 gives the same scores. It is four times as large and loads more slowly.
 
-zambil uses all-MiniLM-L6-v2. bge-small-en-v1.5 finds more notes, but the difference is 4 cases out of 21. When a better result is not clear, speed wins. The threshold is 0.42. It is the lowest step of 0.01 above the highest wrong score, 0.415. "iterating" puts the for-loops note first, but its score is 0.369, so it is a miss. The threshold comes from 33 cases, so a new kind of note can need a new measurement.
+zambil uses all-MiniLM-L6-v2. bge-small-en-v1.5 finds more notes, but the difference is 3 cases out of 21. When a better result is not clear, speed wins. The highest score of a wrong note is 0.402, for the migrations note on "where do I keep the database password". The threshold is 0.42, one step of 0.01 above the lowest safe value, 0.41. It finds the same 9 notes as 0.41 and keeps a small margin. "iterating" puts the for-loops note first, but its score is 0.347, so it is a miss. The threshold comes from 33 cases, so a new kind of note can need a new measurement.
 
 The script times a model in a new Node process. A busy moment on the machine slows every model in the same way, because the runs go in rounds. Run the script again after you change the model, the tokenizer or the cases:
 
@@ -66,7 +61,7 @@ A reranker is a second model that reads the text and a note together and scores 
 
 ## No background process
 
-The whole `zambil search` command takes 144 ms, from the start of the process to its exit. Loading the model is 52 ms of that, and embedding one query is 2 ms. A background process that keeps the model loaded saves the model load, about 50 ms, for each prompt. That gain does not justify a process that the user must start and stop. If the Claude Code adapter turns out to be too slow on each prompt, measure it again before you add one.
+The whole `zambil search` command takes 149 ms, from the start of the process to its exit. Loading the model is 53 ms of that, and embedding one query is 5 ms or less. A background process that keeps the model loaded saves the model load, about 50 ms, for each prompt. That gain does not justify a process that the user must start and stop. If the Claude Code adapter turns out to be too slow on each prompt, measure it again before you add one.
 
 ## Tests
 

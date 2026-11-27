@@ -23,8 +23,12 @@ export interface Embedder {
   embed: (texts: string[], options: EmbedOptions) => Promise<Either<string, Float32Array[]>>;
 }
 
-/** How many texts go through the model at once while indexing. */
-const batchSize = 16;
+/**
+ * How many texts go through the model at once. The 8-bit model scales its numbers over the whole
+ * batch, so a text in a batch gets a slightly different vector than the same text alone. One text at
+ * a time gives each description one vector, with or without an index.
+ */
+const batchSize = 1;
 
 interface LoadedModel {
   model: EmbeddingModel;

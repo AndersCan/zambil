@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
+import { mkdtemp, rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
-import { mkdtemp } from "node:fs/promises";
 import { searchCommand } from "./search-command.ts";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
@@ -13,17 +13,16 @@ const proseRepo = fileURLToPath(
 
 describe("zambil search", () => {
   test("indexes and searches the prose repo from a fresh cache", { timeout: 120_000 }, async () => {
-    const env = {
-      ...process.env,
-      XDG_CACHE_HOME: await mkdtemp(join(tmpdir(), "zambil-fresh-cache-")),
-    };
+    const freshCache = await mkdtemp(join(tmpdir(), "zambil-fresh-cache-"));
+    const env = { ...process.env, XDG_CACHE_HOME: freshCache };
     function zambil(args: string[]) {
       const run = spawnSync(main, [...args, "--repo", proseRepo], { encoding: "utf8", env });
       return { code: run.status, stdout: run.stdout };
     }
     const indexed = zambil(["index"]);
-    const found = zambil(["search", "my", "branch", "is", "behind", "main"]);
+    const found = zambil(["search", "help", "me", "with", "my", "branch"]);
     const expired = zambil(["search", "what day is it"]);
+    await rm(freshCache, { recursive: true, force: true });
     expect({
       indexed: indexed.stdout.startsWith("Indexed 20 descriptions, 20 of them new"),
       found,
@@ -34,7 +33,7 @@ describe("zambil search", () => {
         code: 0,
         stdout: [
           "SCORE  NAME    PATH           DESCRIPTION",
-          "0.60   rebase  git/rebase.md  How to rebase a branch onto main and resolve conflicts.",
+          "0.58   rebase  git/rebase.md  How to rebase a branch onto main and resolve conflicts.",
           "",
         ].join("\n"),
       },

@@ -1,8 +1,8 @@
+import { createHash, randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
 import { formatNoteIndex, parseNoteIndex } from "./parse-note-index.ts";
 import { left, right, wrap } from "@zambil/core/either";
 import { mkdir, rename, writeFile } from "node:fs/promises";
-import { createHash } from "node:crypto";
 import type { Either } from "@zambil/core/either";
 import type { NoteIndex } from "./parse-note-index.ts";
 import { readFileSync } from "node:fs";
@@ -51,7 +51,7 @@ export async function writeNoteIndex(
   options: WriteNoteIndexOptions,
 ): Promise<Either<string, string>> {
   const path = noteIndexPath(index.root, options);
-  const partial = `${path}.${process.pid}.partial`;
+  const partial = `${path}.${randomUUID()}.partial`;
   const written = await wrap(
     mkdir(dirname(path), { recursive: true }).then(() =>
       writeFile(partial, formatNoteIndex(index)),

@@ -4,12 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./cache-folder": "./src/model/cache-folder.ts",
-    "./index-notes": "./src/index/index-notes.ts",
-    "./open-embedder": "./src/embed/open-embedder.ts",
+    "./open-note-search": "./src/search/open-note-search.ts",
     "./score-notes": "./src/search/score-notes.ts",
-    "./search-model": "./src/model/search-model.ts",
-    "./search-notes": "./src/search/search-notes.ts"
+    "./search-model": "./src/model/search-model.ts"
   },
   "dependencies": {
     "@zambil/core": "workspace:*",

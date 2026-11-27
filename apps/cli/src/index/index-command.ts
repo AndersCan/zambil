@@ -15,20 +15,15 @@ async function runIndex(options: CommandRunOptions): Promise<ExitCode> {
     output.error(`${repo.error}\n`);
     return 2;
   }
-  const { cacheFolder } = await import("@zambil/embed/cache-folder");
-  const { indexNotes } = await import("@zambil/embed/index-notes");
-  const { openEmbedder } = await import("@zambil/embed/open-embedder");
-  const { searchModel } = await import("@zambil/embed/search-model");
-  const folder = cacheFolder(options.config.environment);
-  const embedder = await openEmbedder(searchModel, {
-    cacheFolder: folder,
+  const { openNoteSearch } = await import("@zambil/embed/open-note-search");
+  const noteSearch = await openNoteSearch(options.config.environment, {
     report: (message) => output.error(`${message}\n`),
   });
-  if (!embedder.ok) {
-    output.error(`zambil cannot load its model: ${embedder.error}\n`);
+  if (!noteSearch.ok) {
+    output.error(`zambil cannot load its model: ${noteSearch.error}\n`);
     return 1;
   }
-  const summary = await indexNotes(repo.value, { embedder: embedder.value, cacheFolder: folder });
+  const summary = await noteSearch.value.index(repo.value);
   if (!summary.ok) {
     output.error(`zambil cannot index the notes: ${summary.error}\n`);
     return 1;
