@@ -1,0 +1,12 @@
+{
+  "name": "@zambil/cli",
+  "version": "0.0.0",
+  "private": true,
+  "bin": {
+    "zambil": "./src/main.ts"
+  },
+  "type": "module",
+  "dependencies": {
+    "@zambil/core": "workspace:*"
+  }
+}
