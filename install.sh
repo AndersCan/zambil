@@ -34,7 +34,7 @@ tilde() {
 check_node() {
   if ! command -v node > /dev/null 2>&1; then
     fail "zambil needs Node $lowest_node_major or later, and node is not on your PATH." \
-      "Install Node $lowest_node_major or later from https://nodejs.org, then run this script again."
+      "Install Node $lowest_node_major or later from https://nodejs.org, then run the install command again."
   fi
   node_version=$(node --version)
   node_major=${node_version#v}
@@ -44,7 +44,7 @@ check_node() {
   esac
   if [ "$node_major" -lt "$lowest_node_major" ]; then
     fail "zambil needs Node $lowest_node_major or later, and this is Node ${node_version#v}." \
-      "Install Node $lowest_node_major or later from https://nodejs.org, then run this script again."
+      "Install Node $lowest_node_major or later from https://nodejs.org, then run the install command again."
   fi
   if ! command -v npm > /dev/null 2>&1; then
     fail "zambil needs npm, and npm is not on your PATH. npm comes with Node from https://nodejs.org." \
@@ -55,7 +55,7 @@ check_node() {
 check_git() {
   if ! command -v git > /dev/null 2>&1; then
     fail "zambil needs git, and git is not on your PATH." \
-      "Install git from https://git-scm.com, then run this script again."
+      "Install git from https://git-scm.com, then run the install command again."
   fi
 }
 
@@ -67,11 +67,15 @@ check_link() {
       "$entry" | */apps/cli/src/main.ts) return ;;
     esac
     fail "$link already exists and points to $linked_to, not to zambil." \
-      "zambil did not change it. Remove it, or set ZAMBIL_BIN_DIR to another folder, then run this script again."
+      "zambil did not change it. Remove it, or set ZAMBIL_BIN_DIR to another folder, then run the install command again."
   fi
   if [ -e "$link" ]; then
     fail "$link already exists and is not a link to zambil." \
-      "zambil did not change it. Remove it, or set ZAMBIL_BIN_DIR to another folder, then run this script again."
+      "zambil did not change it. Remove it, or set ZAMBIL_BIN_DIR to another folder, then run the install command again."
+  fi
+  if ! mkdir -p "$bin_dir" 2> /dev/null || [ ! -w "$bin_dir" ]; then
+    fail "zambil cannot write to $bin_dir, so it cannot link zambil there." \
+      "Set ZAMBIL_BIN_DIR to a folder that you own and that is on your PATH, then run the install command again."
   fi
 }
 
@@ -79,7 +83,7 @@ clone() {
   say "Downloading zambil into $(tilde "$install_dir")."
   mkdir -p "$(dirname "$install_dir")"
   if ! git clone --quiet --branch "$git_ref" "$git_url" "$install_dir" < /dev/null; then
-    fail "zambil did not install. git printed the reason above. Run this script again."
+    fail "zambil did not install. git printed the reason above. Run the install command again."
   fi
   fresh=yes
 }
@@ -106,18 +110,18 @@ free_branch_name() {
 update() {
   if ! is_zambil_clone; then
     fail "$install_dir already exists and is not a clone of zambil." \
-      "zambil did not change it. Move it, or set ZAMBIL_HOME to another folder, then run this script again."
+      "zambil did not change it. Move it, or set ZAMBIL_HOME to another folder, then run the install command again."
   fi
   if [ -n "$(git -C "$install_dir" status --porcelain --untracked-files=no)" ]; then
     fail "zambil did not update, because the clone in $install_dir has local changes. To put them aside, run:" "" \
       "  git -C \"$install_dir\" stash" "" \
-      "Then run this script again. After the update, \`git -C \"$install_dir\" stash pop\` brings the changes back."
+      "Then run the install command again. After the update, \`git -C \"$install_dir\" stash pop\` brings the changes back."
   fi
   branch=$(git -C "$install_dir" symbolic-ref --quiet --short HEAD || true)
   if [ "$branch" != "$git_ref" ]; then
     fail "zambil did not update, because the clone in $install_dir is not on the branch $git_ref. To go back to it, run:" "" \
       "  git -C \"$install_dir\" switch $git_ref" "" \
-      "Then run this script again."
+      "Then run the install command again."
   fi
   source_url=$git_url
   source=$git_url
@@ -127,15 +131,15 @@ update() {
   fi
   say "Updating zambil in $(tilde "$install_dir") from $source_url."
   if ! git -C "$install_dir" fetch --quiet "$source" "$git_ref" < /dev/null; then
-    fail "zambil did not update. git printed the reason above, and the clone is as it was. Run this script again."
+    fail "zambil did not update. git printed the reason above, and the clone is as it was. Run the install command again."
   fi
   fetched=$(git -C "$install_dir" rev-parse FETCH_HEAD)
   if ! git -C "$install_dir" merge-base --is-ancestor HEAD "$fetched"; then
     keep_branch=$(free_branch_name)
-    fail "zambil did not update, because the branch $git_ref in $install_dir has commits that $source_url does not have." \
+    fail "zambil did not update, because the branch $git_ref in $(tilde "$install_dir") has commits that $source_url does not have." \
       "To keep them on the new branch $keep_branch and update, run:" "" \
       "  git -C \"$install_dir\" branch $keep_branch && git -C \"$install_dir\" reset --keep $fetched" "" \
-      "Then run this script again."
+      "Then run the install command again."
   fi
   before=$(git -C "$install_dir" rev-parse HEAD)
   if ! git -C "$install_dir" merge --quiet --ff-only "$fetched" < /dev/null; then
@@ -164,7 +168,7 @@ install_dependencies() {
     cat "$install_log" >&2
     rm -f "$install_log"
     fail "zambil cannot install its dependencies. npm or pnpm printed the reason above." \
-      "Until this script runs to the end, zambil can fail to start. Fix the problem, then run this script again."
+      "Until the install command runs to the end, zambil can fail to start. Fix the problem, then run the install command again."
   fi
   rm -f "$install_log"
 }
@@ -239,6 +243,7 @@ main() {
   check_git
   check_link
   if [ -e "$install_dir" ]; then update; else clone; fi
+  if [ ! -d "$install_dir/node_modules" ]; then fresh=yes; fi
   install_dependencies
   link_zambil
   report_path
