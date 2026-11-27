@@ -3,6 +3,13 @@ import { fileURLToPath } from "node:url";
 /** The repo that the prose cases search. `cache/today.md` in it is expired. */
 export const proseRepo = fileURLToPath(new URL("../../fixtures/prose-repo", import.meta.url));
 
+/** A case named by its last line when it has more lines, so that a report does not print a whole paste. */
+export function caseLabel(query: string): string {
+  const lines = query.split("\n");
+  const lastLine = lines.at(-1) ?? "";
+  return lines.length > 1 ? `(pasted text) ${lastLine}` : query;
+}
+
 /** A text a user could type, and the notes that may match it. An empty list means that no note may match. */
 export interface ProseCase {
   query: string;
@@ -21,7 +28,7 @@ export const shortMatchCases: ProseCase[] = [
   { query: "should this function throw?", expected: ["error-handling"] },
   { query: "add a test for this function", expected: ["unit-tests"] },
   { query: "the container does not start on my laptop", expected: ["docker"] },
-  { query: "which colour should this button have", expected: ["css-tokens"] },
+  { query: "which colour should this button have", expected: ["css-tokens", "colors"] },
   { query: "look at this PR before I merge it", expected: ["code-review"] },
   { query: "publish a new version of the library", expected: ["release"] },
   { query: "install the dependencies of a Python script", expected: ["virtual-environments"] },
@@ -317,12 +324,154 @@ export const laterNoMatchCases: ProseCase[] = [
   { query: "Count the lines of code in each folder of this repo.", expected: [] },
 ];
 
+function logLine(line: number): string {
+  const minute = String(line).padStart(2, "0");
+  const worker = line % 4;
+  const column = 120 + line;
+  return `2026-11-27T10:${minute}:01Z ERROR [worker-${worker}] TypeError: Cannot read properties of undefined (reading 'id') at handleRequest (/srv/app/dist/server.js:${column}:17)`;
+}
+
+/** Forty lines of a pasted error log, as a user pastes them before a question. */
+const pastedLog = Array.from({ length: 40 }, (_, line) => logLine(line)).join("\n");
+
+/** A query that a user pastes before a request. */
+const pastedQuery = [
+  "SELECT o.id, o.total, c.email",
+  "FROM orders o JOIN customers c ON c.id = o.customer_id",
+  "WHERE o.created_at > now() - interval '30 days'",
+  "ORDER BY o.total DESC;",
+].join("\n");
+
+/** The output of `kubectl get pods` that a user pastes before a request. */
+const pastedPods = [
+  "NAME                       READY   STATUS             RESTARTS   AGE",
+  "checkout-7d9f8b6c4-x2k9p   0/1     CrashLoopBackOff   12         40m",
+  "cart-5c8d7f9b8-q7w2e       1/1     Running            0          2d",
+].join("\n");
+
+/** A function that a user pastes before a question. */
+const pastedCode = [
+  "export function total(items) {",
+  "  let sum = 0;",
+  "  let index = 0;",
+  "  while (index < items.length) {",
+  "    sum += items[index].price;",
+  "    index++;",
+  "  }",
+  "  return sum;",
+  "}",
+].join("\n");
+
+/**
+ * Written when the repo grew from 20 to 50 notes. The first five are the task prompts that missed
+ * their note in a review of zambil. Four pasted texts end with the question or the request.
+ */
+export const fiftyNoteMatchCases: ProseCase[] = [
+  { query: "open a PR for this", expected: ["pull-requests"] },
+  { query: "I got paged, grafana is red, what do I do", expected: ["on-call", "monitoring"] },
+  { query: "the login endpoint returns 401 after a day, why?", expected: ["auth"] },
+  { query: "add a dark mode toggle to the settings page", expected: ["colors", "css-tokens"] },
+  { query: `${pastedLog}\n\nhow do I deploy the blog?`, expected: ["deploy-blog"] },
+  {
+    query: `${pastedCode}\n\nrewrite this so that it iterates in a cleaner way`,
+    expected: ["for-loops"],
+  },
+  { query: `${pastedQuery}\n\nthis query is slow, make it faster`, expected: ["sql-queries"] },
+  { query: `${pastedPods}\n\nrestart the checkout pod`, expected: ["kubernetes"] },
+  {
+    query: "kubectl says the checkout pod is in CrashLoopBackOff, restart it",
+    expected: ["kubernetes"],
+  },
+  {
+    query: "the tests in cart.spec.ts pass on my machine but fail every third run in CI",
+    expected: ["flaky-tests"],
+  },
+  {
+    query: "something between v1.4 and v1.6 broke the checkout total, find the commit that did it",
+    expected: ["git-bisect"],
+  },
+  { query: "add a Playwright test for the signup flow", expected: ["e2e-tests"] },
+  { query: "the product list query takes 4 seconds, make it faster", expected: ["sql-queries"] },
+  { query: "only show the new checkout to 10% of the users", expected: ["feature-flags"] },
+  {
+    query: "send the welcome email in the background so that signup returns at once",
+    expected: ["queues"],
+  },
+  { query: "let users upload a profile picture", expected: ["uploads"] },
+  { query: "we lost the orders table, bring it back from last night", expected: ["backups"] },
+  { query: "write up what happened during yesterday's outage", expected: ["incident-reports"] },
+  { query: "run the cleanup script every night at 3 am", expected: ["cron-jobs"] },
+  { query: "bump react to the latest version", expected: ["dependencies"] },
+  {
+    query: "the checkout page takes 8 seconds to load on a phone",
+    expected: ["web-performance"],
+  },
+  {
+    query: "one client hammers the API with requests, block it after too many calls",
+    expected: ["rate-limiting"],
+  },
+  { query: "how do I submit my hotel receipt from the conference?", expected: ["expenses"] },
+  { query: "I want to take Friday off", expected: ["time-off"] },
+  {
+    query: "fetch the three product lists at the same time instead of one after the other",
+    expected: ["async-await"],
+  },
+  { query: "add a page at /orders/:id that shows one order", expected: ["routing"] },
+  {
+    query: "where can I see the stack trace of the error that the customer hit?",
+    expected: ["error-tracking"],
+  },
+  {
+    query: "the price lookup hits the database on every request, keep the result for a minute",
+    expected: ["caching"],
+  },
+  {
+    query: "reject an order request when the quantity is not a positive number",
+    expected: ["input-validation"],
+  },
+  { query: "step through this function line by line in a debugger", expected: ["debugging"] },
+  {
+    query: "should I explain this regex in a comment?",
+    expected: ["comments", "regular-expressions"],
+  },
+  { query: "what do I call the branch for ticket ABC-77?", expected: ["branches"] },
+];
+
+/**
+ * Written with `fiftyNoteMatchCases`. Three pasted texts end with a reply that is about no note, and
+ * three short tasks end with a side remark.
+ */
+export const fiftyNoteNoMatchCases: ProseCase[] = [
+  { query: "Translate this paragraph to French.\n\nDeploy is not needed.", expected: [] },
+  { query: "Update the copy on the pricing page.\n\nThen commit it.", expected: [] },
+  { query: "Refactor the cart reducer.\n\nNo need to write tests.", expected: [] },
+  { query: `${pastedLog}\n\nthanks`, expected: [] },
+  { query: `${pastedCode}\n\nwhat does this do?`, expected: [] },
+  {
+    query: "Here is my plan.\n\n1. Add the field.\n2. Update the form.\n\nDoes it look fine?",
+    expected: [],
+  },
+  { query: "write a haiku about autumn", expected: [] },
+  { query: "what is 17 * 23?", expected: [] },
+  { query: "Make the table on the orders page sortable by date.", expected: [] },
+  { query: "Who won the football world cup in 2018?", expected: [] },
+  { query: "Write a function that checks if a string is a palindrome.", expected: [] },
+  { query: "Add a footer with the company address to every page.", expected: [] },
+  { query: "What is the difference between let and const?", expected: [] },
+];
+
 /** Every case that must find a note. */
-export const matchCases: ProseCase[] = [...shortMatchCases, ...taskMatchCases, ...laterMatchCases];
+export const matchCases: ProseCase[] = [
+  ...shortMatchCases,
+  ...taskMatchCases,
+  ...laterMatchCases,
+  ...fiftyNoteMatchCases,
+];
 
 /** Every case that must find no note. */
 export const noMatchCases: ProseCase[] = [
   ...shortNoMatchCases,
   ...taskNoMatchCases,
   ...laterNoMatchCases,
+  ...fiftyNoteNoMatchCases,
 ];

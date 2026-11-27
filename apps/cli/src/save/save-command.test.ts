@@ -191,7 +191,7 @@ describe("saveCommand and the index for similar notes", () => {
         result: { code: 0, stdout: "Created deploy.md.\n", stderr: "" },
         check: {
           level: "ok",
-          text: "The model and the index for similar notes are ready: 2 descriptions.",
+          text: "The model and the index for similar notes are ready: 2 descriptions and triggers.",
         },
       });
     },
@@ -294,6 +294,23 @@ describe("saveCommand and notes with a similar description", () => {
         allowed: { code: 0, stdout: "Created publish-blog.md.\n", stderr: "" },
         distinct: { code: 0, stdout: "Created commit-messages.md.\n", stderr: "" },
       });
+    },
+  );
+
+  test(
+    "does not refuse a new note whose description is close to a trigger of another note",
+    { timeout: 120_000 },
+    async () => {
+      const config = await machineWithModel();
+      const conventions =
+        "---\ndescription: Team conventions for git commits.\ntriggers: [write a commit message]\n---\nShort.\n";
+      const root = await writeTestRepo({ "git/conventions.md": conventions });
+      const input = "---\ndescription: How to write a good commit message.\n---\nShort.\n";
+      const saved = await run(["commit-messages", "--repo", root, "--no-expires"], {
+        input,
+        config,
+      });
+      expect(saved).toEqual({ code: 0, stdout: "Created commit-messages.md.\n", stderr: "" });
     },
   );
 });

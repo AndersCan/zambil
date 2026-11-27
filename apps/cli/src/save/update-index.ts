@@ -4,7 +4,7 @@ import type { CliConfig } from "../config.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import type { Either } from "@zambil/core/either";
 
-/** `updated`: the index now holds each description. `skipped`: nothing was missing, or the model is not in the cache. */
+/** `updated`: the index now holds each description and trigger. `skipped`: nothing was missing, or the model is not in the cache. */
 export type IndexUpdate = "updated" | "skipped";
 
 /** Where the cache folder is. */
@@ -13,7 +13,7 @@ export interface UpdateIndexOptions {
 }
 
 /**
- * Embeds the descriptions that the index of the repo lacks, so that a saved note is a similar note at
+ * Embeds the descriptions and triggers that the index of the repo lacks, so that a saved note is a similar note at
  * once. It loads the model only when the model is in the cache, so a save never waits for a download.
  */
 export async function updateIndex(

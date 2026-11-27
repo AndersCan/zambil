@@ -27,7 +27,7 @@ describe("indexNotes", () => {
       const repo = loadRepo(root);
       if (!repo.ok) throw new Error(repo.error.message);
       const summary = await indexNotes(repo.value, { embedder: lengthEmbedder, cacheFolder });
-      return summary.ok ? [summary.value.descriptions, summary.value.embedded] : summary.error;
+      return summary.ok ? [summary.value.texts, summary.value.embedded] : summary.error;
     }
     const first = await index();
     await writeFile(join(root, "git.md"), "---\ndescription: How to use git.\n---\n");

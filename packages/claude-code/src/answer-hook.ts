@@ -15,7 +15,7 @@ import type { ShownNotes } from "./session/shown-notes.ts";
 import { similarSection } from "./similar/similar-section.ts";
 
 /**
- * The parsed hook input, the clock, the notes whose description is similar to the prompt, best first,
+ * The parsed hook input, the clock, the notes whose description or a trigger is similar to the prompt, best first,
  * a message for the user, such as a warning about the setup, the notes that the context already holds,
  * and where the agent works. Without a place, a note with `projects` or `paths` is left out.
  */

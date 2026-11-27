@@ -1,5 +1,6 @@
 import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
 import { matchLimit, minimumScore } from "@zambil/embed/search-model";
+import { countSearchTexts } from "../index/count-search-texts.ts";
 import { firstNoteHint } from "../save/first-note-hint.ts";
 import { formatColumns } from "../list/format-columns.ts";
 import { indexHint } from "../index/index-hint.ts";
@@ -63,15 +64,16 @@ async function runSearch(options: CommandRunOptions): Promise<ExitCode> {
   output.write(matches.length === 0 ? noMatch : `${formatMatches(matches)}\n`);
   if (unindexed > 0) {
     const hint = indexHint(flag);
-    const count = unindexed === 1 ? "1 description is" : `${unindexed} descriptions are`;
-    output.error(`${count} not in the index. Run \`${hint}\` to make search faster.\n`);
+    const count = countSearchTexts(unindexed);
+    const verb = unindexed === 1 ? "is" : "are";
+    output.error(`${count} ${verb} not in the index. Run \`${hint}\` to make search faster.\n`);
   }
   return 0;
 }
 
-/** `zambil search <text>`: the current notes whose description is similar to the text, best first. */
+/** `zambil search <text>`: the current notes whose description or a trigger is similar to the text, best first. */
 export const searchCommand: Command = {
-  summary: "Find the notes whose description is similar to a text.",
+  summary: "Find the notes whose description or a trigger is similar to a text.",
   details: `It prints at most ${matchLimit} notes, best first, and leaves out expired notes. Only a score of ${minimumScore} or more, out of 1, is a match.`,
   usage: "Usage: zambil search <text> [--repo <path>]",
   options: [repoOptionHelp],

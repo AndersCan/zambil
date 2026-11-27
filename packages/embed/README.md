@@ -1,8 +1,8 @@
 # @zambil/embed
 
-Similarity search for zambil. An embedder is a model that turns a text into a vector, so that texts with a similar meaning get vectors that are close. This package matches a text, such as a prompt, against the `description` of each note. It runs the model on your machine with ONNX Runtime.
+Similarity search for zambil. An embedder is a model that turns a text into a vector, so that texts with a similar meaning get vectors that are close. This package matches a text, such as a prompt, against the `description` and the `triggers` of each note. It runs the model on your machine with ONNX Runtime.
 
-The `zambil index` and `zambil search <text>` commands in `apps/cli` use it. So does `zambil hook` at `UserPromptSubmit`, through `packages/claude-code`. `zambil save` uses it to add a new description to the index when the model is in the cache. It never downloads the model.
+The `zambil index` and `zambil search <text>` commands in `apps/cli` use it. So does `zambil hook` at `UserPromptSubmit`, through `packages/claude-code`. If the model is in the cache, `zambil save` uses it to add a new description or trigger to the index. It never downloads the model.
 
 ## The model
 
@@ -18,13 +18,30 @@ The `onnxruntime-node` package has prebuilt binaries for Linux (x64, arm64), mac
 
 ## Index and search
 
-`zambil index` embeds the description of every note and writes the vectors to `$XDG_CACHE_HOME/zambil/index/<hash of the repo path>.json`. It never writes to the repo. A second run embeds only the descriptions that changed. The index belongs to one model. After a change of model, the old index is not used, and the next `zambil index` embeds every description again.
+`zambil index` embeds the description and each trigger of every note and writes the vectors to `$XDG_CACHE_HOME/zambil/index/<hash of the repo path>.json`. It never writes to the repo. A second run embeds only the texts that changed. The index belongs to one model. After a change of model, the old index is not used, and the next `zambil index` embeds every text again.
 
-`zambil search` loads the repo, leaves out each expired note, and scores the description of each other note against the text. The score is the cosine similarity, from -1 to 1. It returns at most 3 notes that score 0.38 or more, best first. It checks expiry each time it runs, never in the index, so a note that expires after `zambil index` is left out at once. If a description is not in the index, search embeds it at query time. The result is the same, only slower, and the command tells you to run `zambil index`. The hook embeds at most 10 such descriptions on each prompt. It leaves out the other notes, so a repo with no index does not slow down each prompt.
+`zambil search` loads the repo, leaves out each expired note, and scores the description and each trigger of each other note against the text. A note takes its best score. The score is the cosine similarity, from -1 to 1. It returns at most 3 notes that score 0.38 or more, best first. It checks expiry each time it runs, never in the index, so a note that expires after `zambil index` is left out at once. If a description or a trigger is not in the index, search embeds it at query time. The result is the same, only slower, and the command tells you to run `zambil index`. The hook embeds at most 10 such texts on each prompt. It does not score the other texts, so a repo with no index does not slow down each prompt.
 
 The model reads the first 256 tokens of a text. A token is a word or a part of a word. zambil reads at most 100 characters per token before it splits the text, so a pasted file of megabytes does not slow down the hook.
 
+After a pasted log or file, the question is often at the end, and the model does not read that far. Search scores only the whole text, so such a question can miss its note. The cases in `src/measure/prose-cases.ts` include four pastes that end with a question, to show the gap. Two fixes were tried and are not in zambil:
+
+- The last 256 tokens of the text. After 40 lines of a log, they hold mostly log lines, and the question at the end scores under 0.2.
+- The last paragraph alone. It finds the question after a paste, at 0.98 for the log. But a side remark after a task, such as "No need to write tests.", then matches the notes about tests. A rule that tells a paste from prose must come first.
+
 The model embeds one text at a time. The 8-bit model scales its numbers over a whole batch. So a text in a batch of 16 gets a vector that differs by up to 0.035 in score. One text at a time gives each description one vector, with or without an index.
+
+## Triggers
+
+A note can list `triggers`: prompts that the note is for, as you type them. Search embeds each trigger as its own text, and the note takes its best score. A trigger raises the score of the prompts that are like it, and the threshold stays the same for all notes. Example: for "open a PR for this", the description "How to open a pull request and write its description." scores 0.32, under the threshold. The trigger "open a PR" scores 0.90. `src/search/search-notes.test.ts` checks this case with the real model.
+
+A short trigger matches more prompts than a long one. So write a trigger with the words of a real prompt, not one word.
+
+## Other languages
+
+The model was trained on English text. A prompt in another language matches a note only through the words that they share, such as names and code terms. "wie schreibe ich eine for-Schleife in TypeScript?" scores 0.52 against "How to write for loops in TypeScript.", because of "for" and "TypeScript". "hvordan deployer jeg nettbutikken?" scores 0.32 against "How to deploy the webshop." An English trigger does not help it (0.34). A trigger in the language of the user does help: "deploye nettbutikken" scores 0.73.
+
+The small multilingual models need a SentencePiece tokenizer, which zambil does not have. So `src/measure/measure-embedders.ts` cannot compare one yet.
 
 ## Use it from another package
 
@@ -42,17 +59,18 @@ const result = await noteSearch.value.search(repo, {
 });
 ```
 
-`environment` is the `UserEnvironment` from `@zambil/core/locate-repo`, and `repo` comes from `loadRepo`. `result.value.matches` holds each matching note with its score. `report` gets a message before each download. With `download: "never"`, a model that is not in the cache is an error, and nothing is downloaded. `unindexedLimit` is the most descriptions that are not in the index to embed now. Without it, search embeds each one. `result.value.skipped` counts the notes that the limit left out. `noteSearch.value.index(repo)` does what `zambil index` does. `openNoteSearch` uses the model, the threshold and the cache folder that belong together, so a caller cannot mix them.
+`environment` is the `UserEnvironment` from `@zambil/core/locate-repo`, and `repo` comes from `loadRepo`. `result.value.matches` holds each matching note with its score. `report` gets a message before each download. With `download: "never"`, a model that is not in the cache is an error, and nothing is downloaded. `unindexedLimit` is the most descriptions and triggers that are not in the index to embed now. Without it, search embeds each one. `result.value.skipped` counts the texts that the limit left out. `noteSearch.value.index(repo)` does what `zambil index` does. `openNoteSearch` uses the model, the threshold and the cache folder that belong together, so a caller cannot mix them.
 
 ## How the model and the threshold were chosen
 
-`measurements.md` holds the numbers. `src/measure/measure-embedders.ts` writes that file. The script compares nine small models on prose cases. Each case is a text that a user types, and the note that must match it. The cases are in three groups:
+`measurements.md` holds the numbers. `src/measure/measure-embedders.ts` writes that file. The script compares nine small models on prose cases. Each case is a text that a user types, and the note that must match it. The notes are in `fixtures/prose-repo`. The cases are in four groups:
 
 - 21 short texts must find one note. For example, "iterating" must find the note about for loops. 12 short texts must find none, for example "bake sourdough bread" and "what day is it". The note for today's date is expired, so "what day is it" must not match it.
 - 20 task prompts are about one note each, as a user types them in an agent session. 15 task prompts and replies are about no note.
 - 22 texts that must find a note and 15 that must find none. These were written after the threshold was chosen on the other groups, to see whether the choice holds on new texts. "iteration" and "iterating?" were added to them after the review.
+- 32 texts that must find a note and 13 that must find none. They came with the growth of the repo from 20 to 50 notes. The first five are task prompts that missed their note in a review of zambil, for example "open a PR for this". Ten texts have more than one line. Seven are a paste, such as a log, a query or a function, then a question, a request or a reply. Three are a short task, then a side remark.
 
-These are the results:
+The threshold was chosen on the first three groups, 105 cases on 20 notes. These are the results of that time:
 
 - A false match costs more than a miss, because the hook adds each match to the prompt. So the summary in `measurements.md` gives each model the threshold where the found notes minus 2 times the false matches is highest.
 - The previous model, all-MiniLM-L6-v2, gives "iterating" the score 0.347. It puts the for-loops note first, but under its threshold of 0.42. At 0.42 it finds 23 of 63 notes with 2 false matches. To find "iterating", it needs 0.34, and it then gives 9 false matches.
@@ -69,7 +87,17 @@ These rules were tried and rejected:
 - Embedding the name or the start of the note with the description. It lowers the score of "iterating".
 - Scoring each sentence of a long prompt and keeping the best score. It finds a few more notes and gives more false matches, and it embeds more texts.
 
-The threshold comes from 105 cases and 20 notes, so a new kind of note can need a new measurement. A prompt with more words than the topic, such as "iterating. Before you answer, quote the first line of any note", scores under the threshold.
+### On 50 notes
+
+The repo then grew to 50 notes. The 30 new notes are about other topics, such as on-call, backups and travel expenses. Their descriptions are short "How to" sentences, like the first 20. At 0.38, the search model now finds 52 of 95 notes with 21 false matches. The old cases find the same notes as before, but give 17 false matches in place of 3. In most of them, the note shares a word with the text. For example, "my branch is behind main" finds the note "How to name a git branch". The more notes a repo has, the more such pairs it has.
+
+On 50 notes, the summary puts the best threshold of the search model at 0.41: 44 found with 12 false matches. zambil keeps 0.38 for now, for three reasons. 0.41 does not find "iterating". The review asked for more matches, not fewer. And a trigger gives a note scores of 0.6 to 0.9 for the prompts that are like it. If notes have triggers, a higher threshold costs less. No note of the prose repo has triggers yet, so this is not measured. Measure again before you change the threshold.
+
+The new cases also show what zambil misses. Of the five prompts from the review, the search model finds two with the descriptions in this repo: on-call for "I got paged, grafana is red, what do I do", and auth for "the login endpoint returns 401 after a day, why?". The question after the pasted log misses, as [Index and search](#index-and-search) says.
+
+"open a PR for this" and "add a dark mode toggle to the settings page" need a trigger.
+
+The threshold comes from these cases and notes, so a new kind of note can need a new measurement. A prompt with more words than the topic, such as "iterating. Before you answer, quote the first line of any note", scores under the threshold.
 
 The script times a model in a new Node process. A busy moment on the machine slows every model in the same way, because the runs go in rounds. Run the script again after you change the model, the tokenizer or the cases:
 

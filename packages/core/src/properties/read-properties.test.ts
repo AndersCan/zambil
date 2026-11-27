@@ -11,6 +11,7 @@ const empty = {
   tools: [],
   projects: [],
   paths: [],
+  triggers: [],
   expires: undefined,
   whenExpired: undefined,
   script: undefined,
@@ -28,6 +29,7 @@ describe("readProperties", () => {
       tools: ["Bash"],
       projects: "webshop, blog",
       paths: ["~/git/webshop"],
+      triggers: ["cut a release", "ship version 2"],
       expires: "2026-11-28",
       "when-expired": "[[refresh-date]]",
       script: "release.sh",
@@ -43,6 +45,7 @@ describe("readProperties", () => {
         tools: ["Bash"],
         projects: ["webshop", "blog"],
         paths: ["~/git/webshop"],
+        triggers: ["cut a release", "ship version 2"],
         expires: "2026-11-28",
         whenExpired: "refresh-date",
         script: "release.sh",
@@ -52,11 +55,12 @@ describe("readProperties", () => {
     });
   });
 
-  test("splits a single text the way Obsidian does", () => {
+  test("splits a single text the way Obsidian does, but keeps a single trigger whole", () => {
     const reading = readProperties({
       aliases: "ship, deploy",
       tags: "ops, release notes",
       hooks: "Stop",
+      triggers: "open a PR, then merge it",
     });
     expect(reading).toEqual({
       known: {
@@ -64,6 +68,7 @@ describe("readProperties", () => {
         aliases: ["ship", "deploy"],
         tags: ["ops", "release", "notes"],
         hooks: ["Stop"],
+        triggers: ["open a PR, then merge it"],
       },
       problems: [],
     });

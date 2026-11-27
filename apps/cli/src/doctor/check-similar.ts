@@ -1,5 +1,6 @@
 import type { CheckResult } from "./check-result.ts";
 import { checkSearchFiles } from "@zambil/embed/check-search-files";
+import { countSearchTexts } from "../index/count-search-texts.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import { unindexedLimit } from "@zambil/claude-code/find-similar-notes";
 import type { UserEnvironment } from "@zambil/core/locate-repo";
@@ -18,10 +19,10 @@ export async function checkSimilar(
 ): Promise<CheckResult> {
   const files = await checkSearchFiles(repo, options);
   const index = zambilCommand("index", options);
-  if (files.descriptions === 0) {
+  if (files.texts === 0) {
     return {
       level: "ok",
-      text: "No note has a description, so similar notes need no model and no index.",
+      text: "No note has a description or triggers, so similar notes need no model and no index.",
     };
   }
   if (files.model === "missing") {
@@ -32,21 +33,21 @@ export async function checkSimilar(
     };
   }
   if (files.unindexed > 0) {
+    const total = countSearchTexts(files.texts);
     const effect =
       files.unindexed > unindexedLimit
-        ? `The hook leaves out the notes past the first ${unindexedLimit} of them.`
+        ? `The hook embeds the first ${unindexedLimit} of them on each prompt and does not score the others.`
         : "The hook embeds them on each prompt, which makes it slower.";
     return {
       level: "fail",
-      text: `${files.unindexed} of ${files.descriptions} descriptions are not in the index ${files.indexPath}.`,
+      text: `${files.unindexed} of ${total} are not in the index ${files.indexPath}.`,
       details: [effect],
       fixes: [index],
     };
   }
-  const descriptions =
-    files.descriptions === 1 ? "1 description" : `${files.descriptions} descriptions`;
+  const texts = countSearchTexts(files.texts);
   return {
     level: "ok",
-    text: `The model and the index for similar notes are ready: ${descriptions}.`,
+    text: `The model and the index for similar notes are ready: ${texts}.`,
   };
 }

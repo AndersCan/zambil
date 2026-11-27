@@ -15,6 +15,7 @@ This is the first release. zambil adds the notes of your configuration repo to y
 - A subagent gets the `SessionStart` notes, and `zambil install` always connects `SubagentStart`.
 - The `projects` and `paths` properties limit a note to some projects or folders.
 - A `when-expired` note that names no hook is no longer a similar note.
+- A note can list `triggers`: prompts that the note is for. Similarity search matches each trigger as well as the description.
 - At `PreToolUse`, `PostToolUse` and `PostToolUseFailure`, the zambil hook runs only for the tools that the notes name, when each note there has `tools`.
 - `zambil list <text>` finds notes by name, alias or description, and prints at most 100 notes.
 - `zambil init`, `zambil install`, `zambil doctor` and `zambil uninstall` set up, check and remove the Claude Code hooks and the `zambil-save` skill.

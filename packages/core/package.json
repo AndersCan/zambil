@@ -28,6 +28,7 @@
     "./render-wording": "./src/render/render-wording.ts",
     "./resolve-note": "./src/expiry/resolve-note.ts",
     "./save-note": "./src/write/save-note.ts",
+    "./search-texts": "./src/note/search-texts.ts",
     "./split-frontmatter": "./src/properties/split-frontmatter.ts",
     "./write-test-repo": "./src/repo/write-test-repo.ts"
   },

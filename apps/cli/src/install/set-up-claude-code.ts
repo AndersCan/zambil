@@ -5,6 +5,7 @@ import { saveSkillPath, settingsPath } from "./claude-paths.ts";
 import { changeSettings } from "./settings-file.ts";
 import type { CommandRunOptions } from "../command.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
+import { countSearchTexts } from "../index/count-search-texts.ts";
 import type { Either } from "@zambil/core/either";
 import { hooksToInstall } from "@zambil/claude-code/hooks-to-install";
 import { installHookCommand } from "./install-hook-command.ts";
@@ -78,8 +79,8 @@ async function indexNotes(repo: ConfigurationRepo, options: CommandRunOptions): 
     );
     return;
   }
-  const { descriptions, path } = summary.value;
-  const count = descriptions === 1 ? "1 description" : `${descriptions} descriptions`;
+  const { texts, path } = summary.value;
+  const count = countSearchTexts(texts);
   output.write(`Indexed ${count} for similar notes in ${path}.\n`);
 }
 

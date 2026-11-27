@@ -5,6 +5,7 @@ import { answerHook } from "@zambil/claude-code/answer-hook";
 import type { AnswerHookOptions } from "@zambil/claude-code/answer-hook";
 import type { CliConfig } from "../config.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
+import { countSearchTexts } from "../index/count-search-texts.ts";
 import { findProjectPlace } from "@zambil/core/project-place";
 import { findSimilarNotes } from "@zambil/claude-code/find-similar-notes";
 import type { FindSimilarNotesOptions } from "@zambil/claude-code/find-similar-notes";
@@ -54,9 +55,10 @@ async function similarTo(repo: ConfigurationRepo, options: SimilarToOptions): Pr
   }
   const { matches, skipped } = similar.value;
   if (skipped > 0) {
-    const count = skipped === 1 ? "1 description is" : `${skipped} descriptions are`;
+    const count = countSearchTexts(skipped);
+    const verb = skipped === 1 ? "is" : "are";
     output.error(
-      `zambil hook: ${count} not in the index, so the similarity match left out their notes. Run \`${hint}\`.\n`,
+      `zambil hook: ${count} ${verb} not in the index, so the similarity match did not score them. Run \`${hint}\`.\n`,
     );
   }
   return matches.map((match) => match.note);
@@ -188,7 +190,7 @@ export const hookCommand: Command = {
   options: [repoOptionHelp],
   details: [
     "It reads the JSON that Claude Code sends to a hook on standard input, and prints the notes that apply.",
-    "At UserPromptSubmit it also adds the notes whose description is similar to the prompt. It never downloads the model, so run zambil index once first.",
+    "At UserPromptSubmit it also adds the notes whose description or a trigger is similar to the prompt. It never downloads the model, so run zambil index once first.",
     "It adds each note once in a session or subagent, and keeps the list in $XDG_CACHE_HOME/zambil/sessions/ or ~/.cache/zambil/sessions/. A note that the prompt names with z:<name> comes each time, and so does a note at Stop or SubagentStop.",
     "After a rewind, a note that a prompt after the rewind point added stays out until a clear, a compact or a new session. Name it with z:<name> to get it back.",
     "It prints nothing when no note applies, or the context already holds each one, and the setup works, and it always exits with 0, so that it never blocks a session.",
