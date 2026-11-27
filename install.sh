@@ -247,13 +247,10 @@ main() {
   install_dependencies
   link_zambil
   report_path
-  if [ "$fresh" != yes ]; then
-    say "" "zambil is ready."
-  elif [ -d "$install_dir/apps/cli/src/init" ]; then
+  if [ "$fresh" = yes ]; then
     say "" "zambil is ready. To set it up, run:" "" "  zambil init"
   else
-    say "" "zambil is ready. To set it up, follow \"Set up\" in the README from step 3:" "" \
-      "  https://github.com/AndersCan/zambil#set-up"
+    say "" "zambil is ready."
   fi
 }
 

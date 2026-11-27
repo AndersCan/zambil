@@ -40,7 +40,6 @@ interface Machine {
 
 const repoRoot = resolve(import.meta.dirname, "..");
 const script = readFileSync(join(repoRoot, "install.sh"), "utf8");
-const readmeSetUp = "https://github.com/AndersCan/zambil#set-up";
 const gitIdentity = {
   GIT_AUTHOR_NAME: "smoke",
   GIT_AUTHOR_EMAIL: "smoke@example.com",
@@ -133,13 +132,12 @@ function checkFreshInstall(machine: Machine): void {
     encoding: "utf8",
     env: { HOME: machine.home, PATH: machine.path },
   });
-  const nextStep = help.stdout.includes("\n  init ") ? "  zambil init" : `  ${readmeSetUp}`;
   const hooksPath = spawnSync("git", ["-C", clone, "config", "core.hooksPath"]).status;
   deepEqual(
     {
       status: result.status,
       pathHint: result.stdout.includes('  export PATH="$HOME/.local/bin:$PATH"'),
-      nextStep: result.stdout.endsWith(`${nextStep}\n`),
+      nextStep: result.stdout.endsWith("\n  zambil init\n"),
       help: help.status,
       link: readlinkSync(link),
       check: checked.stdout,
@@ -174,8 +172,9 @@ function checkUpdate(machine: Machine): void {
       updated: existsSync(join(clone, "smoke-update.txt")),
       otherTool: readFileSync(otherTool, "utf8"),
       ownFile: readFileSync(ownFile, "utf8"),
+      ready: result.stdout.endsWith("\nzambil is ready.\n"),
     },
-    { status: 0, updated: true, otherTool: "keep\n", ownFile: "keep\n" },
+    { status: 0, updated: true, otherTool: "keep\n", ownFile: "keep\n", ready: true },
     result.stderr,
   );
 }

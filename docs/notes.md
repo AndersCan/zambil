@@ -176,7 +176,7 @@ If the `when-expired` note does not exist, `zambil check` gives an error.
 
 ## Write a note
 
-Writing a note is a deliberate act. zambil, a hook or a background process never writes a note on its own. A note changes only when the user edits it, or when the user asks the agent to run `zambil save`. Most often, the agent writes the first version and rewrites it when the user asks. Then the user fine-tunes it by hand in Obsidian. `zambil save-guide` prints these rules for the agent.
+Writing a note is a deliberate act. zambil, a hook or a background process never writes a note on its own. A note changes in two cases only: the user edits it, or the user asks the agent to run `zambil save`. The one exception is `zambil init`: in a new or empty folder, it writes the starter note `zambil-welcome.md`. Most often, the agent writes the first version. At the request of the user, it rewrites the note. Then the user fine-tunes it by hand in Obsidian. `zambil save-guide` prints these rules for the agent.
 
 `zambil save <name>` has three modes:
 
