@@ -213,7 +213,7 @@ describe("renderNote", () => {
       [
         '<note name="host" path="host.md">',
         "[[release]] [[backup]]",
-        'Warning: zambil cannot show ![[backup.sh]], because no note has the name "backup.sh" (did you mean "backup"?).',
+        'Warning: zambil cannot show ![[backup.sh]], because no note has the name "backup.sh".',
         '<script name="gone" path="tools/gone.md">',
         `Warning: no file is at ${gone}, so the script cannot run.`,
         "</script>",

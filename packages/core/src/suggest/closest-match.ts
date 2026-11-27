@@ -10,11 +10,12 @@ interface DistanceOptions {
 /** The edits from one word to the other, where a swap of two neighbouring characters is one edit. */
 function editDistance(first: string, options: DistanceOptions): number {
   const second = options.to;
+  const secondCharacters = second.split("");
   let beforePrevious: number[] = [];
   let previous = Array.from({ length: second.length + 1 }, (_, position) => position);
   for (const [row, firstCharacter] of first.split("").entries()) {
     const current = [row + 1];
-    for (const [column, secondCharacter] of second.split("").entries()) {
+    for (const [column, secondCharacter] of secondCharacters.entries()) {
       const substitution = (previous[column] ?? 0) + (firstCharacter === secondCharacter ? 0 : 1);
       const insertion = (current[column] ?? 0) + 1;
       const deletion = (previous[column + 1] ?? 0) + 1;
@@ -37,6 +38,8 @@ export function closestMatch(word: string, options: ClosestMatchOptions): string
   const allowed = Math.max(1, Math.floor(typed.length / 3));
   let best: { candidate: string; distance: number } | undefined;
   for (const candidate of options.candidates) {
+    const isFarInLength = Math.abs(candidate.length - typed.length) > allowed;
+    if (isFarInLength) continue;
     const distance = editDistance(typed, { to: candidate.toLowerCase() });
     const isCloser = best === undefined || distance < best.distance;
     if (distance <= allowed && isCloser) best = { candidate, distance };

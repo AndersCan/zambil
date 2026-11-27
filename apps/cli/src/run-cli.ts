@@ -1,6 +1,5 @@
 import type { Command, CommandAudience, CommandRunOptions, ExitCode } from "./command.ts";
 import type { CliConfig } from "./config.ts";
-import cliPackage from "../package.json" with { type: "json" };
 import { closestMatch } from "@zambil/core/closest-match";
 import { commands } from "./commands.ts";
 import { quoteArgument } from "@zambil/core/quote-argument";
@@ -96,7 +95,7 @@ async function formatHelp(config: CliConfig): Promise<string> {
     ...formatRows(agentRows),
     "",
     `zambil finds your configuration repo from --repo, then ZAMBIL_REPO, then ${configPath}.`,
-    "Run `zambil <command> --help` to see the options of one command.",
+    "Run `zambil <command> --help` to see the options of one command, and `zambil --version` to see the version.",
     "",
   ].join("\n");
 }
@@ -193,6 +192,7 @@ export async function runCli(args: string[], options: RunCliOptions): Promise<Ex
   const help = helpRequest(args);
   if (help !== undefined) return printHelp(help, options);
   if (asksForVersion(args)) {
+    const { default: cliPackage } = await import("../package.json", { with: { type: "json" } });
     options.output.write(`zambil ${cliPackage.version}\n`);
     return 0;
   }

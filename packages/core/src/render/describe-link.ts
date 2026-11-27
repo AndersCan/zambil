@@ -48,7 +48,7 @@ function kindLabel(note: Note): string {
  */
 export function describeLink(target: WikilinkTarget, options: DescribeLinkOptions): string {
   const { repo, now, wording } = options.context;
-  const lookup = findTarget(target, { repo, now, expired: "warn" });
+  const lookup = findTarget(target, { repo, now, expired: "warn", suggest: "none" });
   const link = `[[${target.text}]]`;
   switch (lookup.kind) {
     case "unresolved":

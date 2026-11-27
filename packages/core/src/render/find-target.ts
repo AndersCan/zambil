@@ -20,11 +20,18 @@ export type TargetLookup =
   | { kind: "expired"; note: Note }
   | { kind: "unresolved"; reason: string };
 
-/** The repo and the clock to resolve against, and what to do with an expired note. */
+/**
+ * `closest` names the closest note for a missing name, for a name that the user typed. `none` skips that
+ * search, for the links inside a note, which can point to many notes that do not exist yet.
+ */
+export type SuggestMode = "closest" | "none";
+
+/** The repo and the clock to resolve against, what to do with an expired note, and whether to suggest a name. */
 export interface FindTargetOptions {
   repo: Pick<ConfigurationRepo, "names">;
   now: Date;
   expired: ExpiredMode;
+  suggest: SuggestMode;
 }
 
 function missingSection(note: Note, target: WikilinkTarget): string {
@@ -43,7 +50,9 @@ function missingSection(note: Note, target: WikilinkTarget): string {
   }
 }
 
-function missingName(name: string, options: Pick<FindTargetOptions, "repo">): string {
+function missingName(name: string, options: FindTargetOptions): string {
+  const quoted = JSON.stringify(name);
+  if (options.suggest === "none") return `no note has the name ${quoted}`;
   const candidates = new Set<string>();
   for (const entries of options.repo.names.values()) {
     for (const { note } of entries) {
@@ -51,7 +60,6 @@ function missingName(name: string, options: Pick<FindTargetOptions, "repo">): st
       for (const alias of note.aliases) candidates.add(alias);
     }
   }
-  const quoted = JSON.stringify(name);
   const suggestion = closestMatch(name, { candidates });
   if (suggestion === undefined) return `no note has the name ${quoted}`;
   const quotedSuggestion = JSON.stringify(suggestion);
