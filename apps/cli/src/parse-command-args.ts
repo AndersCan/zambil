@@ -1,14 +1,15 @@
 import { left, right } from "@zambil/core/either";
+import { argumentProblem } from "./argument-problem.ts";
 import type { Either } from "@zambil/core/either";
 import type { OptionHelp } from "./command.ts";
 import { parseArgs } from "node:util";
 import type { ParseArgsConfig } from "node:util";
 
-/** The options that every command takes: `--repo <path>` and `--help`. */
-export const sharedOptions = {
-  repo: { type: "string" },
-  help: { type: "boolean", short: "h" },
-} as const;
+/** The option that every command takes: `-h, --help`. */
+export const helpOptions = { help: { type: "boolean", short: "h" } } as const;
+
+/** The options that each command that reads the repo takes: `--repo <path>` and `--help`. */
+export const sharedOptions = { repo: { type: "string" }, ...helpOptions } as const;
 
 /** The help line of `--repo`, for each command that reads the repo. */
 export const repoOptionHelp: OptionHelp = {
@@ -22,10 +23,12 @@ function unsafeParseArgs<Config extends ParseArgsConfig>(config: Config): Parsed
   return parseArgs(config);
 }
 
-/** Parses a command's arguments strictly. An unknown option or a missing value is a usage message. */
+/** Parses a command's arguments strictly. An unknown option or a missing value is a usage message in plain words. */
 export function parseCommandArgs<Config extends ParseArgsConfig>(
   config: Config,
 ): Either<string, ParsedArgs<Config>> {
+  const problem = argumentProblem(config);
+  if (problem !== undefined) return left(problem);
   try {
     return right(unsafeParseArgs(config));
   } catch (error: unknown) {

@@ -37,7 +37,8 @@ export interface OptionHelp {
 
 /**
  * One `zambil <name>` command. Each lives in its own folder and has one line in `commands.ts`. Without
- * `audience`, it is a user command. `--help` prints `options` and adds `-h, --help` itself.
+ * `audience`, it is a user command. `--help` prints `options` and adds `-h, --help` itself, so a command
+ * that takes only `--help` leaves `options` out.
  */
 export interface Command {
   summary: string;

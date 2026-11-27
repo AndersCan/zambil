@@ -45,17 +45,8 @@ const checkUsage = [
   "",
 ].join("\n");
 
-/** The commands whose help this file checks against the options that they accept. */
-const documentedCommands = [
-  "check",
-  "hook",
-  "index",
-  "list",
-  "save",
-  "save-guide",
-  "search",
-  "show",
-];
+/** The commands whose help this file checks against the options that they accept: every command. */
+const documentedCommands = Object.keys(commands);
 
 interface SectionOptions {
   heading: string;
@@ -239,18 +230,29 @@ describe("runCli", () => {
     expect(printed).toEqual(usages.map(() => ({ code: 0, stdout: checkUsage, stderr: "" })));
   });
 
-  test("lists in the help each option that the usage line of a command names", async () => {
-    const helps = await Promise.all(documentedCommands.map((name) => run([name, "--help"])));
-    const missing: string[] = [];
-    for (const [position, { stdout }] of helps.entries()) {
-      const name = documentedCommands[position] ?? "";
-      const [usage = "", options = ""] = stdout.split("\nOptions:\n");
-      const documented = new Set(options.match(/--[a-z-]+/g));
-      for (const flag of usage.match(/--[a-z-]+/g) ?? []) {
-        if (!documented.has(flag)) missing.push(`${name} ${flag}`);
-      }
+  test("names the same options in the usage line, the help and the parser of each command", async () => {
+    const results = await Promise.all(
+      documentedCommands.map(async (name) => {
+        const help = await run([name, "--help"]);
+        const refused = await run([name, "--qqqqqqqq"]);
+        const [usage = "", options = ""] = help.stdout.split("\nOptions:\n");
+        const accepted = refused.stderr.split("\n")[0]?.split(" It takes ")[1] ?? "";
+        return { name, usage, options, accepted };
+      }),
+    );
+    const mismatched: string[] = [];
+    for (const { name, usage, options, accepted } of results) {
+      const usageFlags = new Set([...(usage.match(/--[a-z-]+/g) ?? []), "--help"]);
+      const helpFlags = new Set(options.match(/--[a-z-]+/g));
+      const parserFlags = new Set(accepted.match(/--[a-z-]+/g));
+      const isSame = usageFlags.symmetricDifference(helpFlags).size === 0;
+      const isAccepted = helpFlags.symmetricDifference(parserFlags).size === 0;
+      if (!isSame || !isAccepted) mismatched.push(name);
     }
-    expect(missing).toEqual([]);
+    expect({ count: results.length, mismatched }).toEqual({
+      count: Object.keys(commands).length,
+      mismatched: [],
+    });
   });
 
   test("reads help as the first word or a flag, and as search text after the command", async () => {
@@ -322,7 +324,8 @@ describe("runCli", () => {
     const repoNamedList = await run(["--repo", "list", "check"]);
     const unknownFlag = await run(["--bogus"]);
     const option = await run(["list", "--bogus"]);
-    expect([flagFirst, repoNamedList, unknownFlag, option]).toEqual([
+    const typo = await run(["uninstall", "--hlep"]);
+    expect([flagFirst, repoNamedList, unknownFlag, option, typo]).toEqual([
       { code: 2, stdout: "", stderr: "Put the command first: zambil list --repo '/my notes'\n" },
       { code: 2, stdout: "", stderr: "Put the command first: zambil check --repo list\n" },
       {
@@ -333,7 +336,17 @@ describe("runCli", () => {
       {
         code: 2,
         stdout: "",
-        stderr: "Unknown option '--bogus'\nUsage: zambil list [--repo <path>]\n",
+        stderr: [
+          'This command has no option "--bogus". It takes --repo and --help.',
+          "Usage: zambil list [--repo <path>]",
+          "",
+        ].join("\n"),
+      },
+      {
+        code: 2,
+        stdout: "",
+        stderr:
+          'This command has no option "--hlep". Did you mean `--help`?\nUsage: zambil uninstall\n',
       },
     ]);
   });

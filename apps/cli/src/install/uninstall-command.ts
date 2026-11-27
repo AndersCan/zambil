@@ -3,9 +3,9 @@ import { rm, rmdir } from "node:fs/promises";
 import { saveSkillPath, settingsPath } from "./claude-paths.ts";
 import { changeSettings } from "./settings-file.ts";
 import { dirname } from "node:path";
+import { helpOptions } from "../parse-command-args.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
 import { readOptionalText } from "./text-file.ts";
-import { sharedOptions } from "../parse-command-args.ts";
 import { uninstallHooks } from "@zambil/claude-code/settings-hooks";
 import { wrap } from "@zambil/core/either";
 
@@ -25,7 +25,7 @@ async function removeSkill(options: CommandRunOptions): Promise<void> {
 
 async function runUninstall(options: CommandRunOptions): Promise<ExitCode> {
   const { output } = options;
-  const parsed = parseCommandArgs({ args: options.args, options: sharedOptions });
+  const parsed = parseCommandArgs({ args: options.args, options: helpOptions });
   if (!parsed.ok) {
     output.error(`${parsed.error}\n${uninstallCommand.usage}\n`);
     return 2;
