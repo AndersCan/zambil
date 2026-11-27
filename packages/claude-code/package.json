@@ -8,6 +8,7 @@
     "./check-hook-names": "./src/hook-list/check-hook-names.ts",
     "./find-recalls": "./src/recall/find-recalls.ts",
     "./find-similar-notes": "./src/similar/find-similar-notes.ts",
+    "./format-hook-output": "./src/context/format-hook-output.ts",
     "./hook-command-line": "./src/install/hook-command-line.ts",
     "./hook-list": "./src/hook-list/hook-list.ts",
     "./hooks-to-install": "./src/install/hooks-to-install.ts",

@@ -31,7 +31,10 @@ describe("parseHookInput", () => {
     expect(parsed).toEqual([
       {
         ok: true,
-        value: { kind: "answer", input: { kind: "plain", hookEventName: "SessionStart" } },
+        value: {
+          kind: "answer",
+          input: { kind: "plain", hookEventName: "SessionStart", source: "startup" },
+        },
       },
       {
         ok: true,
