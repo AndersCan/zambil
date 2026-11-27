@@ -98,8 +98,8 @@ The core does not check the hook names against Claude Code, because it does not 
 
 A note without `projects` and `paths` applies in every project. A note with one of them applies only where the agent works in that project. The agent tool gives zambil the folder where the agent works.
 
-- `projects` matches the name of the git repo that holds the folder, or the name of the folder itself. zambil finds the git repo through the nearest `.git` above the folder. For a git worktree, the name is that of the main clone. Names compare in any case.
-- `paths` matches the folder and each folder under it. `~/` is your home folder.
+- `projects` matches the name of the git repo that holds the folder. zambil finds the git repo through the nearest `.git` above the folder. The repo has two names: the name of its root folder, and for a git worktree also the name of the main clone. Outside a git repo, the name is that of the folder itself. Names compare in any case.
+- `paths` matches the folder and each folder under it. `~` is your home folder. zambil follows symbolic links in both paths before it compares them.
 - If the note has both, either one is enough.
 
 A note for another project is left out of the hook notes and of the similar notes. `z:<name>` still adds it everywhere, because you named it. `zambil search` and `zambil show` do not use the scope.

@@ -148,7 +148,8 @@ async function runHook(options: CommandRunOptions): Promise<ExitCode> {
   const repoFlag = parsed.value.values.repo;
   const { folder } = request.value;
   const { home } = options.config.environment;
-  const place = folder === undefined ? undefined : findProjectPlace(folder, { home });
+  const isScoped = repo.value.notes.some((note) => note.projects.length + note.paths.length > 0);
+  const place = folder === undefined || !isScoped ? undefined : findProjectPlace(folder, { home });
   const similarNotes =
     input.kind === "prompt"
       ? await similarTo(repo.value, {
@@ -191,7 +192,7 @@ export const hookCommand: Command = {
     "After a rewind, a note that a prompt after the rewind point added stays out until a clear, a compact or a new session. Name it with z:<name> to get it back.",
     "It prints nothing when no note applies, or the context already holds each one, and the setup works, and it always exits with 0, so that it never blocks a session.",
     "At SubagentStart, it also adds the SessionStart notes, because a subagent gets no SessionStart.",
-    "A note with projects or paths applies only in that project or under that path, from the cwd of the hook input.",
+    "A note with projects or paths applies only in that project or under that path, from the cwd of the hook input. Without a cwd, such a note does not apply.",
     "At SessionStart, it warns the user in one line when the setup is broken, for example a moved notes folder, and points to zambil doctor.",
     "Run `zambil install` to set up the hooks. The file packages/claude-code/README.md in the zambil repo describes them.",
   ].join("\n"),

@@ -135,10 +135,10 @@ The first part runs when `zambil` is gone, for example after the clone moved. Wi
 
 zambil knows its handlers by the words `zambil hook` in the command. `zambil uninstall` removes each such handler and the `zambil-save` skill. If zambil emptied an event or the `hooks` object, it removes that too. It keeps an event that was empty before.
 
-To make sure that the hook finds your notes, run the command of a handler with a `SessionStart` payload. It must print a JSON object with your `SessionStart` notes. If no note names `SessionStart`, it prints nothing:
+To make sure that the hook finds your notes, run the command of a handler with a `SessionStart` payload. It must print a JSON object with your `SessionStart` notes. If no note names `SessionStart`, it prints nothing. A note with `projects` or `paths` applies only when `cwd` is in that project or under that path, so run the command from that project:
 
 ```sh
-echo '{"hook_event_name":"SessionStart","source":"startup"}' | zambil hook --repo ~/notes
+echo '{"hook_event_name":"SessionStart","source":"startup","cwd":"'"$PWD"'"}' | zambil hook --repo ~/notes
 ```
 
 If it prints a message that starts with `zambil hook:`, fix that problem first.

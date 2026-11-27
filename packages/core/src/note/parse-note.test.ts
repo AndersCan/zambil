@@ -111,7 +111,7 @@ describe("parseNote", () => {
 
   test("warns about properties that do nothing and names that Obsidian cannot link", () => {
     const parsed = parseNote(
-      "---\nwhen-expired: '[[refresh]]'\nrun-with: node\naliases: [a|b]\npaths: [git/shop, ~/git/blog]\n---\n",
+      "---\nwhen-expired: '[[refresh]]'\nrun-with: node\naliases: [a|b]\npaths: [git/shop, ~/git/blog, '~']\nprojects: [~/git/shop]\n---\n",
       {
         file: noteFile,
       },
@@ -119,6 +119,7 @@ describe("parseNote", () => {
     expect(parsed.problems.map((problem) => problem.message)).toEqual([
       "`when-expired` has no effect without `expires`",
       '`paths` holds "git/shop", but each path must be a full path or start with ~/, so zambil ignores it',
+      '`projects` holds "~/git/shop", but a project is the name of a repo or a folder. Put a path in `paths`',
       'Obsidian cannot link to "a|b": it has #, ^, [, ] or |',
       "`run-with` has no effect without `script`",
     ]);

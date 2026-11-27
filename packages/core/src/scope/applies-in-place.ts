@@ -1,6 +1,7 @@
-import { join, resolve, sep } from "node:path";
+import { join, sep } from "node:path";
 import type { Note } from "../note/note.ts";
 import type { ProjectPlace } from "./project-place.ts";
+import { realPath } from "./project-place.ts";
 
 /** Where the agent works, or `undefined` when the hook input names no folder. */
 export interface AppliesInPlaceOptions {
@@ -11,13 +12,18 @@ interface PathOptions {
   place: ProjectPlace;
 }
 
-/** A path that is not full and does not start with `~/` gets a warning from `zambil check` and never matches. */
+/** A path in `paths` is full, or starts at the home folder with `~`. `zambil check` warns about any other path. */
+export function isScopePath(path: string): boolean {
+  return path === "~" || path.startsWith("~/") || path.startsWith("/");
+}
+
 function isUnderPath(path: string, options: PathOptions): boolean {
   const { place } = options;
-  const expanded = path.startsWith("~/") ? join(place.home, path.slice(2)) : path;
-  if (!expanded.startsWith("/")) return false;
-  const prefix = resolve(expanded);
-  return place.folder === prefix || place.folder.startsWith(`${prefix}${sep}`);
+  if (!isScopePath(path)) return false;
+  const expanded = path.startsWith("~") ? join(place.home, path.slice(1)) : path;
+  const prefix = realPath(expanded);
+  const folderPrefix = prefix.endsWith(sep) ? prefix : `${prefix}${sep}`;
+  return place.folder === prefix || place.folder.startsWith(folderPrefix);
 }
 
 /**

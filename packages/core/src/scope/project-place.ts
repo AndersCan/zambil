@@ -1,5 +1,5 @@
 import { basename, dirname, join, resolve } from "node:path";
-import { lstatSync, readFileSync } from "node:fs";
+import { lstatSync, readFileSync, realpathSync } from "node:fs";
 import type { Stats } from "node:fs";
 
 /**
@@ -47,13 +47,33 @@ function readText(path: string): string {
   }
 }
 
-const worktreeGitDir = /^gitdir:\s*(?<main>.+)\/\.git\/worktrees\/[^/]+\s*$/m;
+function unsafeRealpath(path: string): string {
+  return realpathSync(path);
+}
 
-/** A worktree has a `.git` file that points into the `.git` folder of the main clone, which names the repo. */
+/** The path with each link resolved, as the agent tool reports its folder, or the path as it is when it does not exist. */
+export function realPath(path: string): string {
+  try {
+    return unsafeRealpath(path);
+  } catch {
+    return resolve(path);
+  }
+}
+
+const worktreeGitDir = /^gitdir:\s*(?<store>.+)\/worktrees\/[^/]+\s*$/m;
+
+/** The repo name of a git folder: `webshop/.git`, `webshop/.bare` or `webshop.git` all name `webshop`. */
+function storeName(store: string): string {
+  const name = basename(store);
+  if (name.startsWith(".")) return basename(dirname(store));
+  return name.replace(/\.git$/, "");
+}
+
+/** A worktree has a `.git` file that points into the git folder of the main clone, which names the repo. */
 function repoName(root: string): string {
   if (gitEntry(join(root, ".git")) !== "file") return basename(root);
-  const main = worktreeGitDir.exec(readText(join(root, ".git")))?.groups?.main;
-  return main === undefined ? basename(root) : basename(main);
+  const store = worktreeGitDir.exec(readText(join(root, ".git")))?.groups?.store;
+  return store === undefined ? basename(root) : storeName(store);
 }
 
 function findRepoRoot(folder: string): string | undefined {
@@ -68,11 +88,12 @@ function findRepoRoot(folder: string): string | undefined {
 
 /**
  * The place of a folder. It looks up the folders above it for a `.git` entry, a few `lstat` calls, so
- * that a note for a repo applies in each folder of that repo.
+ * that a note for a repo applies in each folder of that repo. In a repo, the names are those of the
+ * repo and of its root folder, so they are the same at any depth. Outside a repo, the name is that of the folder.
  */
 export function findProjectPlace(folder: string, options: FindProjectPlaceOptions): ProjectPlace {
-  const full = resolve(folder);
+  const full = realPath(folder);
   const root = findRepoRoot(full);
-  const names = root === undefined ? [basename(full)] : [repoName(root), basename(full)];
+  const names = root === undefined ? [basename(full)] : [repoName(root), basename(root)];
   return { folder: full, projects: [...new Set(names)], home: options.home };
 }
