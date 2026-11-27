@@ -185,18 +185,19 @@ describe("saveNote", () => {
   });
 
   test("refuses a verify that keeps the expires date, because it changes nothing", async () => {
-    const results = await Promise.all([
-      save({ mode: "verify", name: "deploy", expires: "2026-12-01" }),
-      save({ mode: "verify", name: "deploy", expires: "2026-12-01T00:00" }),
+    const dates = ["2026-12-01", "2026-12-01T00:00", "2026-12-01T09:30"];
+    const results = await Promise.all(
+      dates.map((expires) => save({ mode: "verify", name: "deploy", expires })),
+    );
+    function refusal(expires: string) {
+      const message = `ops/deploy.md already expires on ${expires}, so a verify with that date changes nothing. Give the date when its claims are likely to change next.`;
+      return { refused: { reason: "invalid", message } };
+    }
+    expect(results.map((result) => result.summary)).toEqual([
+      refusal("2026-12-01"),
+      refusal("2026-12-01T00:00"),
+      { saved: "ops/deploy.md", mode: "verify", warnings: [] },
     ]);
-    const refusal = {
-      refused: {
-        reason: "invalid",
-        message:
-          "ops/deploy.md already expires on 2026-12-01, so a verify with that date changes nothing. Give the date when its claims are likely to change next.",
-      },
-    };
-    expect(results.map((result) => result.summary)).toEqual([refusal, refusal]);
   });
 
   test("rewrites a skill in its SKILL.md", async () => {

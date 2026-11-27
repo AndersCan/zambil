@@ -21,7 +21,7 @@ describe("saveGuideCommand", () => {
       "Give the note an expires date",
       "Give it a when-expired note that tells how to update the note or verify its claims",
       "zambil save deploy --verified --expires",
-      "--verified records that the claims still hold: give it a later expires date",
+      "--verified records that the claims still hold: give it a new expires date",
     ];
     expect({ code, missing: rules.filter((rule) => !text.includes(rule)) }).toEqual({
       code: 0,

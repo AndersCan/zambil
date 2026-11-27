@@ -5,7 +5,6 @@ import type { ConfigurationRepo } from "../repo/configuration-repo.ts";
 import { editFrontmatter } from "./edit-frontmatter.ts";
 import type { Either } from "../either.ts";
 import { findNote } from "../repo/find-note.ts";
-import { formatMoment } from "../render/describe-expiry.ts";
 import { isDeepStrictEqual } from "node:util";
 import { isNever } from "../is-never.ts";
 import { join } from "node:path";
@@ -193,16 +192,16 @@ function writeChanges(request: WriteRequest, options: ChangeOptions): Either<Sav
 function verifyChanges(expires: string, options: ChangeOptions): Either<SaveRefusal, Changes> {
   const edit = expiresEdit(expires, options);
   if (!edit.ok) return edit;
-  const { path } = options.target.file;
-  const current = options.repo.notes.find((note) => note.path === path)?.expiry;
-  const newTime = parseExpires(expires);
+  const { file, oldText } = options.target;
+  const current = parseNote(oldText ?? "", { file }).note.expiry;
+  const requested = parseExpires(expires);
   const isSameMoment =
-    current?.kind === "at" &&
-    newTime.kind === "at" &&
-    current.time.getTime() === newTime.time.getTime();
+    current.kind === "at" &&
+    requested.kind === "at" &&
+    current.time.getTime() === requested.time.getTime();
   if (!isSameMoment) return right({ edits: [edit.value] });
   return invalid(
-    `${path} already expires on ${formatMoment(current.time)}, so a verify with that date changes nothing. Give the date when its claims are likely to change next.`,
+    `${file.path} already expires on ${expires}, so a verify with that date changes nothing. Give the date when its claims are likely to change next.`,
   );
 }
 

@@ -23,7 +23,16 @@ These are short headless Claude Code sessions with the zambil hooks installed. T
 
 - The project folder was empty apart from a `README.md`. So no code was there to verify a note against.
 
-The 23 sessions cost $0.07 together. Most took 2 to 9 seconds. Each prompt below is the prompt as typed.
+The 25 sessions cost $0.07 together. Most took 2 to 9 seconds. Each prompt below is the prompt as typed. Case 17 ran 6 times, and each other case ran once.
+
+The verdicts:
+
+- Used: the agent acted on the note that zambil added.
+- Good: the agent did the right thing with a warning, an offer or a write request.
+- No match: zambil added nothing, and nothing was expected.
+- False match: zambil added a note that does not fit the prompt.
+- Partly: the result was right, but the agent took wrong steps first.
+- Open: see [Flaky or open results](#flaky-or-open-results).
 
 ## Results
 
@@ -38,17 +47,17 @@ The 23 sessions cost $0.07 together. Most took 2 to 9 seconds. Each prompt below
 | 7   | Write a changelog entry for ACME-17                      | Offer of the `changelog` skill (similar)  | Read the `SKILL.md` and used its format.                                                                                               | Used        |
 | 8   | How much disk space does my home folder use?             | Offer of the `disk-report` script         | Ran the script with the given command. The task needed it. zambil did not run it.                                                      | Used        |
 | 9   | Explain taxes, see `z:billing-module` (expired)          | Expiry warning, and `check-billing`       | Tried to verify, then read the note with `--expired`. Said it can be out of date. Offered to save an update on request. Saved nothing. | Good        |
-| 10  | How does the billing module compute taxes? (no `z:`)     | `check-billing` (similar), not the note   | The expired note stayed out. The when-expired note matched on its own, and Haiku looked for the code.                                  | See notes   |
+| 10  | How does the billing module compute taxes? (no `z:`)     | `check-billing` (similar), not the note   | The expired note stayed out. The when-expired note matched on its own, and Haiku looked for the code.                                  | Open        |
 | 11  | Where does auth store sessions? See `z:auth-module`      | The note, "can be wrong", `check-auth`    | Tried to verify against the code, then answered and said that the code was not there to compare with.                                  | Good        |
 | 12  | Write a bash script `hello.sh` and run it                | `shell-style` (similar and at PreToolUse) | The script starts with `set -euo pipefail` and quotes paths.                                                                           | Used        |
 | 13  | Convert a JavaScript function to TypeScript              | `for-loops` (similar)                     | Ignored the note and converted the function.                                                                                           | False match |
 | 14  | Write a note that we always use pnpm                     | Nothing                                   | Loaded `zambil-save`, ran the guide and the list. Saw that `preferences` says it already, and asked before a duplicate.                | Good        |
 | 15  | Save a note about the payments service configuration     | Nothing                                   | Saved the when-expired note first, then the note with an expiry in six months and `--when-expired`.                                    | Good        |
 | 16  | "I checked the code, `z:auth-module` is right." TTL?     | The note                                  | Answered. Did not record a verify, because the user did not ask for one.                                                               | Good        |
-| 17  | "...the note is still correct. Record that." (3 runs)    | The note                                  | Ran `--verified --expires 2027-03-01`, the old date. Nothing changed, and Haiku said the note was updated.                             | Bug, fixed  |
-| 17  | Same prompt, after the fix (2 runs)                      | The note                                  | Ran `--verified --expires 2027-06-01`. The note changed.                                                                               | Good        |
+| 17a | "...the note is still correct. Record that." (3 runs)    | The note                                  | Ran `--verified --expires 2027-03-01`, the old date. Nothing changed, and Haiku said the note was updated.                             | Bug, fixed  |
+| 17b | Same prompt, after the fix (3 runs)                      | The note                                  | Ran `--verified` with a later date: 2027-06-01 twice, 2027-05-27 once. The note changed.                                               | Good        |
 | 18  | `z:billing-module` is out of date: 19%, new file. Update | Expiry warning                            | First forgot the expiry choice, then tried the old date, then stopped and asked the user for a date. Saved nothing.                    | Partly      |
-| 19  | Remember that the staging database listens on port 5433  | Nothing                                   | Wrote to the Claude Code auto memory, not to zambil.                                                                                   | See notes   |
+| 19  | Remember that the staging database listens on port 5433  | Nothing                                   | Wrote to the Claude Code auto memory, not to zambil.                                                                                   | Open        |
 | 20  | Run `ls`, quote what a hook added                        | `shell-style` at PreToolUse               | Quoted the note word for word. So the Bash tool hook reaches the agent.                                                                | Used        |
 
 ## What the runs show
@@ -62,14 +71,16 @@ The 23 sessions cost $0.07 together. Most took 2 to 9 seconds. Each prompt below
 
 ## The bug that the runs found
 
-In case 17, all 3 runs gave `zambil save auth-module --verified --expires 2027-03-01`. That is the date that the note already had. `zambil save` printed "Verified api/auth-module.md. It now expires on 2027-03-01." and wrote the same file. Haiku then told the user that the note was updated.
+In case 17a, all 3 runs gave `zambil save auth-module --verified --expires 2027-03-01`. That is the date that the note already had. `zambil save` printed "Verified api/auth-module.md. It now expires on 2027-03-01." and wrote the same file. Haiku then told the user that the note was updated.
 
 The fix:
 
 - `zambil save --verified` refuses a date that is the same moment as the old `expires`. The message says that the verify changes nothing. It asks for the next date on which the claims are likely to change.
-- `zambil save-guide` says "give it a later expires date" for `--verified`, not "it sets the new expires date".
+- `zambil save-guide` says "give it a new expires date: the date when its claims are likely to change next" for `--verified`. Before, it said "it sets the new expires date".
 
-After the fix, 2 of 2 runs picked a later date.
+After the fix, 3 of 3 runs picked a later date (17b). The first 2 runs used a guide that said "a later expires date". The last run used the final wording.
+
+The example in `zambil save-guide` also uses the date 2027-03-01. So in 17a, Haiku can have copied the example and not the old date. In its answers, Haiku said that it kept the date that the note already had. The fix refuses a copy of the example only when the note has that same date.
 
 ## Flaky or open results
 
