@@ -9,17 +9,22 @@ export interface CommandOutput {
   error: (text: string) => void;
 }
 
-/** What a command gets: its arguments after the command name, the startup config, output and the clock. */
+/** Standard input. It is read only when a command calls `readAll`, so other commands do not wait for it. */
+export interface CommandInput {
+  readAll: () => Promise<string>;
+}
+
+/** What a command gets: its arguments after the command name, the startup config, input, output and the clock. */
 export interface CommandRunOptions {
   args: string[];
   config: CliConfig;
+  input: CommandInput;
   output: CommandOutput;
   now: Date;
 }
 
-/** One `zambil <name>` command. Each lives in its own folder and is listed in `commands.ts`. */
+/** One `zambil <name>` command. Each lives in its own folder and has one line in `commands.ts`. */
 export interface Command {
-  name: string;
   summary: string;
   usage: string;
   run: (options: CommandRunOptions) => ExitCode | Promise<ExitCode>;

@@ -4,12 +4,16 @@ import type { Either } from "../either.ts";
 import { parseUserConfig } from "./parse-user-config.ts";
 import { readTextFile } from "../repo/read-text-file.ts";
 
-/** What zambil reads from the user's environment. The CLI fills it once at startup. */
+/**
+ * What zambil reads from the user's environment. The CLI fills it once at startup. `cacheHome` is
+ * `XDG_CACHE_HOME`, for files that zambil can rebuild, such as an index.
+ */
 export interface UserEnvironment {
   home: string;
   workingFolder: string;
   repo?: string;
   configHome?: string;
+  cacheHome?: string;
 }
 
 /** The `--repo` flag, if the user gave one, and the environment. */

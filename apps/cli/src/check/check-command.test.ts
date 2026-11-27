@@ -17,6 +17,7 @@ describe("checkCommand", () => {
     const code = await checkCommand.run({
       args: ["--repo", root],
       config: { environment },
+      input: { readAll: () => Promise.resolve("") },
       output,
       now: new Date(),
     });

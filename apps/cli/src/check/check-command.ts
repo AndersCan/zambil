@@ -49,7 +49,6 @@ function runCheck(options: CommandRunOptions): ExitCode {
 
 /** `zambil check`: every problem in the repo, such as duplicate names. Exits with 1 when one is an error. */
 export const checkCommand: Command = {
-  name: "check",
   summary: "Report duplicate names and other invalid notes.",
   usage: "Usage: zambil check [--repo <path>]",
   run: runCheck,

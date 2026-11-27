@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { enableCompileCache } from "node:module";
+import { text as readStream } from "node:stream/consumers";
 
 async function main(): Promise<void> {
   enableCompileCache();
@@ -9,7 +10,8 @@ async function main(): Promise<void> {
     write: (text: string) => process.stdout.write(text),
     error: (text: string) => process.stderr.write(text),
   };
-  const options = { config: readCliConfig(), output, now: new Date() };
+  const input = { readAll: () => readStream(process.stdin) };
+  const options = { config: readCliConfig(), input, output, now: new Date() };
   process.exitCode = await runCli(process.argv.slice(2), options);
 }
 

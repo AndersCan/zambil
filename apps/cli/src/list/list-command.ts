@@ -13,7 +13,7 @@ interface FormatListOptions {
 function formatList(repo: ConfigurationRepo, options: FormatListOptions): string {
   const rows = [["NAME", "KIND", "PATH", "DESCRIPTION"]];
   for (const note of repo.notes) {
-    const description = note.description ?? "";
+    const description = (note.description ?? "").replaceAll(/\s*\n\s*/g, " ");
     const shown = isExpired(note, options) ? `(expired) ${description}` : description;
     rows.push([note.name, note.kind, note.path, shown]);
   }
@@ -45,7 +45,6 @@ function runList(options: CommandRunOptions): ExitCode {
 
 /** `zambil list`: one line per note, with its name, kind, path and description. */
 export const listCommand: Command = {
-  name: "list",
   summary: "List every note with its kind, path and description.",
   usage: "Usage: zambil list [--repo <path>]",
   run: runList,

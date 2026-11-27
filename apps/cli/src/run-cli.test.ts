@@ -25,7 +25,9 @@ async function run(args: string[], options: RunOptions = {}) {
   const config = options.config ?? {
     environment: { home: "/home/ada", workingFolder: "/", configHome: "/nowhere" },
   };
-  const code = await runCli(args, { config, output, now: options.now ?? new Date(2026, 10, 27) });
+  const input = { readAll: () => Promise.resolve("") };
+  const now = options.now ?? new Date(2026, 10, 27);
+  const code = await runCli(args, { config, input, output, now });
   return { code, ...printed };
 }
 
@@ -76,10 +78,15 @@ describe("runCli", () => {
     });
   });
 
-  test("prints the help, and the usage of one command", async () => {
+  test("prints the help, and the usage of one command in both forms", async () => {
     const help = await run([]);
     const usage = await run(["check", "--help"]);
-    expect({ help: help.stdout.split("\n").slice(0, 5), usage }).toEqual({
+    const helpCheck = await run(["help", "check"]);
+    expect({
+      help: help.stdout.split("\n").slice(0, 5),
+      usage,
+      same: helpCheck.stdout === usage.stdout,
+    }).toEqual({
       help: [
         "Usage: zambil <command> [--repo <path>]",
         "",
@@ -93,15 +100,30 @@ describe("runCli", () => {
           "Usage: zambil check [--repo <path>]\n\nReport duplicate names and other invalid notes.\n",
         stderr: "",
       },
+      same: true,
     });
   });
 
-  test("rejects an unknown command and an unknown option", async () => {
+  test("shows the configuration file that zambil really reads in the help", async () => {
+    const help = await run(["--help"]);
+    expect(help.stdout.split("\n").at(-3)).toBe(
+      "zambil finds your configuration repo from --repo, then ZAMBIL_REPO, then /nowhere/zambil/config.json.",
+    );
+  });
+
+  test("rejects an unknown command, a flag before the command and an unknown option", async () => {
     const command = await run(["lst"]);
+    const flagFirst = await run(["--repo", sampleRepo, "list"]);
     const option = await run(["list", "--bogus"]);
-    expect([command.code, command.stderr.split("\n")[0], option]).toEqual([
+    expect([
+      command.code,
+      command.stderr.split("\n")[0],
+      flagFirst.stderr.split("\n")[0],
+      option,
+    ]).toEqual([
       2,
       'zambil has no command "lst".',
+      "Put the command first, for example: zambil list --repo",
       {
         code: 2,
         stdout: "",
