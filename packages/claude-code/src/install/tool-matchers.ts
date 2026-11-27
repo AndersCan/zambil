@@ -9,6 +9,25 @@ const plainToolName = /^[\w-]+$/;
 /** A matcher with another character is a pattern that the user wrote, which zambil does not read. */
 const plainMatcher = /^[\w|-]+$/;
 
+/** Whether Claude Code compares the `matcher` of this hook with the name of the tool. */
+export function isMatchedHook(hook: string): boolean {
+  return matchedHooks.includes(hook);
+}
+
+const matcherSeparator = /\s*[|,]\s*/;
+
+/** The other matcher, which `undefined` means every tool. */
+export interface SameToolsOptions {
+  other: string | undefined;
+}
+
+/** Whether two matchers name the same tools, in any order and with `|` or `,` between them. */
+export function sameTools(matcher: string | undefined, options: SameToolsOptions): boolean {
+  if (matcher === undefined || options.other === undefined) return matcher === options.other;
+  const sorted = matcher.split(matcherSeparator).toSorted().join("|");
+  return sorted === options.other.split(matcherSeparator).toSorted().join("|");
+}
+
 /** The hooks that install connects. */
 export interface ToolMatchersOptions {
   hookNames: string[];

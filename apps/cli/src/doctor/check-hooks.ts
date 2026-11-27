@@ -1,3 +1,4 @@
+import { isMatchedHook, sameTools, toolMatchers } from "@zambil/claude-code/tool-matchers";
 import { listZambilHooks, listZambilMatchers } from "@zambil/claude-code/settings-hooks";
 import type { CheckResult } from "./check-result.ts";
 import type { CliConfig } from "../config.ts";
@@ -11,7 +12,6 @@ import type { Note } from "@zambil/core/note";
 import { parseHookCommand } from "./parse-hook-command.ts";
 import { readSettings } from "../install/settings-file.ts";
 import { settingsPath } from "../install/claude-paths.ts";
-import { toolMatchers } from "@zambil/claude-code/tool-matchers";
 import { zambilCommand } from "./zambil-command.ts";
 
 /** What the hooks must match: the repo, `zambil` on the `PATH` and the hook list, when they are known. */
@@ -62,7 +62,8 @@ function eventProblems(events: string[], options: EventProblemsOptions): string[
   }
   const needed = toolMatchers(repo.notes, { hookNames: expected });
   for (const hook of events) {
-    const isStale = expected.includes(hook) && options.matchers[hook] !== needed[hook];
+    const isSame = sameTools(options.matchers[hook], { other: needed[hook] });
+    const isStale = isMatchedHook(hook) && expected.includes(hook) && !isSame;
     if (!isStale) continue;
     const now = describeTools(options.matchers[hook]);
     const tools = describeTools(needed[hook]);

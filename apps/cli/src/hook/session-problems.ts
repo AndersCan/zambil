@@ -1,5 +1,5 @@
+import { isMatchedHook, matcherCovers, toolMatchers } from "@zambil/claude-code/tool-matchers";
 import { listZambilHooks, listZambilMatchers } from "@zambil/claude-code/settings-hooks";
-import { matcherCovers, toolMatchers } from "@zambil/claude-code/tool-matchers";
 import { checkModel } from "@zambil/embed/check-search-files";
 import type { CliConfig } from "../config.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
@@ -35,7 +35,7 @@ function narrowHooks(expected: string[], options: NarrowHooksOptions): string[] 
   const needed = toolMatchers(options.notes, { hookNames: expected });
   const narrow: string[] = [];
   for (const [hook, matcher] of Object.entries(options.installed)) {
-    const isNeeded = expected.includes(hook);
+    const isNeeded = isMatchedHook(hook) && expected.includes(hook);
     if (isNeeded && !matcherCovers(matcher, { needed: needed[hook] })) narrow.push(hook);
   }
   return narrow;

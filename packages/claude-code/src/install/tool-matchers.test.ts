@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { matcherCovers, toolMatchers } from "./tool-matchers.ts";
+import { matcherCovers, sameTools, toolMatchers } from "./tool-matchers.ts";
 import { loadRepo } from "@zambil/core/load-repo";
 import { writeTestRepo } from "@zambil/core/write-test-repo";
 
@@ -32,5 +32,17 @@ describe("matcherCovers", () => {
       matcherCovers("Bash, Edit", { needed: "Edit" }),
       matcherCovers("mcp__deploy-server__run", { needed: "mcp__deploy-server__run" }),
     ]).toEqual([true, true, false, false, true, true]);
+  });
+});
+
+describe("sameTools", () => {
+  test("compares the tools in any order and with a comma, and no matcher only with no matcher", () => {
+    expect([
+      sameTools("Edit|Bash", { other: "Bash|Edit" }),
+      sameTools("Bash, Edit", { other: "Bash|Edit" }),
+      sameTools("Bash", { other: "Bash|Edit" }),
+      sameTools(undefined, { other: "Bash" }),
+      sameTools(undefined, { other: undefined }),
+    ]).toEqual([true, true, false, false, true]);
   });
 });

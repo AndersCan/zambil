@@ -74,7 +74,7 @@ zambil reads the properties in the table. The `properties` field of the note hol
 | `aliases`      | list of text      | More names for the note.                                                                                                     |
 | `tags`         | list of text      | Obsidian tags. zambil also reads the `#tags` in the text of the note.                                                        |
 | `hooks`        | list of text      | The hooks where the note applies, with the hook names of Claude Code, for example `SessionStart` or `PreToolUse`.            |
-| `tools`        | list of text      | The tools that a tool hook applies to, for example `Bash` or `Edit`.                                                         |
+| `tools`        | list of text      | The tools that a tool hook applies to, for example `Bash` or `Edit`. After you change it, run `zambil install` again.        |
 | `projects`     | list of text      | The projects where the note applies: the name of a git repo or of a folder, for example `webshop`. See [Scope](#scope).      |
 | `paths`        | list of text      | The folders where the note applies, as full paths or paths that start with `~/`, for example `"~/git/webshop"`.              |
 | `expires`      | date or date-time | The claims of the note hold until this moment. See [Expiry](#expiry).                                                        |
