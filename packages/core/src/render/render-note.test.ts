@@ -57,7 +57,7 @@ describe("renderNote", () => {
         "Embedded content links [[guest#Part]].",
         "",
         "Links:",
-        '- [[guest#Part]]: warning: [[guest]] has no heading "Part".',
+        '- [[guest#Part]]: Warning: [[guest]] has no heading "Part".',
         "</note>",
         "",
         "Links:",
@@ -77,7 +77,7 @@ describe("renderNote", () => {
     const use = ['<note name="guide" path="guide.md" section="#Use">', "# Use", "Run it.", ""];
     use.push("See [[#Use]] and", ...tip, ". Not [[#Nope]].", "", "Links:");
     use.push("- [[guide#Use]]: It has no description. Open guide#Use.");
-    use.push('- [[guide#Nope]]: warning: [[guide]] has no heading "Nope".', "</note>");
+    use.push('- [[guide#Nope]]: Warning: [[guide]] has no heading "Nope".', "</note>");
     const host = ['<note name="host" path="host.md">', ...use, ...tip, "</note>"];
     expect((await render(files, { target: "host" })).text).toBe(host.join("\n"));
   });
@@ -112,7 +112,7 @@ describe("renderNote", () => {
   });
 
   test("puts a warning in place of an expired note, with its when-expired note and a way to read it anyway", async () => {
-    const files = { ...cacheNotes, "host.md": "![[today]]\n\nSee [[today]].\n" };
+    const files = { ...cacheNotes, "host.md": "![[today]]\n\nSee [[today]].\n![[today#Nope]]\n" };
     const embedded = await render(files, { target: "host", now: afterExpiry });
     const shown = await render(files, { target: "today", now: afterExpiry });
     const warning = [
@@ -130,6 +130,7 @@ describe("renderNote", () => {
         ...warning,
         "",
         "See [[today]].",
+        'Warning: zambil cannot show ![[today#Nope]], because [[today]] has no heading "Nope".',
         "",
         "Links:",
         "- [[today]]: The date. Warning: it expired on 2026-11-28, so it can be out of date. To update or verify it, read [[refresh]]: How to refresh the date. Warning: it expired on 2026-11-27 12:00, so it can be out of date. Open refresh anyway. Open today anyway.",

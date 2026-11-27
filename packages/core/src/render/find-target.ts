@@ -59,9 +59,9 @@ export function findTarget(target: WikilinkTarget, options: FindTargetOptions): 
     case "found": {
       const { note } = resolution;
       const expiry = resolution.kind === "expired" ? "expired" : "current";
-      if (expiry === "expired" && options.expired === "warn") return { kind: "expired", note };
       const lines = selectSection(scanLines(note.content), target.subpath);
       if (lines === undefined) return { kind: "unresolved", reason: missingSection(note, target) };
+      if (expiry === "expired" && options.expired === "warn") return { kind: "expired", note };
       return { kind: "found", note, lines, expiry };
     }
     default:

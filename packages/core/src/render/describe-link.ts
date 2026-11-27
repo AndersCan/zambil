@@ -52,7 +52,7 @@ export function describeLink(target: WikilinkTarget, options: DescribeLinkOption
   const link = `[[${target.text}]]`;
   switch (lookup.kind) {
     case "unresolved":
-      return `${link}: warning: ${lookup.reason}.`;
+      return `${link}: Warning: ${lookup.reason}.`;
     case "found": {
       const { note } = lookup;
       const label = kindLabel(note);
