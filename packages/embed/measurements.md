@@ -2,297 +2,304 @@
 
 `node packages/embed/src/measure/measure-embedders.ts` writes this file. Do not edit it by hand. `README.md` in this folder says which model zambil uses and why.
 
-Machine: unknown (10 cores), 7.2.12-orbstack-00394-gbecdd6130068 arm64, Node v24.22.3, load average 15.4 at the start.
+Machine: unknown (10 cores), 7.2.12-orbstack-00394-gbecdd6130068 arm64, Node v24.22.3, load average 13.4 at the start.
 
-The prose cases are in `src/measure/prose-cases.ts`: 21 texts that must find one note, and 12 texts that must find none. The notes are in `fixtures/prose-repo`.
+The prose cases are in `src/measure/prose-cases.ts`: 63 texts that must find one note, and 42 texts that must find none. The notes are in `fixtures/prose-repo`.
 
 The columns:
 
 - Top note right: for how many match cases the best note is the expected note.
-- No false match at: the lowest score, in steps of 0.01, above the score of every note that must not match, in all cases.
-- Found at that score: for how many match cases the best note is the expected note and scores at least that much.
+- Best threshold: the score, in steps of 0.01, where the found notes minus 2 times the false matches is highest. A search returns at most 3 notes that score at least that much.
+- Found, False matches: at that threshold, the expected notes that a search returns, and the notes that it returns but must not.
+- "iterating": the score of the for-loops note for "iterating", and whether it is the best note.
 - Cold start: a new Node process loads the code and the model and embeds one query. The fastest of 10 runs. The runs go in rounds, one run of each model per round, so that a busy moment slows each model.
 - Load model, One query: the parts of the cold start that the process measured itself.
 - 300-word query, 20 descriptions: the time to embed with a loaded model, the fastest of 10 runs.
 
 ## Summary
 
-| Model                     | Size  | Top note right | No false match at | Found at that score | Cold start | Load model | One query | 300-word query | 20 descriptions |
-| ------------------------- | ----- | -------------- | ----------------- | ------------------- | ---------- | ---------- | --------- | -------------- | --------------- |
-| all-minilm-l6-v2          | 23 MB | 20/21          | 0.41              | 9/21                | 144 ms     | 53 ms      | 5 ms      | 21 ms          | 52 ms           |
-| all-minilm-l6-v2-fp32     | 90 MB | 20/21          | 0.42              | 9/21                | 165 ms     | 74 ms      | 6 ms      | 54 ms          | 95 ms           |
-| paraphrase-minilm-l3-v2   | 17 MB | 13/21          | 0.54              | 2/21                | 122 ms     | 38 ms      | 2 ms      | 7 ms           | 36 ms           |
-| bge-small-en-v1.5         | 34 MB | 21/21          | 0.66              | 12/21               | 175 ms     | 82 ms      | 7 ms      | 80 ms          | 126 ms          |
-| gte-small                 | 34 MB | 20/21          | 0.83              | 11/21               | 168 ms     | 81 ms      | 4 ms      | 185 ms         | 229 ms          |
-| e5-small-v2               | 34 MB | 17/21          | 0.86              | 1/21                | 165 ms     | 81 ms      | 4 ms      | 268 ms         | 284 ms          |
-| snowflake-arctic-embed-xs | 23 MB | 19/21          | 0.67              | 1/21                | 125 ms     | 48 ms      | 2 ms      | 59 ms          | 77 ms           |
+| Model                     | Size  | Top note right | Best threshold | Found | False matches | "iterating"       | Cold start | Load model | One query | 300-word query | 20 descriptions |
+| ------------------------- | ----- | -------------- | -------------- | ----- | ------------- | ----------------- | ---------- | ---------- | --------- | -------------- | --------------- |
+| multi-qa-minilm-l6-cos-v1 | 23 MB | 55/63          | 0.34           | 41/63 | 7             | 0.388 (first)     | 144 ms     | 55 ms      | 4 ms      | 20 ms          | 48 ms           |
+| all-minilm-l6-v2          | 23 MB | 58/63          | 0.36           | 35/63 | 4             | 0.347 (first)     | 142 ms     | 53 ms      | 4 ms      | 21 ms          | 55 ms           |
+| all-minilm-l6-v2-fp32     | 90 MB | 57/63          | 0.36           | 36/63 | 4             | 0.327 (first)     | 162 ms     | 74 ms      | 3 ms      | 115 ms         | 324 ms          |
+| paraphrase-minilm-l3-v2   | 17 MB | 45/63          | 0.40           | 23/63 | 7             | 0.182 (first)     | 118 ms     | 38 ms      | 2 ms      | 6 ms           | 30 ms           |
+| bge-small-en-v1.5         | 34 MB | 59/63          | 0.64           | 38/63 | 6             | 0.687 (first)     | 172 ms     | 86 ms      | 4 ms      | 66 ms          | 115 ms          |
+| gte-small                 | 34 MB | 61/63          | 0.83           | 34/63 | 6             | 0.826 (first)     | 170 ms     | 83 ms      | 6 ms      | 126 ms         | 157 ms          |
+| e5-small-v2               | 34 MB | 52/63          | 0.87           | 3/63  | 0             | 0.803 (not first) | 166 ms     | 84 ms      | 4 ms      | 79 ms          | 142 ms          |
+| mxbai-embed-xsmall-v1     | 24 MB | 58/63          | 0.37           | 34/63 | 4             | 0.350 (first)     | 131 ms     | 50 ms      | 2 ms      | 26 ms          | 67 ms           |
+| snowflake-arctic-embed-xs | 23 MB | 55/63          | 0.67           | 13/63 | 4             | 0.517 (first)     | 128 ms     | 50 ms      | 3 ms      | 43 ms          | 67 ms           |
 
-The whole `zambil search` command, with all-minilm-l6-v2, the index in the cache and the 20 notes of the prose repo, takes 149 ms from the start of the process to its exit. The fastest of 10 runs.
+The whole `zambil search` command, with multi-qa-minilm-l6-cos-v1, the index in the cache and the 20 notes of the prose repo, takes 112 ms from the start of the process to its exit. The fastest of 10 runs.
+
+## Thresholds
+
+zambil uses multi-qa-minilm-l6-cos-v1 with the threshold 0.38. Found notes and false matches of the search model and the previous model, at each threshold, out of 63 match cases:
+
+| Threshold | multi-qa-minilm-l6-cos-v1             | all-minilm-l6-v2                      |
+| --------- | ------------------------------------- | ------------------------------------- |
+| 0.30      | 44 found, 18 false, finds "iterating" | 47 found, 19 false, finds "iterating" |
+| 0.31      | 44 found, 15 false, finds "iterating" | 47 found, 18 false, finds "iterating" |
+| 0.32      | 43 found, 11 false, finds "iterating" | 46 found, 13 false, finds "iterating" |
+| 0.33      | 43 found, 8 false, finds "iterating"  | 43 found, 9 false, finds "iterating"  |
+| 0.34      | 41 found, 7 false, finds "iterating"  | 40 found, 9 false, finds "iterating"  |
+| 0.35      | 39 found, 7 false, finds "iterating"  | 39 found, 6 false                     |
+| 0.36      | 37 found, 7 false, finds "iterating"  | 35 found, 4 false                     |
+| 0.37      | 35 found, 5 false, finds "iterating"  | 34 found, 4 false                     |
+| 0.38      | 32 found, 3 false, finds "iterating"  | 32 found, 3 false                     |
+| 0.39      | 31 found, 3 false                     | 30 found, 3 false                     |
+| 0.40      | 29 found, 3 false                     | 30 found, 3 false                     |
+| 0.41      | 25 found, 2 false                     | 26 found, 2 false                     |
+| 0.42      | 22 found, 2 false                     | 23 found, 2 false                     |
+| 0.43      | 20 found, 2 false                     | 23 found, 2 false                     |
+| 0.44      | 19 found, 2 false                     | 20 found, 1 false                     |
+| 0.45      | 18 found, 1 false                     | 18 found, 1 false                     |
+
+multi-qa-minilm-l6-cos-v1 at 0.38, by group of cases. The later cases were written after the threshold was chosen:
+
+| Group        | Cases | Found | False matches |
+| ------------ | ----- | ----- | ------------- |
+| Short texts  | 33    | 11/21 | 0             |
+| Task prompts | 35    | 9/20  | 0             |
+| Later cases  | 37    | 12/22 | 3             |
+
+The false matches of multi-qa-minilm-l6-cos-v1 at 0.38:
+
+- "squash my last three commits and put them on top of the latest main" finds commit-messages (0.446).
+- "Set up a GitHub Actions workflow that runs the linter on each pull request." finds code-review (0.406).
+- "Convert this JavaScript file to TypeScript and add the types." finds for-loops (0.570).
+
+## The hook on each prompt
+
+`zambil hook` at `UserPromptSubmit`, as Claude Code runs it: a new Node process with `NODE_COMPILE_CACHE`, the prose repo, and the payload on standard input. The fastest of 10 runs. "Added by the search" is the time over the slash command, which loads the repo but not the model.
+
+| Case                                                                   | Whole hook | Added by the search |
+| ---------------------------------------------------------------------- | ---------- | ------------------- |
+| A slash command, `/compact`. The hook does not search.                 | 36 ms      | -                   |
+| "iterating", with the index                                            | 103 ms     | 67 ms               |
+| A 300-word prompt, with the index                                      | 133 ms     | 96 ms               |
+| A pasted prompt of 1 MB, with the index                                | 145 ms     | 109 ms              |
+| "iterating", with no index. The hook embeds 10 of the 20 descriptions. | 165 ms     | 129 ms              |
+| "iterating", with no model. The hook does not search.                  | 48 ms      | 12 ms               |
 
 ## Scores per case
 
+### multi-qa-minilm-l6-cos-v1
+
+| Query                                                                                                                                                                                                                                   | Expected             | Top note             | Top score | Expected score | Best wrong score |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | -------------------- | --------- | -------------- | ---------------- |
+| iterating                                                                                                                                                                                                                               | for-loops            | for-loops            | 0.388     | 0.388          | 0.092            |
+| go over every item in a list                                                                                                                                                                                                            | for-loops            | for-loops            | 0.295     | 0.295          | 0.098            |
+| my branch is behind main                                                                                                                                                                                                                | rebase               | rebase               | 0.634     | 0.634          | 0.205            |
+| fix the merge conflicts                                                                                                                                                                                                                 | rebase               | rebase               | 0.481     | 0.481          | 0.151            |
+| describe my changes for git                                                                                                                                                                                                             | commit-messages      | commit-messages      | 0.347     | 0.347          | 0.310            |
+| ship the website to the live servers                                                                                                                                                                                                    | deploy               | deploy               | 0.452     | 0.452          | 0.298            |
+| add a column to the users table                                                                                                                                                                                                         | migrations           | migrations           | 0.184     | 0.184          | 0.156            |
+| should this function throw?                                                                                                                                                                                                             | error-handling       | error-handling       | 0.237     | 0.237          | 0.205            |
+| add a test for this function                                                                                                                                                                                                            | unit-tests           | unit-tests           | 0.411     | 0.411          | 0.374            |
+| the container does not start on my laptop                                                                                                                                                                                               | docker               | docker               | 0.355     | 0.355          | 0.123            |
+| which colour should this button have                                                                                                                                                                                                    | css-tokens           | css-tokens           | 0.460     | 0.460          | 0.078            |
+| look at this PR before I merge it                                                                                                                                                                                                       | code-review          | commit-messages      | 0.254     | 0.204          | 0.254            |
+| publish a new version of the library                                                                                                                                                                                                    | release              | release              | 0.340     | 0.340          | 0.257            |
+| install the dependencies of a Python script                                                                                                                                                                                             | virtual-environments | virtual-environments | 0.313     | 0.313          | 0.231            |
+| the server is slow, find out why                                                                                                                                                                                                        | profiling            | profiling            | 0.521     | 0.521          | 0.124            |
+| where do I keep the database password                                                                                                                                                                                                   | secrets              | secrets              | 0.556     | 0.556          | 0.369            |
+| convert a timestamp to local time                                                                                                                                                                                                       | dates                | dates                | 0.509     | 0.509          | 0.126            |
+| match an email address with a pattern                                                                                                                                                                                                   | regular-expressions  | regular-expressions  | 0.406     | 0.406          | 0.152            |
+| blind users cannot use the signup form                                                                                                                                                                                                  | accessibility        | accessibility        | 0.163     | 0.163          | 0.070            |
+| give this variable a clearer name                                                                                                                                                                                                       | naming               | naming               | 0.551     | 0.551          | 0.225            |
+| print what the service does so I can debug it                                                                                                                                                                                           | logging              | logging              | 0.367     | 0.367          | 0.183            |
+| In src/cart/total.ts the function sums the prices with a while loop and a manual index counter. Rewrite it so that it iterates over the items in a cleaner way, keep the same behaviour, and run the tests afterwards.                  | for-loops            | unit-tests           | 0.292     | 0.237          | 0.292            |
+| I opened a PR yesterday, but main moved on and GitHub now says that my branch is out of date and has conflicts in package.json. Bring my branch up to date with main and sort out the conflicts so that CI runs again.                  | rebase               | rebase               | 0.524     | 0.524          | 0.286            |
+| The payment service needs the Stripe API key in production. Where do I put it so that it is not committed to the repo, and how does the service read it at startup?                                                                     | secrets              | secrets              | 0.419     | 0.419          | 0.296            |
+| I just wrote parseOrder in src/orders/parse-order.ts. Add tests that cover an empty order, an order with one item and an order with an unknown product id, then run them.                                                               | unit-tests           | unit-tests           | 0.231     | 0.231          | 0.173            |
+| The fix for the checkout bug is merged. Get it out to production today and tell me when the new version is live for customers.                                                                                                          | deploy               | rebase               | 0.211     | 0.018          | 0.211            |
+| The /orders endpoint takes four seconds to answer when a user has many orders. Find out where the time goes before you change anything, and show me the slowest functions.                                                              | profiling            | profiling            | 0.352     | 0.352          | 0.147            |
+| I am done with the refactor of the cart module. Stage the changes and commit them with a good message that explains why the change was made.                                                                                            | commit-messages      | commit-messages      | 0.293     | 0.293          | 0.250            |
+| When I run docker compose up, the api container exits right away with code 137. It worked last week. Find out why it does not start on my machine.                                                                                      | docker               | docker               | 0.450     | 0.450          | 0.174            |
+| We need a new nullable column discount_code on the orders table in Postgres. Write the schema change so that it can run on the live database without downtime.                                                                          | migrations           | migrations           | 0.187     | 0.187          | 0.182            |
+| The order confirmation email shows the delivery time in UTC, so customers in Norway see the wrong hour. Show it in the customer's own time zone instead.                                                                                | dates                | dates                | 0.373     | 0.373          | 0.130            |
+| parseOrder throws an exception when a field is missing, and three callers wrap it in try/catch. Change it so that a missing field is a normal result that the caller checks, not an exception.                                          | error-handling       | error-handling       | 0.399     | 0.399          | 0.141            |
+| Review PR 42 before I merge it. Look for bugs, missing tests and anything that is hard to read, and write your comments as a list.                                                                                                      | code-review          | code-review          | 0.334     | 0.334          | 0.258            |
+| Version 2.3.0 of the client library is ready. Bump the version, write the changelog entry and publish it to npm.                                                                                                                        | release              | release              | 0.528     | 0.528          | 0.340            |
+| The form accepts phone numbers like 12-34 and +47 123 45 678. Write a pattern that accepts only Norwegian numbers, and add a few examples that must and must not match.                                                                 | regular-expressions  | error-handling       | 0.209     | 0.191          | 0.209            |
+| When a payment fails in production, we cannot see why. Add logging to the payment service so that each failure records the order id, the provider and the error.                                                                        | logging              | error-handling       | 0.327     | 0.273          | 0.327            |
+| A screen reader user says that the checkout button has no label and that the error messages are not read out. Fix the checkout form so that it works with a screen reader.                                                              | accessibility        | accessibility        | 0.438     | 0.438          | 0.284            |
+| The Python script in tools/report.py needs pandas, but I do not want to install it globally. Set it up so that the script has its own dependencies, and tell me how to run it.                                                          | virtual-environments | virtual-environments | 0.276     | 0.276          | 0.184            |
+| The function in utils.ts is called doStuff and its arguments are a, b and c. Rename them so that the code says what they do.                                                                                                            | naming               | naming               | 0.449     | 0.449          | 0.369            |
+| The new banner uses #3a7bd5 and 13px of padding. Replace the hard-coded colour and spacing with the values from our design system.                                                                                                      | css-tokens           | css-tokens           | 0.405     | 0.405          | 0.106            |
+| how do I iterate over an array and get the index too?                                                                                                                                                                                   | for-loops            | for-loops            | 0.416     | 0.416          | 0.086            |
+| loop through the keys of an object                                                                                                                                                                                                      | for-loops            | for-loops            | 0.452     | 0.452          | 0.169            |
+| squash my last three commits and put them on top of the latest main                                                                                                                                                                     | rebase               | commit-messages      | 0.446     | 0.427          | 0.446            |
+| the build image is huge, can you make the Dockerfile smaller?                                                                                                                                                                           | docker               | docker               | 0.650     | 0.650          | 0.155            |
+| Our staging deploy failed halfway. Roll out the current main to production once staging is green, and tell me the steps you took.                                                                                                       | deploy               | deploy               | 0.488     | 0.488          | 0.306            |
+| write a good commit message for these changes                                                                                                                                                                                           | commit-messages      | commit-messages      | 0.748     | 0.748          | 0.324            |
+| rename the columns of the invoices table without losing data                                                                                                                                                                            | migrations           | naming               | 0.193     | 0.187          | 0.193            |
+| The API client throws on every 404, and the callers do not expect that. Make the not-found case a value that they can check instead of an exception.                                                                                    | error-handling       | error-handling       | 0.374     | 0.374          | 0.146            |
+| The tests for the cart are flaky and slow. Rewrite them with Vitest so that each test checks one thing.                                                                                                                                 | unit-tests           | unit-tests           | 0.459     | 0.459          | 0.204            |
+| which spacing value should I use between these cards?                                                                                                                                                                                   | css-tokens           | css-tokens           | 0.403     | 0.403          | 0.111            |
+| Give me feedback on this pull request: is the design sound, and is anything missing before it can be merged?                                                                                                                            | code-review          | code-review          | 0.422     | 0.422          | 0.195            |
+| cut a new release of the package                                                                                                                                                                                                        | release              | release              | 0.588     | 0.588          | 0.230            |
+| pip install fails with externally-managed-environment. How do I install requests for my script?                                                                                                                                         | virtual-environments | virtual-environments | 0.346     | 0.346          | 0.270            |
+| Memory use of the worker grows all day until it crashes. Find out what holds on to the memory.                                                                                                                                          | profiling            | profiling            | 0.191     | 0.191          | 0.145            |
+| the AWS credentials are hard-coded in config.ts, move them somewhere safe                                                                                                                                                               | secrets              | secrets              | 0.299     | 0.299          | 0.209            |
+| the report shows yesterday's date for orders placed after 11 pm in Oslo                                                                                                                                                                 | dates                | dates                | 0.280     | 0.280          | 0.099            |
+| extract the version number from strings like v1.2.3-beta                                                                                                                                                                                | regular-expressions  | rebase               | 0.188     | 0.141          | 0.188            |
+| the modal cannot be closed with the keyboard                                                                                                                                                                                            | accessibility        | accessibility        | 0.154     | 0.154          | 0.077            |
+| this function is called handle, what is a better name?                                                                                                                                                                                  | naming               | naming               | 0.491     | 0.491          | 0.117            |
+| We cannot tell which request failed in the logs. Add a request id to every log line of the api service and log the start and end of each request.                                                                                       | logging              | logging              | 0.408     | 0.408          | 0.292            |
+| iterate                                                                                                                                                                                                                                 | for-loops            | for-loops            | 0.397     | 0.397          | 0.116            |
+| iteration                                                                                                                                                                                                                               | for-loops            | for-loops            | 0.372     | 0.372          | 0.116            |
+| iterating?                                                                                                                                                                                                                              | for-loops            | for-loops            | 0.364     | 0.364          | 0.072            |
+| what day is it                                                                                                                                                                                                                          | (none)               | dates                | 0.320     | -              | 0.320            |
+| bake sourdough bread                                                                                                                                                                                                                    | (none)               | dates                | 0.163     | -              | 0.163            |
+| what is the capital of France                                                                                                                                                                                                           | (none)               | naming               | 0.181     | -              | 0.181            |
+| hello                                                                                                                                                                                                                                   | (none)               | regular-expressions  | 0.209     | -              | 0.209            |
+| thanks, that looks good                                                                                                                                                                                                                 | (none)               | css-tokens           | 0.197     | -              | 0.197            |
+| yes                                                                                                                                                                                                                                     | (none)               | release              | 0.040     | -              | 0.040            |
+| continue                                                                                                                                                                                                                                | (none)               | rebase               | 0.258     | -              | 0.258            |
+| book a flight to Oslo                                                                                                                                                                                                                   | (none)               | dates                | 0.136     | -              | 0.136            |
+| write a poem about the sea                                                                                                                                                                                                              | (none)               | commit-messages      | 0.229     | -              | 0.229            |
+| summarize this file                                                                                                                                                                                                                     | (none)               | naming               | 0.264     | -              | 0.264            |
+| explain how photosynthesis works                                                                                                                                                                                                        | (none)               | docker               | 0.123     | -              | 0.123            |
+| the cat knocked a glass off the table                                                                                                                                                                                                   | (none)               | accessibility        | 0.139     | -              | 0.139            |
+| Write a README for this package that explains what it does and shows one example of how to call it.                                                                                                                                     | (none)               | naming               | 0.294     | -              | 0.294            |
+| Add pagination to the GET /products endpoint: accept page and pageSize query parameters, and return the total count in the response.                                                                                                    | (none)               | accessibility        | 0.226     | -              | 0.226            |
+| Translate the onboarding emails into German and keep the placeholders as they are.                                                                                                                                                      | (none)               | commit-messages      | 0.284     | -              | 0.284            |
+| Explain what this repository does and how its folders are organised. I am new to the project.                                                                                                                                           | (none)               | secrets              | 0.248     | -              | 0.248            |
+| Create a new React component that shows the avatar of a user, with their initials when there is no picture.                                                                                                                             | (none)               | docker               | 0.149     | -              | 0.149            |
+| Draw a diagram of how the order service talks to the payment service and the stock service.                                                                                                                                             | (none)               | logging              | 0.291     | -              | 0.291            |
+| Summarize the discussion in issue 17 and list the decisions that were made.                                                                                                                                                             | (none)               | code-review          | 0.311     | -              | 0.311            |
+| I need to write a short speech for the wedding of my sister next Saturday. She loves hiking and her husband is a chef. Make it warm and a little funny, about two minutes long.                                                         | (none)               | commit-messages      | 0.322     | -              | 0.322            |
+| Plan a three-day trip to Rome for two people in April, with a museum each morning and a good place for dinner each evening.                                                                                                             | (none)               | migrations           | 0.105     | -              | 0.105            |
+| Hi! Before we start, can you tell me what you can help me with in this session?                                                                                                                                                         | (none)               | commit-messages      | 0.221     | -              | 0.221            |
+| Make the sidebar collapsible on small screens and remember whether it was open.                                                                                                                                                         | (none)               | accessibility        | 0.284     | -              | 0.284            |
+| Add a search box to the products page that filters the list as the user types.                                                                                                                                                          | (none)               | for-loops            | 0.157     | -              | 0.157            |
+| ok, go ahead                                                                                                                                                                                                                            | (none)               | commit-messages      | 0.166     | -              | 0.166            |
+| do it                                                                                                                                                                                                                                   | (none)               | regular-expressions  | 0.207     | -              | 0.207            |
+| what does this function do?                                                                                                                                                                                                             | (none)               | naming               | 0.205     | -              | 0.205            |
+| what time is it in Tokyo?                                                                                                                                                                                                               | (none)               | dates                | 0.372     | -              | 0.372            |
+| Write a cover letter for a job as a nurse at the city hospital. I have five years of experience in the emergency room.                                                                                                                  | (none)               | commit-messages      | 0.269     | -              | 0.269            |
+| Add a button to the order page that lets the user download the invoice as a PDF.                                                                                                                                                        | (none)               | accessibility        | 0.266     | -              | 0.266            |
+| Explain the difference between TCP and UDP.                                                                                                                                                                                             | (none)               | accessibility        | 0.075     | -              | 0.075            |
+| Implement a function that returns the n-th Fibonacci number.                                                                                                                                                                            | (none)               | for-loops            | 0.234     | -              | 0.234            |
+| Set up a GitHub Actions workflow that runs the linter on each pull request.                                                                                                                                                             | (none)               | code-review          | 0.406     | -              | 0.406            |
+| Convert this JavaScript file to TypeScript and add the types.                                                                                                                                                                           | (none)               | for-loops            | 0.570     | -              | 0.570            |
+| What are the pros and cons of GraphQL compared to REST for our mobile app?                                                                                                                                                              | (none)               | deploy               | 0.133     | -              | 0.133            |
+| make the logo bigger                                                                                                                                                                                                                    | (none)               | css-tokens           | 0.260     | -              | 0.260            |
+| great, thank you!                                                                                                                                                                                                                       | (none)               | commit-messages      | 0.170     | -              | 0.170            |
+| no, undo that                                                                                                                                                                                                                           | (none)               | commit-messages      | 0.185     | -              | 0.185            |
+| /clear                                                                                                                                                                                                                                  | (none)               | commit-messages      | 0.233     | -              | 0.233            |
+| Read the spec in docs/checkout.md and implement the coupon field on the checkout page. Coupons are validated by the existing /coupons endpoint. Show an inline message when a coupon is invalid, and update the total when it is valid. | (none)               | commit-messages      | 0.314     | -              | 0.314            |
+| Recommend three science fiction books for a long flight.                                                                                                                                                                                | (none)               | naming               | 0.159     | -              | 0.159            |
+| Count the lines of code in each folder of this repo.                                                                                                                                                                                    | (none)               | naming               | 0.210     | -              | 0.210            |
+
 ### all-minilm-l6-v2
 
-| Query                                         | Expected             | Top note             | Top score | Expected score | Best wrong score |
-| --------------------------------------------- | -------------------- | -------------------- | --------- | -------------- | ---------------- |
-| iterating                                     | for-loops            | for-loops            | 0.347     | 0.347          | 0.137            |
-| go over every item in a list                  | for-loops            | for-loops            | 0.249     | 0.249          | 0.100            |
-| my branch is behind main                      | rebase               | rebase               | 0.587     | 0.587          | 0.229            |
-| fix the merge conflicts                       | rebase               | rebase               | 0.533     | 0.533          | 0.208            |
-| describe my changes for git                   | commit-messages      | commit-messages      | 0.360     | 0.360          | 0.351            |
-| ship the website to the live servers          | deploy               | deploy               | 0.451     | 0.451          | 0.281            |
-| add a column to the users table               | migrations           | migrations           | 0.194     | 0.194          | 0.123            |
-| should this function throw?                   | error-handling       | error-handling       | 0.320     | 0.320          | 0.144            |
-| add a test for this function                  | unit-tests           | unit-tests           | 0.483     | 0.483          | 0.343            |
-| the container does not start on my laptop     | docker               | docker               | 0.351     | 0.351          | 0.100            |
-| which colour should this button have          | css-tokens           | css-tokens           | 0.405     | 0.405          | 0.134            |
-| look at this PR before I merge it             | code-review          | rebase               | 0.274     | 0.166          | 0.274            |
-| publish a new version of the library          | release              | release              | 0.357     | 0.357          | 0.240            |
-| install the dependencies of a Python script   | virtual-environments | virtual-environments | 0.340     | 0.340          | 0.227            |
-| the server is slow, find out why              | profiling            | profiling            | 0.542     | 0.542          | 0.137            |
-| where do I keep the database password         | secrets              | secrets              | 0.542     | 0.542          | 0.402            |
-| convert a timestamp to local time             | dates                | dates                | 0.467     | 0.467          | 0.170            |
-| match an email address with a pattern         | regular-expressions  | regular-expressions  | 0.431     | 0.431          | 0.139            |
-| blind users cannot use the signup form        | accessibility        | accessibility        | 0.211     | 0.211          | 0.082            |
-| give this variable a clearer name             | naming               | naming               | 0.490     | 0.490          | 0.173            |
-| print what the service does so I can debug it | logging              | logging              | 0.355     | 0.355          | 0.226            |
-| what day is it                                | (none)               | dates                | 0.316     | -              | 0.316            |
-| bake sourdough bread                          | (none)               | logging              | 0.124     | -              | 0.124            |
-| what is the capital of France                 | (none)               | dates                | 0.068     | -              | 0.068            |
-| hello                                         | (none)               | regular-expressions  | 0.230     | -              | 0.230            |
-| thanks, that looks good                       | (none)               | css-tokens           | 0.158     | -              | 0.158            |
-| yes                                           | (none)               | commit-messages      | 0.071     | -              | 0.071            |
-| continue                                      | (none)               | rebase               | 0.224     | -              | 0.224            |
-| book a flight to Oslo                         | (none)               | dates                | 0.125     | -              | 0.125            |
-| write a poem about the sea                    | (none)               | commit-messages      | 0.300     | -              | 0.300            |
-| summarize this file                           | (none)               | commit-messages      | 0.322     | -              | 0.322            |
-| explain how photosynthesis works              | (none)               | migrations           | 0.230     | -              | 0.230            |
-| the cat knocked a glass off the table         | (none)               | accessibility        | 0.126     | -              | 0.126            |
-
-### all-minilm-l6-v2-fp32
-
-| Query                                         | Expected             | Top note             | Top score | Expected score | Best wrong score |
-| --------------------------------------------- | -------------------- | -------------------- | --------- | -------------- | ---------------- |
-| iterating                                     | for-loops            | for-loops            | 0.327     | 0.327          | 0.135            |
-| go over every item in a list                  | for-loops            | for-loops            | 0.234     | 0.234          | 0.079            |
-| my branch is behind main                      | rebase               | rebase               | 0.617     | 0.617          | 0.220            |
-| fix the merge conflicts                       | rebase               | rebase               | 0.539     | 0.539          | 0.185            |
-| describe my changes for git                   | commit-messages      | commit-messages      | 0.365     | 0.365          | 0.343            |
-| ship the website to the live servers          | deploy               | deploy               | 0.459     | 0.459          | 0.286            |
-| add a column to the users table               | migrations           | migrations           | 0.182     | 0.182          | 0.118            |
-| should this function throw?                   | error-handling       | error-handling       | 0.306     | 0.306          | 0.144            |
-| add a test for this function                  | unit-tests           | unit-tests           | 0.460     | 0.460          | 0.352            |
-| the container does not start on my laptop     | docker               | docker               | 0.322     | 0.322          | 0.093            |
-| which colour should this button have          | css-tokens           | css-tokens           | 0.416     | 0.416          | 0.128            |
-| look at this PR before I merge it             | code-review          | rebase               | 0.282     | 0.186          | 0.282            |
-| publish a new version of the library          | release              | release              | 0.335     | 0.335          | 0.253            |
-| install the dependencies of a Python script   | virtual-environments | virtual-environments | 0.349     | 0.349          | 0.222            |
-| the server is slow, find out why              | profiling            | profiling            | 0.549     | 0.549          | 0.134            |
-| where do I keep the database password         | secrets              | secrets              | 0.539     | 0.539          | 0.412            |
-| convert a timestamp to local time             | dates                | dates                | 0.466     | 0.466          | 0.159            |
-| match an email address with a pattern         | regular-expressions  | regular-expressions  | 0.436     | 0.436          | 0.142            |
-| blind users cannot use the signup form        | accessibility        | accessibility        | 0.217     | 0.217          | 0.083            |
-| give this variable a clearer name             | naming               | naming               | 0.480     | 0.480          | 0.203            |
-| print what the service does so I can debug it | logging              | logging              | 0.387     | 0.387          | 0.229            |
-| what day is it                                | (none)               | dates                | 0.307     | -              | 0.307            |
-| bake sourdough bread                          | (none)               | logging              | 0.130     | -              | 0.130            |
-| what is the capital of France                 | (none)               | for-loops            | 0.060     | -              | 0.060            |
-| hello                                         | (none)               | regular-expressions  | 0.223     | -              | 0.223            |
-| thanks, that looks good                       | (none)               | dates                | 0.143     | -              | 0.143            |
-| yes                                           | (none)               | for-loops            | 0.038     | -              | 0.038            |
-| continue                                      | (none)               | rebase               | 0.225     | -              | 0.225            |
-| book a flight to Oslo                         | (none)               | dates                | 0.107     | -              | 0.107            |
-| write a poem about the sea                    | (none)               | commit-messages      | 0.276     | -              | 0.276            |
-| summarize this file                           | (none)               | commit-messages      | 0.294     | -              | 0.294            |
-| explain how photosynthesis works              | (none)               | migrations           | 0.227     | -              | 0.227            |
-| the cat knocked a glass off the table         | (none)               | accessibility        | 0.110     | -              | 0.110            |
-
-### paraphrase-minilm-l3-v2
-
-| Query                                         | Expected             | Top note             | Top score | Expected score | Best wrong score |
-| --------------------------------------------- | -------------------- | -------------------- | --------- | -------------- | ---------------- |
-| iterating                                     | for-loops            | for-loops            | 0.182     | 0.182          | 0.154            |
-| go over every item in a list                  | for-loops            | regular-expressions  | 0.128     | 0.049          | 0.128            |
-| my branch is behind main                      | rebase               | rebase               | 0.586     | 0.586          | 0.167            |
-| fix the merge conflicts                       | rebase               | rebase               | 0.521     | 0.521          | 0.199            |
-| describe my changes for git                   | commit-messages      | rebase               | 0.227     | 0.227          | 0.227            |
-| ship the website to the live servers          | deploy               | docker               | 0.320     | 0.316          | 0.320            |
-| add a column to the users table               | migrations           | logging              | 0.450     | 0.255          | 0.450            |
-| should this function throw?                   | error-handling       | error-handling       | 0.351     | 0.351          | 0.116            |
-| add a test for this function                  | unit-tests           | regular-expressions  | 0.537     | 0.507          | 0.537            |
-| the container does not start on my laptop     | docker               | docker               | 0.218     | 0.218          | 0.215            |
-| which colour should this button have          | css-tokens           | css-tokens           | 0.393     | 0.393          | 0.172            |
-| look at this PR before I merge it             | code-review          | css-tokens           | 0.216     | 0.192          | 0.216            |
-| publish a new version of the library          | release              | release              | 0.342     | 0.342          | 0.294            |
-| install the dependencies of a Python script   | virtual-environments | virtual-environments | 0.257     | 0.257          | 0.237            |
-| the server is slow, find out why              | profiling            | profiling            | 0.463     | 0.463          | 0.194            |
-| where do I keep the database password         | secrets              | secrets              | 0.557     | 0.557          | 0.471            |
-| convert a timestamp to local time             | dates                | dates                | 0.473     | 0.473          | 0.189            |
-| match an email address with a pattern         | regular-expressions  | regular-expressions  | 0.412     | 0.412          | 0.266            |
-| blind users cannot use the signup form        | accessibility        | error-handling       | 0.230     | 0.119          | 0.230            |
-| give this variable a clearer name             | naming               | naming               | 0.464     | 0.464          | 0.169            |
-| print what the service does so I can debug it | logging              | deploy               | 0.321     | 0.303          | 0.321            |
-| what day is it                                | (none)               | dates                | 0.358     | -              | 0.358            |
-| bake sourdough bread                          | (none)               | deploy               | 0.155     | -              | 0.155            |
-| what is the capital of France                 | (none)               | css-tokens           | 0.169     | -              | 0.169            |
-| hello                                         | (none)               | release              | 0.170     | -              | 0.170            |
-| thanks, that looks good                       | (none)               | regular-expressions  | 0.163     | -              | 0.163            |
-| yes                                           | (none)               | css-tokens           | 0.087     | -              | 0.087            |
-| continue                                      | (none)               | rebase               | 0.171     | -              | 0.171            |
-| book a flight to Oslo                         | (none)               | accessibility        | 0.110     | -              | 0.110            |
-| write a poem about the sea                    | (none)               | commit-messages      | 0.272     | -              | 0.272            |
-| summarize this file                           | (none)               | commit-messages      | 0.266     | -              | 0.266            |
-| explain how photosynthesis works              | (none)               | virtual-environments | 0.140     | -              | 0.140            |
-| the cat knocked a glass off the table         | (none)               | error-handling       | 0.142     | -              | 0.142            |
-
-### bge-small-en-v1.5
-
-| Query                                         | Expected             | Top note             | Top score | Expected score | Best wrong score |
-| --------------------------------------------- | -------------------- | -------------------- | --------- | -------------- | ---------------- |
-| iterating                                     | for-loops            | for-loops            | 0.687     | 0.687          | 0.619            |
-| go over every item in a list                  | for-loops            | for-loops            | 0.594     | 0.594          | 0.543            |
-| my branch is behind main                      | rebase               | rebase               | 0.697     | 0.697          | 0.581            |
-| fix the merge conflicts                       | rebase               | rebase               | 0.780     | 0.780          | 0.591            |
-| describe my changes for git                   | commit-messages      | commit-messages      | 0.672     | 0.672          | 0.659            |
-| ship the website to the live servers          | deploy               | deploy               | 0.693     | 0.693          | 0.621            |
-| add a column to the users table               | migrations           | migrations           | 0.599     | 0.599          | 0.576            |
-| should this function throw?                   | error-handling       | error-handling       | 0.672     | 0.672          | 0.608            |
-| add a test for this function                  | unit-tests           | unit-tests           | 0.631     | 0.631          | 0.585            |
-| the container does not start on my laptop     | docker               | docker               | 0.647     | 0.647          | 0.563            |
-| which colour should this button have          | css-tokens           | css-tokens           | 0.704     | 0.704          | 0.535            |
-| look at this PR before I merge it             | code-review          | code-review          | 0.576     | 0.576          | 0.542            |
-| publish a new version of the library          | release              | release              | 0.615     | 0.615          | 0.614            |
-| install the dependencies of a Python script   | virtual-environments | virtual-environments | 0.623     | 0.623          | 0.593            |
-| the server is slow, find out why              | profiling            | profiling            | 0.699     | 0.699          | 0.533            |
-| where do I keep the database password         | secrets              | secrets              | 0.756     | 0.756          | 0.632            |
-| convert a timestamp to local time             | dates                | dates                | 0.695     | 0.695          | 0.549            |
-| match an email address with a pattern         | regular-expressions  | regular-expressions  | 0.685     | 0.685          | 0.604            |
-| blind users cannot use the signup form        | accessibility        | accessibility        | 0.512     | 0.512          | 0.465            |
-| give this variable a clearer name             | naming               | naming               | 0.703     | 0.703          | 0.593            |
-| print what the service does so I can debug it | logging              | logging              | 0.649     | 0.649          | 0.617            |
-| what day is it                                | (none)               | dates                | 0.587     | -              | 0.587            |
-| bake sourdough bread                          | (none)               | logging              | 0.464     | -              | 0.464            |
-| what is the capital of France                 | (none)               | css-tokens           | 0.455     | -              | 0.455            |
-| hello                                         | (none)               | secrets              | 0.543     | -              | 0.543            |
-| thanks, that looks good                       | (none)               | css-tokens           | 0.550     | -              | 0.550            |
-| yes                                           | (none)               | css-tokens           | 0.474     | -              | 0.474            |
-| continue                                      | (none)               | css-tokens           | 0.539     | -              | 0.539            |
-| book a flight to Oslo                         | (none)               | migrations           | 0.471     | -              | 0.471            |
-| write a poem about the sea                    | (none)               | commit-messages      | 0.540     | -              | 0.540            |
-| summarize this file                           | (none)               | commit-messages      | 0.628     | -              | 0.628            |
-| explain how photosynthesis works              | (none)               | commit-messages      | 0.495     | -              | 0.495            |
-| the cat knocked a glass off the table         | (none)               | accessibility        | 0.384     | -              | 0.384            |
-
-### gte-small
-
-| Query                                         | Expected             | Top note             | Top score | Expected score | Best wrong score |
-| --------------------------------------------- | -------------------- | -------------------- | --------- | -------------- | ---------------- |
-| iterating                                     | for-loops            | for-loops            | 0.826     | 0.826          | 0.787            |
-| go over every item in a list                  | for-loops            | for-loops            | 0.797     | 0.797          | 0.790            |
-| my branch is behind main                      | rebase               | rebase               | 0.876     | 0.876          | 0.800            |
-| fix the merge conflicts                       | rebase               | rebase               | 0.881     | 0.881          | 0.784            |
-| describe my changes for git                   | commit-messages      | commit-messages      | 0.838     | 0.838          | 0.821            |
-| ship the website to the live servers          | deploy               | deploy               | 0.839     | 0.839          | 0.794            |
-| add a column to the users table               | migrations           | migrations           | 0.787     | 0.787          | 0.787            |
-| should this function throw?                   | error-handling       | error-handling       | 0.824     | 0.824          | 0.786            |
-| add a test for this function                  | unit-tests           | unit-tests           | 0.825     | 0.825          | 0.798            |
-| the container does not start on my laptop     | docker               | docker               | 0.815     | 0.815          | 0.774            |
-| which colour should this button have          | css-tokens           | css-tokens           | 0.832     | 0.832          | 0.764            |
-| look at this PR before I merge it             | code-review          | rebase               | 0.815     | 0.782          | 0.815            |
-| publish a new version of the library          | release              | release              | 0.795     | 0.795          | 0.793            |
-| install the dependencies of a Python script   | virtual-environments | virtual-environments | 0.816     | 0.816          | 0.789            |
-| the server is slow, find out why              | profiling            | profiling            | 0.868     | 0.868          | 0.767            |
-| where do I keep the database password         | secrets              | secrets              | 0.885     | 0.885          | 0.811            |
-| convert a timestamp to local time             | dates                | dates                | 0.849     | 0.849          | 0.768            |
-| match an email address with a pattern         | regular-expressions  | regular-expressions  | 0.839     | 0.839          | 0.791            |
-| blind users cannot use the signup form        | accessibility        | accessibility        | 0.799     | 0.799          | 0.770            |
-| give this variable a clearer name             | naming               | naming               | 0.863     | 0.863          | 0.786            |
-| print what the service does so I can debug it | logging              | logging              | 0.843     | 0.843          | 0.795            |
-| what day is it                                | (none)               | dates                | 0.796     | -              | 0.796            |
-| bake sourdough bread                          | (none)               | secrets              | 0.732     | -              | 0.732            |
-| what is the capital of France                 | (none)               | secrets              | 0.722     | -              | 0.722            |
-| hello                                         | (none)               | secrets              | 0.784     | -              | 0.784            |
-| thanks, that looks good                       | (none)               | css-tokens           | 0.802     | -              | 0.802            |
-| yes                                           | (none)               | secrets              | 0.780     | -              | 0.780            |
-| continue                                      | (none)               | commit-messages      | 0.784     | -              | 0.784            |
-| book a flight to Oslo                         | (none)               | secrets              | 0.722     | -              | 0.722            |
-| write a poem about the sea                    | (none)               | docker               | 0.754     | -              | 0.754            |
-| summarize this file                           | (none)               | naming               | 0.817     | -              | 0.817            |
-| explain how photosynthesis works              | (none)               | virtual-environments | 0.748     | -              | 0.748            |
-| the cat knocked a glass off the table         | (none)               | accessibility        | 0.701     | -              | 0.701            |
-
-### e5-small-v2
-
-| Query                                         | Expected             | Top note             | Top score | Expected score | Best wrong score |
-| --------------------------------------------- | -------------------- | -------------------- | --------- | -------------- | ---------------- |
-| iterating                                     | for-loops            | dates                | 0.804     | 0.803          | 0.804            |
-| go over every item in a list                  | for-loops            | regular-expressions  | 0.809     | 0.791          | 0.809            |
-| my branch is behind main                      | rebase               | rebase               | 0.835     | 0.835          | 0.781            |
-| fix the merge conflicts                       | rebase               | rebase               | 0.849     | 0.849          | 0.784            |
-| describe my changes for git                   | commit-messages      | commit-messages      | 0.838     | 0.838          | 0.820            |
-| ship the website to the live servers          | deploy               | deploy               | 0.803     | 0.803          | 0.797            |
-| add a column to the users table               | migrations           | release              | 0.815     | 0.798          | 0.815            |
-| should this function throw?                   | error-handling       | error-handling       | 0.819     | 0.819          | 0.813            |
-| add a test for this function                  | unit-tests           | unit-tests           | 0.844     | 0.844          | 0.843            |
-| the container does not start on my laptop     | docker               | docker               | 0.819     | 0.819          | 0.807            |
-| which colour should this button have          | css-tokens           | css-tokens           | 0.834     | 0.834          | 0.799            |
-| look at this PR before I merge it             | code-review          | code-review          | 0.827     | 0.827          | 0.806            |
-| publish a new version of the library          | release              | release              | 0.809     | 0.809          | 0.782            |
-| install the dependencies of a Python script   | virtual-environments | virtual-environments | 0.821     | 0.821          | 0.818            |
-| the server is slow, find out why              | profiling            | profiling            | 0.851     | 0.851          | 0.789            |
-| where do I keep the database password         | secrets              | secrets              | 0.873     | 0.873          | 0.828            |
-| convert a timestamp to local time             | dates                | dates                | 0.851     | 0.851          | 0.803            |
-| match an email address with a pattern         | regular-expressions  | regular-expressions  | 0.829     | 0.829          | 0.812            |
-| blind users cannot use the signup form        | accessibility        | release              | 0.782     | 0.770          | 0.782            |
-| give this variable a clearer name             | naming               | naming               | 0.848     | 0.848          | 0.812            |
-| print what the service does so I can debug it | logging              | logging              | 0.818     | 0.818          | 0.806            |
-| what day is it                                | (none)               | dates                | 0.820     | -              | 0.820            |
-| bake sourdough bread                          | (none)               | for-loops            | 0.766     | -              | 0.766            |
-| what is the capital of France                 | (none)               | virtual-environments | 0.742     | -              | 0.742            |
-| hello                                         | (none)               | css-tokens           | 0.780     | -              | 0.780            |
-| thanks, that looks good                       | (none)               | css-tokens           | 0.758     | -              | 0.758            |
-| yes                                           | (none)               | css-tokens           | 0.773     | -              | 0.773            |
-| continue                                      | (none)               | for-loops            | 0.794     | -              | 0.794            |
-| book a flight to Oslo                         | (none)               | dates                | 0.727     | -              | 0.727            |
-| write a poem about the sea                    | (none)               | commit-messages      | 0.773     | -              | 0.773            |
-| summarize this file                           | (none)               | naming               | 0.855     | -              | 0.855            |
-| explain how photosynthesis works              | (none)               | virtual-environments | 0.804     | -              | 0.804            |
-| the cat knocked a glass off the table         | (none)               | accessibility        | 0.718     | -              | 0.718            |
-
-### snowflake-arctic-embed-xs
-
-| Query                                         | Expected             | Top note            | Top score | Expected score | Best wrong score |
-| --------------------------------------------- | -------------------- | ------------------- | --------- | -------------- | ---------------- |
-| iterating                                     | for-loops            | for-loops           | 0.517     | 0.517          | 0.503            |
-| go over every item in a list                  | for-loops            | for-loops           | 0.538     | 0.538          | 0.529            |
-| my branch is behind main                      | rebase               | rebase              | 0.613     | 0.613          | 0.501            |
-| fix the merge conflicts                       | rebase               | rebase              | 0.652     | 0.652          | 0.475            |
-| describe my changes for git                   | commit-messages      | commit-messages     | 0.657     | 0.657          | 0.622            |
-| ship the website to the live servers          | deploy               | deploy              | 0.598     | 0.598          | 0.553            |
-| add a column to the users table               | migrations           | migrations          | 0.578     | 0.578          | 0.558            |
-| should this function throw?                   | error-handling       | error-handling      | 0.616     | 0.616          | 0.536            |
-| add a test for this function                  | unit-tests           | unit-tests          | 0.608     | 0.608          | 0.576            |
-| the container does not start on my laptop     | docker               | docker              | 0.626     | 0.626          | 0.578            |
-| which colour should this button have          | css-tokens           | css-tokens          | 0.592     | 0.592          | 0.488            |
-| look at this PR before I merge it             | code-review          | code-review         | 0.575     | 0.575          | 0.534            |
-| publish a new version of the library          | release              | migrations          | 0.558     | 0.551          | 0.558            |
-| install the dependencies of a Python script   | virtual-environments | naming              | 0.668     | 0.662          | 0.668            |
-| the server is slow, find out why              | profiling            | profiling           | 0.634     | 0.634          | 0.534            |
-| where do I keep the database password         | secrets              | secrets             | 0.693     | 0.693          | 0.643            |
-| convert a timestamp to local time             | dates                | dates               | 0.597     | 0.597          | 0.496            |
-| match an email address with a pattern         | regular-expressions  | regular-expressions | 0.645     | 0.645          | 0.536            |
-| blind users cannot use the signup form        | accessibility        | accessibility       | 0.533     | 0.533          | 0.519            |
-| give this variable a clearer name             | naming               | naming              | 0.630     | 0.630          | 0.528            |
-| print what the service does so I can debug it | logging              | logging             | 0.607     | 0.607          | 0.564            |
-| what day is it                                | (none)               | dates               | 0.548     | -              | 0.548            |
-| bake sourdough bread                          | (none)               | error-handling      | 0.443     | -              | 0.443            |
-| what is the capital of France                 | (none)               | naming              | 0.492     | -              | 0.492            |
-| hello                                         | (none)               | accessibility       | 0.537     | -              | 0.537            |
-| thanks, that looks good                       | (none)               | code-review         | 0.501     | -              | 0.501            |
-| yes                                           | (none)               | accessibility       | 0.503     | -              | 0.503            |
-| continue                                      | (none)               | code-review         | 0.498     | -              | 0.498            |
-| book a flight to Oslo                         | (none)               | migrations          | 0.484     | -              | 0.484            |
-| write a poem about the sea                    | (none)               | commit-messages     | 0.561     | -              | 0.561            |
-| summarize this file                           | (none)               | naming              | 0.550     | -              | 0.550            |
-| explain how photosynthesis works              | (none)               | dates               | 0.524     | -              | 0.524            |
-| the cat knocked a glass off the table         | (none)               | error-handling      | 0.467     | -              | 0.467            |
+| Query                                                                                                                                                                                                                                   | Expected             | Top note             | Top score | Expected score | Best wrong score |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | -------------------- | --------- | -------------- | ---------------- |
+| iterating                                                                                                                                                                                                                               | for-loops            | for-loops            | 0.347     | 0.347          | 0.137            |
+| go over every item in a list                                                                                                                                                                                                            | for-loops            | for-loops            | 0.249     | 0.249          | 0.100            |
+| my branch is behind main                                                                                                                                                                                                                | rebase               | rebase               | 0.587     | 0.587          | 0.229            |
+| fix the merge conflicts                                                                                                                                                                                                                 | rebase               | rebase               | 0.533     | 0.533          | 0.208            |
+| describe my changes for git                                                                                                                                                                                                             | commit-messages      | commit-messages      | 0.360     | 0.360          | 0.351            |
+| ship the website to the live servers                                                                                                                                                                                                    | deploy               | deploy               | 0.451     | 0.451          | 0.281            |
+| add a column to the users table                                                                                                                                                                                                         | migrations           | migrations           | 0.194     | 0.194          | 0.123            |
+| should this function throw?                                                                                                                                                                                                             | error-handling       | error-handling       | 0.320     | 0.320          | 0.144            |
+| add a test for this function                                                                                                                                                                                                            | unit-tests           | unit-tests           | 0.483     | 0.483          | 0.343            |
+| the container does not start on my laptop                                                                                                                                                                                               | docker               | docker               | 0.351     | 0.351          | 0.100            |
+| which colour should this button have                                                                                                                                                                                                    | css-tokens           | css-tokens           | 0.405     | 0.405          | 0.134            |
+| look at this PR before I merge it                                                                                                                                                                                                       | code-review          | rebase               | 0.274     | 0.166          | 0.274            |
+| publish a new version of the library                                                                                                                                                                                                    | release              | release              | 0.357     | 0.357          | 0.240            |
+| install the dependencies of a Python script                                                                                                                                                                                             | virtual-environments | virtual-environments | 0.340     | 0.340          | 0.227            |
+| the server is slow, find out why                                                                                                                                                                                                        | profiling            | profiling            | 0.542     | 0.542          | 0.137            |
+| where do I keep the database password                                                                                                                                                                                                   | secrets              | secrets              | 0.542     | 0.542          | 0.402            |
+| convert a timestamp to local time                                                                                                                                                                                                       | dates                | dates                | 0.467     | 0.467          | 0.170            |
+| match an email address with a pattern                                                                                                                                                                                                   | regular-expressions  | regular-expressions  | 0.431     | 0.431          | 0.139            |
+| blind users cannot use the signup form                                                                                                                                                                                                  | accessibility        | accessibility        | 0.211     | 0.211          | 0.082            |
+| give this variable a clearer name                                                                                                                                                                                                       | naming               | naming               | 0.490     | 0.490          | 0.173            |
+| print what the service does so I can debug it                                                                                                                                                                                           | logging              | logging              | 0.355     | 0.355          | 0.226            |
+| In src/cart/total.ts the function sums the prices with a while loop and a manual index counter. Rewrite it so that it iterates over the items in a cleaner way, keep the same behaviour, and run the tests afterwards.                  | for-loops            | unit-tests           | 0.292     | 0.280          | 0.292            |
+| I opened a PR yesterday, but main moved on and GitHub now says that my branch is out of date and has conflicts in package.json. Bring my branch up to date with main and sort out the conflicts so that CI runs again.                  | rebase               | rebase               | 0.578     | 0.578          | 0.317            |
+| The payment service needs the Stripe API key in production. Where do I put it so that it is not committed to the repo, and how does the service read it at startup?                                                                     | secrets              | secrets              | 0.405     | 0.405          | 0.255            |
+| I just wrote parseOrder in src/orders/parse-order.ts. Add tests that cover an empty order, an order with one item and an order with an unknown product id, then run them.                                                               | unit-tests           | unit-tests           | 0.217     | 0.217          | 0.207            |
+| The fix for the checkout bug is merged. Get it out to production today and tell me when the new version is live for customers.                                                                                                          | deploy               | release              | 0.195     | 0.004          | 0.195            |
+| The /orders endpoint takes four seconds to answer when a user has many orders. Find out where the time goes before you change anything, and show me the slowest functions.                                                              | profiling            | profiling            | 0.414     | 0.414          | 0.194            |
+| I am done with the refactor of the cart module. Stage the changes and commit them with a good message that explains why the change was made.                                                                                            | commit-messages      | commit-messages      | 0.292     | 0.292          | 0.250            |
+| When I run docker compose up, the api container exits right away with code 137. It worked last week. Find out why it does not start on my machine.                                                                                      | docker               | docker               | 0.446     | 0.446          | 0.138            |
+| We need a new nullable column discount_code on the orders table in Postgres. Write the schema change so that it can run on the live database without downtime.                                                                          | migrations           | migrations           | 0.204     | 0.204          | 0.152            |
+| The order confirmation email shows the delivery time in UTC, so customers in Norway see the wrong hour. Show it in the customer's own time zone instead.                                                                                | dates                | dates                | 0.323     | 0.323          | 0.104            |
+| parseOrder throws an exception when a field is missing, and three callers wrap it in try/catch. Change it so that a missing field is a normal result that the caller checks, not an exception.                                          | error-handling       | error-handling       | 0.405     | 0.405          | 0.204            |
+| Review PR 42 before I merge it. Look for bugs, missing tests and anything that is hard to read, and write your comments as a list.                                                                                                      | code-review          | code-review          | 0.388     | 0.388          | 0.224            |
+| Version 2.3.0 of the client library is ready. Bump the version, write the changelog entry and publish it to npm.                                                                                                                        | release              | release              | 0.536     | 0.536          | 0.274            |
+| The form accepts phone numbers like 12-34 and +47 123 45 678. Write a pattern that accepts only Norwegian numbers, and add a few examples that must and must not match.                                                                 | regular-expressions  | regular-expressions  | 0.327     | 0.327          | 0.203            |
+| When a payment fails in production, we cannot see why. Add logging to the payment service so that each failure records the order id, the provider and the error.                                                                        | logging              | logging              | 0.322     | 0.322          | 0.312            |
+| A screen reader user says that the checkout button has no label and that the error messages are not read out. Fix the checkout form so that it works with a screen reader.                                                              | accessibility        | accessibility        | 0.471     | 0.471          | 0.191            |
+| The Python script in tools/report.py needs pandas, but I do not want to install it globally. Set it up so that the script has its own dependencies, and tell me how to run it.                                                          | virtual-environments | virtual-environments | 0.269     | 0.269          | 0.234            |
+| The function in utils.ts is called doStuff and its arguments are a, b and c. Rename them so that the code says what they do.                                                                                                            | naming               | naming               | 0.407     | 0.407          | 0.311            |
+| The new banner uses #3a7bd5 and 13px of padding. Replace the hard-coded colour and spacing with the values from our design system.                                                                                                      | css-tokens           | css-tokens           | 0.433     | 0.433          | 0.148            |
+| how do I iterate over an array and get the index too?                                                                                                                                                                                   | for-loops            | for-loops            | 0.410     | 0.410          | 0.122            |
+| loop through the keys of an object                                                                                                                                                                                                      | for-loops            | for-loops            | 0.488     | 0.488          | 0.197            |
+| squash my last three commits and put them on top of the latest main                                                                                                                                                                     | rebase               | rebase               | 0.503     | 0.503          | 0.374            |
+| the build image is huge, can you make the Dockerfile smaller?                                                                                                                                                                           | docker               | docker               | 0.571     | 0.571          | 0.115            |
+| Our staging deploy failed halfway. Roll out the current main to production once staging is green, and tell me the steps you took.                                                                                                       | deploy               | deploy               | 0.492     | 0.492          | 0.266            |
+| write a good commit message for these changes                                                                                                                                                                                           | commit-messages      | commit-messages      | 0.750     | 0.750          | 0.345            |
+| rename the columns of the invoices table without losing data                                                                                                                                                                            | migrations           | naming               | 0.194     | 0.149          | 0.194            |
+| The API client throws on every 404, and the callers do not expect that. Make the not-found case a value that they can check instead of an exception.                                                                                    | error-handling       | error-handling       | 0.332     | 0.332          | 0.139            |
+| The tests for the cart are flaky and slow. Rewrite them with Vitest so that each test checks one thing.                                                                                                                                 | unit-tests           | unit-tests           | 0.448     | 0.448          | 0.292            |
+| which spacing value should I use between these cards?                                                                                                                                                                                   | css-tokens           | css-tokens           | 0.417     | 0.417          | 0.114            |
+| Give me feedback on this pull request: is the design sound, and is anything missing before it can be merged?                                                                                                                            | code-review          | code-review          | 0.453     | 0.453          | 0.208            |
+| cut a new release of the package                                                                                                                                                                                                        | release              | release              | 0.604     | 0.604          | 0.203            |
+| pip install fails with externally-managed-environment. How do I install requests for my script?                                                                                                                                         | virtual-environments | virtual-environments | 0.373     | 0.373          | 0.316            |
+| Memory use of the worker grows all day until it crashes. Find out what holds on to the memory.                                                                                                                                          | profiling            | profiling            | 0.234     | 0.234          | 0.167            |
+| the AWS credentials are hard-coded in config.ts, move them somewhere safe                                                                                                                                                               | secrets              | secrets              | 0.335     | 0.335          | 0.124            |
+| the report shows yesterday's date for orders placed after 11 pm in Oslo                                                                                                                                                                 | dates                | dates                | 0.255     | 0.255          | 0.178            |
+| extract the version number from strings like v1.2.3-beta                                                                                                                                                                                | regular-expressions  | release              | 0.258     | 0.201          | 0.258            |
+| the modal cannot be closed with the keyboard                                                                                                                                                                                            | accessibility        | accessibility        | 0.118     | 0.118          | 0.097            |
+| this function is called handle, what is a better name?                                                                                                                                                                                  | naming               | naming               | 0.438     | 0.438          | 0.130            |
+| We cannot tell which request failed in the logs. Add a request id to every log line of the api service and log the start and end of each request.                                                                                       | logging              | logging              | 0.383     | 0.383          | 0.261            |
+| iterate                                                                                                                                                                                                                                 | for-loops            | for-loops            | 0.378     | 0.378          | 0.157            |
+| iteration                                                                                                                                                                                                                               | for-loops            | for-loops            | 0.353     | 0.353          | 0.153            |
+| iterating?                                                                                                                                                                                                                              | for-loops            | for-loops            | 0.285     | 0.285          | 0.098            |
+| what day is it                                                                                                                                                                                                                          | (none)               | dates                | 0.316     | -              | 0.316            |
+| bake sourdough bread                                                                                                                                                                                                                    | (none)               | logging              | 0.124     | -              | 0.124            |
+| what is the capital of France                                                                                                                                                                                                           | (none)               | dates                | 0.068     | -              | 0.068            |
+| hello                                                                                                                                                                                                                                   | (none)               | regular-expressions  | 0.230     | -              | 0.230            |
+| thanks, that looks good                                                                                                                                                                                                                 | (none)               | css-tokens           | 0.158     | -              | 0.158            |
+| yes                                                                                                                                                                                                                                     | (none)               | commit-messages      | 0.071     | -              | 0.071            |
+| continue                                                                                                                                                                                                                                | (none)               | rebase               | 0.224     | -              | 0.224            |
+| book a flight to Oslo                                                                                                                                                                                                                   | (none)               | dates                | 0.125     | -              | 0.125            |
+| write a poem about the sea                                                                                                                                                                                                              | (none)               | commit-messages      | 0.300     | -              | 0.300            |
+| summarize this file                                                                                                                                                                                                                     | (none)               | commit-messages      | 0.322     | -              | 0.322            |
+| explain how photosynthesis works                                                                                                                                                                                                        | (none)               | migrations           | 0.230     | -              | 0.230            |
+| the cat knocked a glass off the table                                                                                                                                                                                                   | (none)               | accessibility        | 0.126     | -              | 0.126            |
+| Write a README for this package that explains what it does and shows one example of how to call it.                                                                                                                                     | (none)               | naming               | 0.357     | -              | 0.357            |
+| Add pagination to the GET /products endpoint: accept page and pageSize query parameters, and return the total count in the response.                                                                                                    | (none)               | code-review          | 0.164     | -              | 0.164            |
+| Translate the onboarding emails into German and keep the placeholders as they are.                                                                                                                                                      | (none)               | commit-messages      | 0.277     | -              | 0.277            |
+| Explain what this repository does and how its folders are organised. I am new to the project.                                                                                                                                           | (none)               | secrets              | 0.293     | -              | 0.293            |
+| Create a new React component that shows the avatar of a user, with their initials when there is no picture.                                                                                                                             | (none)               | release              | 0.178     | -              | 0.178            |
+| Draw a diagram of how the order service talks to the payment service and the stock service.                                                                                                                                             | (none)               | logging              | 0.268     | -              | 0.268            |
+| Summarize the discussion in issue 17 and list the decisions that were made.                                                                                                                                                             | (none)               | code-review          | 0.229     | -              | 0.229            |
+| I need to write a short speech for the wedding of my sister next Saturday. She loves hiking and her husband is a chef. Make it warm and a little funny, about two minutes long.                                                         | (none)               | commit-messages      | 0.289     | -              | 0.289            |
+| Plan a three-day trip to Rome for two people in April, with a museum each morning and a good place for dinner each evening.                                                                                                             | (none)               | rebase               | 0.077     | -              | 0.077            |
+| Hi! Before we start, can you tell me what you can help me with in this session?                                                                                                                                                         | (none)               | code-review          | 0.156     | -              | 0.156            |
+| Make the sidebar collapsible on small screens and remember whether it was open.                                                                                                                                                         | (none)               | accessibility        | 0.225     | -              | 0.225            |
+| Add a search box to the products page that filters the list as the user types.                                                                                                                                                          | (none)               | for-loops            | 0.116     | -              | 0.116            |
+| ok, go ahead                                                                                                                                                                                                                            | (none)               | code-review          | 0.123     | -              | 0.123            |
+| do it                                                                                                                                                                                                                                   | (none)               | unit-tests           | 0.170     | -              | 0.170            |
+| what does this function do?                                                                                                                                                                                                             | (none)               | naming               | 0.193     | -              | 0.193            |
+| what time is it in Tokyo?                                                                                                                                                                                                               | (none)               | dates                | 0.321     | -              | 0.321            |
+| Write a cover letter for a job as a nurse at the city hospital. I have five years of experience in the emergency room.                                                                                                                  | (none)               | migrations           | 0.217     | -              | 0.217            |
+| Add a button to the order page that lets the user download the invoice as a PDF.                                                                                                                                                        | (none)               | accessibility        | 0.298     | -              | 0.298            |
+| Explain the difference between TCP and UDP.                                                                                                                                                                                             | (none)               | accessibility        | 0.127     | -              | 0.127            |
+| Implement a function that returns the n-th Fibonacci number.                                                                                                                                                                            | (none)               | for-loops            | 0.180     | -              | 0.180            |
+| Set up a GitHub Actions workflow that runs the linter on each pull request.                                                                                                                                                             | (none)               | code-review          | 0.494     | -              | 0.494            |
+| Convert this JavaScript file to TypeScript and add the types.                                                                                                                                                                           | (none)               | for-loops            | 0.437     | -              | 0.437            |
+| What are the pros and cons of GraphQL compared to REST for our mobile app?                                                                                                                                                              | (none)               | profiling            | 0.228     | -              | 0.228            |
+| make the logo bigger                                                                                                                                                                                                                    | (none)               | css-tokens           | 0.273     | -              | 0.273            |
+| great, thank you!                                                                                                                                                                                                                       | (none)               | code-review          | 0.148     | -              | 0.148            |
+| no, undo that                                                                                                                                                                                                                           | (none)               | rebase               | 0.218     | -              | 0.218            |
+| /clear                                                                                                                                                                                                                                  | (none)               | css-tokens           | 0.231     | -              | 0.231            |
+| Read the spec in docs/checkout.md and implement the coupon field on the checkout page. Coupons are validated by the existing /coupons endpoint. Show an inline message when a coupon is invalid, and update the total when it is valid. | (none)               | commit-messages      | 0.295     | -              | 0.295            |
+| Recommend three science fiction books for a long flight.                                                                                                                                                                                | (none)               | naming               | 0.152     | -              | 0.152            |
+| Count the lines of code in each folder of this repo.                                                                                                                                                                                    | (none)               | release              | 0.276     | -              | 0.276            |

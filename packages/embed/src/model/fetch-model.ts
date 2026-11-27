@@ -12,10 +12,14 @@ export interface ModelPaths {
   vocabulary: string;
 }
 
-/** The zambil cache folder, and where to tell the user that a download starts. */
+/** `never`: a file that is not in the cache is an error, so that an agent hook never waits for a download. */
+export type ModelDownload = "allow" | "never";
+
+/** The zambil cache folder, where to tell the user that a download starts, and whether to download. */
 export interface FetchModelOptions {
   cacheFolder: string;
   report: (message: string) => void;
+  download: ModelDownload;
 }
 
 /** The longest time that one model file can take to download, in milliseconds. */
@@ -89,9 +93,9 @@ function formatSize(bytes: number): string {
 }
 
 /**
- * Returns the model's files from the cache, and downloads each missing one first. A download is
- * checked against the pinned size and SHA-256 before it gets its final name, so a file in the cache
- * is always complete.
+ * Returns the model's files from the cache, and downloads each missing one first, unless `download`
+ * is `never`. A download is checked against the pinned size and SHA-256 before it gets its final
+ * name, so a file in the cache is always complete.
  */
 export async function fetchModel(
   model: EmbeddingModel,
@@ -102,10 +106,13 @@ export async function fetchModel(
   const missing = files.filter(
     (file) => sizeOf(modelFilePath(model, { file, cacheFolder })) !== file.bytes,
   );
+  const folder = dirname(modelFilePath(model, { file: model.weights, cacheFolder }));
+  if (missing.length > 0 && options.download === "never") {
+    return left(`the model ${model.repository} is missing or incomplete in ${folder}`);
+  }
   if (missing.length > 0) {
     let bytes = 0;
     for (const file of missing) bytes += file.bytes;
-    const folder = dirname(modelFilePath(model, { file: model.weights, cacheFolder }));
     options.report(`Downloading the model ${model.repository} (${formatSize(bytes)}) to ${folder}`);
   }
   const downloads = await Promise.all(

@@ -14,6 +14,21 @@ const searchPrompt = "Represent this sentence for searching relevant passages: "
 export const candidateModels: EmbeddingModel[] = [
   searchModel,
   {
+    id: "all-minilm-l6-v2",
+    repository: "Xenova/all-MiniLM-L6-v2",
+    revision: "751bff37182d3f1213fa05d7196b954e230abad9",
+    weights: {
+      path: "onnx/model_quantized.onnx",
+      bytes: 22_972_370,
+      sha256: "afdb6f1a0e45b715d0bb9b11772f032c399babd23bfc31fed1c170afc848bdb1",
+    },
+    vocabulary: bertVocabulary,
+    pooling: "mean",
+    queryPrefix: "",
+    documentPrefix: "",
+    maxTokens: 256,
+  },
+  {
     id: "all-minilm-l6-v2-fp32",
     repository: "Xenova/all-MiniLM-L6-v2",
     revision: "751bff37182d3f1213fa05d7196b954e230abad9",
@@ -87,6 +102,21 @@ export const candidateModels: EmbeddingModel[] = [
     queryPrefix: "query: ",
     documentPrefix: "passage: ",
     maxTokens: 512,
+  },
+  {
+    id: "mxbai-embed-xsmall-v1",
+    repository: "mixedbread-ai/mxbai-embed-xsmall-v1",
+    revision: "e6ac24e5d6efb8782b59de1647b3ececb4ece94e",
+    weights: {
+      path: "onnx/model_quantized.onnx",
+      bytes: 24_448_010,
+      sha256: "952f996d8cf46c311ee8654a750fa942b71c8b94aabe69d043dbb2bcaff5528e",
+    },
+    vocabulary: bertVocabulary,
+    pooling: "mean",
+    queryPrefix: "",
+    documentPrefix: "",
+    maxTokens: 256,
   },
   {
     id: "snowflake-arctic-embed-xs",

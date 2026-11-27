@@ -98,6 +98,13 @@ export interface TokenizeOptions {
 }
 
 /**
+ * How many characters of a text to read for each token that the model reads. A token is rarely longer
+ * than a word, so the cut keeps every token that the model reads, and a pasted file of megabytes is not
+ * lowercased in full.
+ */
+const charactersPerToken = 100;
+
+/**
  * Turns a text into token ids the way a lowercase BERT tokenizer does: it lowercases, strips accents,
  * splits on spaces and punctuation, splits each word into the longest known pieces, and adds the start
  * and end tokens. A text that is too long is cut at the end.
@@ -105,7 +112,8 @@ export interface TokenizeOptions {
 export function tokenize(text: string, options: TokenizeOptions): number[] {
   const { vocabulary, maxTokens } = options;
   const ids: number[] = [];
-  for (const word of splitWords(normalize(text))) {
+  const readable = text.slice(0, maxTokens * charactersPerToken);
+  for (const word of splitWords(normalize(readable))) {
     ids.push(...splitWord(word, vocabulary));
     if (ids.length >= maxTokens - 2) break;
   }

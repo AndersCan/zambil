@@ -10,10 +10,11 @@ The Claude Code adapter of zambil. Claude Code runs `zambil hook` at each hook, 
 { "hookSpecificOutput": { "hookEventName": "SessionStart", "additionalContext": "..." } }
 ```
 
-It adds two kinds of note:
+It adds three kinds of note:
 
 1. Each current note whose `hooks` property names the hook that runs. At a tool hook, a note with a `tools` property applies only to those tools. A note without `tools` applies to every tool. Names compare exactly, so write `PreToolUse` and `Bash` as Claude Code writes them.
 2. At `UserPromptSubmit`, each note that the user names with `z:<name>` in the prompt. See [Name a note in a prompt](#name-a-note-in-a-prompt).
+3. At `UserPromptSubmit`, each current note whose description is similar to the prompt. See [Similar notes](#similar-notes).
 
 Only some hooks can add context. zambil reads which ones from the hooks reference. See [The hook list](#the-hook-list). On 2026-11-27, the list was:
 
@@ -41,17 +42,33 @@ Type `z:<name>` anywhere in a prompt, for example `Ship it the way z:deploy says
 
 If no note has the name, or more than one note has it, the agent gets a warning. The warning tells it how to list the names. If the note has no such heading or block, the warning tells it how to open the note. A name that you type twice is added once. A note that the prompt names in full and that also names `UserPromptSubmit` is added once.
 
+## Similar notes
+
+At `UserPromptSubmit`, the hook finds the notes whose `description` is similar to the prompt, with the model of `packages/embed`. It adds at most 3 notes that score 0.38 or more, best first. A question about iterating finds a note about for loops. `packages/embed/README.md` says how the model and the threshold were chosen.
+
+Run `zambil install` or `zambil index` once before you use the hook. Each downloads the model, about 23 MB, and embeds the descriptions ahead of time. Run it again after you change many descriptions.
+
+The similar notes come after the notes that the prompt names and the notes of the hook. A note comes only once. A note that the prompt names with `z:<name>`, also in part, is not added again as a similar note. Neither is a note that the hook already added. A note that names `SessionStart` is not added either, because it is in the context for the whole session.
+
+The hook never blocks or slows a prompt for long:
+
+- If the model is not in the cache, the hook adds no similar notes. It does not download the model. It prints a message on standard error that tells you to run `zambil index`. With the model in the cache, the hook needs no network.
+- If the index is missing or stale, the hook embeds at most 10 of the descriptions that are not in the index. It leaves out the other notes. It prints on standard error how many descriptions it left out. The hook never writes the index or a note.
+- If the embedder cannot load or fails, the hook prints a message on standard error and still adds the other notes.
+- A slash command, such as `/compact`, and a prompt with no letter get no search. The hook does not load the model for them.
+- A very long prompt is cut: the model reads its first 256 tokens. A short reply such as "yes" or "continue" scores under the threshold.
+
 ## Skills, scripts and expired notes
 
-A skill is offered, not loaded. For a skill that you name with `z:<name>`, the agent is told that you opted in to it. It is also told to read the `SKILL.md` with the Read tool, because a hook cannot load a skill.
+A skill is offered, not loaded. For a skill that you name with `z:<name>`, the agent is told that you opted in to it. For a skill that is similar to the prompt, the agent is told that the skill matched. It is not told that you opted in. In both cases, it is also told to read the `SKILL.md` with the Read tool, because a hook cannot load a skill.
 
-A script note gives what the script does, the full path of the script and the command that runs it. zambil never runs the script, and the source of the script never goes into the context.
+A script note gives what the script does, the full path of the script and the command that runs it. For a script that is similar to the prompt, the agent is told that zambil did not run it. zambil never runs the script, and the source of the script never goes into the context.
 
 An expired note is left out at a hook. For an expired note that you name with `z:<name>`, the agent gets the expiry warning in place of the content. A current note that has a `when-expired` note names it as the way to verify its claims. zambil and its hooks never write a note. An expiry warning can offer an update. The agent saves the update only on your request.
 
 ## How much text one hook adds
 
-Claude Code saves a hook text over 10,000 characters to a file and gives the agent only a preview. So zambil keeps each text under 9,500 characters. Full notes use up to 8,000 characters, in order: first the notes that the prompt names, then the notes of the hook. Each note that does not fit is one line at the end that tells the agent how to read it with `zambil show`. When no note applies, the hook prints nothing and adds nothing.
+Claude Code saves a hook text over 10,000 characters to a file and gives the agent only a preview. So zambil keeps each text under 9,500 characters. Full notes use up to 8,000 characters, in order: first the notes that the prompt names, then the notes of the hook, then the similar notes. Each note that does not fit is one line at the end that tells the agent how to read it with `zambil show`. When no note applies, the hook prints nothing and adds nothing.
 
 ## The hook list
 
@@ -116,9 +133,12 @@ Each event starts a new Node process that loads the whole repo. Measured in the 
 | 1,000 notes, `PreToolUse`                 | 86 ms                        | 46 ms        |
 | A hook that cannot add context            | not measured                 | 22 ms        |
 
+The table above was measured before the similarity search. At `UserPromptSubmit`, the search loads the model in each new process. `packages/embed/measurements.md` times the whole hook from a cold start, with `NODE_COMPILE_CACHE`. On the prose repo of 20 notes, the search adds about 70 ms to a short prompt. It adds about 100 ms to a prompt of 300 words. A slash command and a prompt with no letter add nothing, because the hook does not load the model for them. `packages/embed/README.md` says why zambil has no background process that keeps the model loaded.
+
 ## Code
 
-- `src/answer-hook.ts`: `answerHook` turns a parsed hook input and a loaded repo into the standard output. `promptSections` lists the parts of the `UserPromptSubmit` text. Similar notes from the embedder will be one more part after the hook notes.
+- `src/answer-hook.ts`: `answerHook` turns a parsed hook input, a loaded repo and the similar notes into the standard output. `promptSections` lists the parts of the `UserPromptSubmit` text.
+- `src/similar/`: `findSimilarNotes` searches with the embedder and never downloads, and `similarSection` adds the matches.
 - `src/hook-input/`: the tool hook names, and `parseHookInput`, which reads the JSON from Claude Code.
 - `src/hook-list/`: the hook list. `parseHooksReference` reads the page, `refreshHookList` keeps the list in the cache, `loadHookList` reads it, and `checkHookNames` gives the warnings of `zambil check`.
 - `src/install/`: the changes to the Claude Code settings, the hook command and the `zambil-save` skill, for `zambil install` and `zambil uninstall`.

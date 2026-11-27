@@ -6,13 +6,16 @@ import { formatHookOutput } from "./context/format-hook-output.ts";
 import type { HookInput } from "./hook-input/parse-hook-input.ts";
 import { hookSection } from "./hook-notes/hook-section.ts";
 import { isNever } from "@zambil/core/is-never";
+import type { Note } from "@zambil/core/note";
 import { recallSection } from "./recall/recall-section.ts";
 import type { RenderWording } from "@zambil/core/render-wording";
+import { similarSection } from "./similar/similar-section.ts";
 
-/** The parsed hook input and the clock. */
+/** The parsed hook input, the clock, and the notes whose description is similar to the prompt, best first. */
 export interface AnswerHookOptions {
   input: HookInput;
   now: Date;
+  similarNotes?: Note[];
 }
 
 interface SectionOptions extends AnswerHookOptions {
@@ -26,11 +29,13 @@ interface PromptSectionOptions extends SectionOptions {
 type HookRepo = Pick<ConfigurationRepo, "root" | "names" | "notes">;
 
 /**
- * The prompt sections in order. Similarity matches will be one more section after the hook notes, and
- * `fitContext` leaves out a note that an earlier section already added.
+ * The prompt sections in order: the notes that the prompt names, the notes of the hook, then the
+ * similar notes. `fitContext` leaves out a note that an earlier section already added.
  */
 function promptSections(repo: HookRepo, options: PromptSectionOptions): ContextSection[] {
-  return [recallSection(repo, options), hookSection(repo, options)];
+  const notes = options.similarNotes ?? [];
+  const similar = similarSection(repo, { ...options, notes });
+  return [recallSection(repo, options), hookSection(repo, options), similar];
 }
 
 function contextSections(repo: HookRepo, options: SectionOptions): ContextSection[] {

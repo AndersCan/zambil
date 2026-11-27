@@ -30,6 +30,14 @@ describe("tokenize", () => {
     expect(ids).toEqual([2, 4, 5, 6, 7, 8, 9, 1, 1, 3]);
   });
 
+  test("gives a huge text the same ids as its start", () => {
+    const start = "loops ".repeat(100);
+    const tail = "for ".repeat(250_000);
+    const huge = `${start}${tail}`;
+    const options = { vocabulary: vocabulary(), maxTokens: 5 };
+    expect(tokenize(huge, options)).toEqual(tokenize(start, options));
+  });
+
   test("cuts a long text so that the start and end tokens still fit", () => {
     const ids = tokenize("x x x x x x", { vocabulary: vocabulary(), maxTokens: 5 });
     expect(ids).toEqual([2, 10, 10, 10, 3]);

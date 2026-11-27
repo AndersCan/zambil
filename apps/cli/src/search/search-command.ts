@@ -1,10 +1,10 @@
 import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
 import { matchLimit, minimumScore } from "@zambil/embed/search-model";
 import { formatColumns } from "../list/format-columns.ts";
+import { indexHint } from "../index/index-hint.ts";
 import type { NoteScore } from "@zambil/embed/score-notes";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
-import { quoteArgument } from "@zambil/core/quote-argument";
 import { sharedOptions } from "../parse-command-args.ts";
 
 function formatMatches(matches: NoteScore[]): string {
@@ -14,10 +14,6 @@ function formatMatches(matches: NoteScore[]): string {
     rows.push([score.toFixed(2), note.name, note.path, description]);
   }
   return formatColumns(rows);
-}
-
-function indexHint(flag: string | undefined): string {
-  return flag === undefined ? "zambil index" : `zambil index --repo ${quoteArgument(flag)}`;
 }
 
 async function runSearch(options: CommandRunOptions): Promise<ExitCode> {
@@ -45,6 +41,7 @@ async function runSearch(options: CommandRunOptions): Promise<ExitCode> {
   const { openNoteSearch } = await import("@zambil/embed/open-note-search");
   const noteSearch = await openNoteSearch(options.config.environment, {
     report: (message) => output.error(`${message}\n`),
+    download: "allow",
   });
   if (!noteSearch.ok) {
     output.error(`zambil cannot load its model: ${noteSearch.error}\n`);
@@ -56,7 +53,7 @@ async function runSearch(options: CommandRunOptions): Promise<ExitCode> {
     return 1;
   }
   const { matches, unindexed } = result.value;
-  const noMatch = `No note scores ${minimumScore} or more.\n`;
+  const noMatch = `No current note scores ${minimumScore} or more.\n`;
   output.write(matches.length === 0 ? noMatch : `${formatMatches(matches)}\n`);
   if (unindexed > 0) {
     const hint = indexHint(flag);
