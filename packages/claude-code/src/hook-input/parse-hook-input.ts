@@ -1,15 +1,16 @@
-import type { ContextHookName, ToolHookName } from "./context-hooks.ts";
-import { contextHookNames, toolHookNames } from "./context-hooks.ts";
 import { left, right } from "@zambil/core/either";
 import { asRecord } from "@zambil/core/as-record";
+import bundledHookList from "../hook-list/bundled-hook-list.json" with { type: "json" };
 import type { Either } from "@zambil/core/either";
+import type { ToolHookName } from "./context-hooks.ts";
+import { toolHookNames } from "./context-hooks.ts";
 
-/** A context hook that carries neither a prompt nor a tool name that zambil reads. */
-export type PlainHookName = Exclude<ContextHookName, ToolHookName | "UserPromptSubmit">;
-
-/** What zambil reads from the JSON that Claude Code sends to a context hook. */
+/**
+ * What zambil reads from the JSON that Claude Code sends to a context hook. A `plain` hook carries
+ * neither a prompt nor a tool name that zambil reads.
+ */
 export type HookInput =
-  | { kind: "plain"; hookEventName: PlainHookName }
+  | { kind: "plain"; hookEventName: string }
   | { kind: "prompt"; hookEventName: "UserPromptSubmit"; prompt: string }
   | { kind: "tool"; hookEventName: ToolHookName; toolNames: string[] };
 
@@ -27,10 +28,6 @@ function parseJson(text: string): Either<string, unknown> {
     const message = error instanceof Error ? error.message : String(error);
     return left(`the input is not JSON: ${message}`);
   }
-}
-
-function isContextHookName(value: unknown): value is ContextHookName {
-  return contextHookNames.includes(value as ContextHookName);
 }
 
 function isToolHookName(value: unknown): value is ToolHookName {
@@ -70,18 +67,27 @@ function parseToolInput(
   return right({ kind: "answer", input: { kind: "tool", hookEventName, toolNames: [name] } });
 }
 
+/** The hooks that can add context, from `loadHookList`. */
+export interface ParseHookInputOptions {
+  contextHooks: string[];
+}
+
 /**
  * Reads the JSON that Claude Code sends on standard input. A hook that cannot add context is `ignore`,
  * and so is a `Stop` or `SubagentStop` that runs because an earlier stop hook made Claude continue.
+ * Without options, the context hooks are those of the bundled hook list.
  */
-export function parseHookInput(text: string): Either<string, HookRequest> {
+export function parseHookInput(
+  text: string,
+  options: ParseHookInputOptions = bundledHookList,
+): Either<string, HookRequest> {
   const parsed = parseJson(text);
   if (!parsed.ok) return parsed;
   const record = asRecord(parsed.value);
   if (record === undefined) return left("the input is not a JSON object");
   const hookEventName = record.hook_event_name;
   if (typeof hookEventName !== "string") return left("the input has no hook_event_name");
-  if (!isContextHookName(hookEventName)) return right({ kind: "ignore" });
+  if (!options.contextHooks.includes(hookEventName)) return right({ kind: "ignore" });
   if (isToolHookName(hookEventName)) return parseToolInput(record, { hookEventName });
   if (hookEventName === "UserPromptSubmit") {
     const { prompt } = record;

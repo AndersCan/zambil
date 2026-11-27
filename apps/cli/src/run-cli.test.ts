@@ -36,7 +36,7 @@ const checkUsage = [
   "Usage: zambil check [--repo <path>]",
   "",
   "Report duplicate names and other invalid notes.",
-  "An error sets the exit code to 1. A warning does not.",
+  "It also warns about a hook name that Claude Code cannot answer. An error sets the exit code to 1. A warning does not.",
 ].join("\n");
 
 describe("runCli", () => {
