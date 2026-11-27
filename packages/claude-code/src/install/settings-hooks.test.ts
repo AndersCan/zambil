@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { installHooks, uninstallHooks } from "./settings-hooks.ts";
+import { installHooks, listZambilHooks, uninstallHooks } from "./settings-hooks.ts";
 
 const command =
   "NODE_COMPILE_CACHE=/home/ada/.cache/zambil/node-compile-cache /home/ada/.local/bin/zambil hook --repo /home/ada/notes";
@@ -106,6 +106,18 @@ describe("installHooks", () => {
       { ok: false, error: "its `hooks` value is not an object" },
       { ok: false, error: "its `hooks.Stop` value is not a list" },
     ]);
+  });
+});
+
+describe("listZambilHooks", () => {
+  test("lists the zambil command lines per event and leaves out the user's hooks", () => {
+    expect([listZambilHooks(settings), listZambilHooks({}), listZambilHooks({ hooks: 1 })]).toEqual(
+      [
+        { ok: true, value: { Stop: ["zambil hook"] } },
+        { ok: true, value: {} },
+        { ok: false, error: "its `hooks` value is not an object" },
+      ],
+    );
   });
 });
 

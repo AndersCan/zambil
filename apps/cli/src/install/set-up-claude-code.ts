@@ -6,13 +6,11 @@ import { changeSettings } from "./settings-file.ts";
 import type { CommandRunOptions } from "../command.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import type { Either } from "@zambil/core/either";
-import { hookCommandLine } from "@zambil/claude-code/hook-command-line";
 import { hooksToInstall } from "@zambil/claude-code/hooks-to-install";
+import { installHookCommand } from "./install-hook-command.ts";
 import { installHooks } from "@zambil/claude-code/settings-hooks";
 import { isNever } from "@zambil/core/is-never";
-import { join } from "node:path";
 import { loadHookList } from "@zambil/claude-code/load-hook-list";
-import { nodeFolders } from "./node-folders.ts";
 import type { Note } from "@zambil/core/note";
 import type { SaveResult } from "./settings-file.ts";
 import { saveSkillText } from "@zambil/claude-code/save-skill";
@@ -120,15 +118,8 @@ async function installHandlers(
   const { config, output } = options.run;
   const { list } = loadHookList(config.environment);
   const hookNames = hooksToInstall(repo.notes, { hookList: list });
-  const cacheHome = config.environment.cacheHome ?? join(config.environment.home, ".cache");
-  const compileCache = join(cacheHome, "zambil", "node-compile-cache");
-  const folders = await nodeFolders({ searchPath: config.searchPath ?? [] });
-  const command = hookCommandLine({
-    zambilPath: options.zambilPath,
-    repoRoot: repo.root,
-    compileCache,
-    nodeFolders: folders,
-  });
+  const { zambilPath } = options;
+  const command = await installHookCommand(repo.root, { config, zambilPath });
   const path = settingsPath(config);
   const saved = await changeSettings(path, {
     change: (settings) => installHooks(settings, { command, hookNames }),

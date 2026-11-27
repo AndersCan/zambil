@@ -23,3 +23,8 @@ export interface EmbeddingModel {
   documentPrefix: string;
   maxTokens: number;
 }
+
+/** The model and its revision, so that an index made by another model is not reused. */
+export function modelKeyOf(model: EmbeddingModel): string {
+  return `${model.id}@${model.revision}`;
+}

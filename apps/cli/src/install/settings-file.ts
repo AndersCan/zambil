@@ -22,7 +22,7 @@ function parseSettings(text: string): Either<string, Settings> {
 }
 
 /** The settings in a file, or empty settings when there is no file yet. */
-async function readSettings(path: string): Promise<Either<string, Settings>> {
+export async function readSettings(path: string): Promise<Either<string, Settings>> {
   const text = await readOptionalText(path);
   if (!text.ok) return text;
   if (text.value === undefined || text.value.trim() === "") return right({});

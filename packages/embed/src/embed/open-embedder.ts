@@ -5,6 +5,7 @@ import type { Either } from "@zambil/core/either";
 import type { EmbeddingModel } from "../model/embedding-model.ts";
 import { fetchModel } from "../model/fetch-model.ts";
 import type { FetchModelOptions } from "../model/fetch-model.ts";
+import { modelKeyOf } from "../model/embedding-model.ts";
 import { poolVectors } from "./pool-vectors.ts";
 import { readFileSync } from "node:fs";
 import type { WordPieceVocabulary } from "../tokenize/word-piece.ts";
@@ -131,7 +132,7 @@ export async function openEmbedder(
   if (!session.ok) return left(`cannot load ${paths.value.weights}: ${describe(session.error)}`);
   const loaded = { model, session: session.value, vocabulary: vocabulary.value };
   return right({
-    modelKey: `${model.id}@${model.revision}`,
+    modelKey: modelKeyOf(model),
     embed: (texts, embedOptions) => {
       const prefix = embedOptions.role === "query" ? model.queryPrefix : model.documentPrefix;
       return embedAll(loaded, { texts: texts.map((text) => `${prefix}${text}`) });
