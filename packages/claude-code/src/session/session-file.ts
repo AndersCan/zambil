@@ -80,7 +80,7 @@ async function removeIfOld(path: string, options: RemoveOldSessionFilesOptions):
   if (age > sessionFileMaxAge) await wrap(rm(path, { force: true }));
 }
 
-/** Removes the session files that no hook changed for `sessionFileMaxAge`. A file that cannot be read or removed stays. */
+/** A file that cannot be read or removed stays. */
 export async function removeOldSessionFiles(
   folder: string,
   options: RemoveOldSessionFilesOptions,
