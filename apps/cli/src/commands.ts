@@ -8,6 +8,7 @@ export const commands: Record<string, () => Promise<Command>> = {
   check: async () => (await import("./check/check-command.ts")).checkCommand,
   hook: async () => (await import("./hook/hook-command.ts")).hookCommand,
   index: async () => (await import("./index/index-command.ts")).indexCommand,
+  init: async () => (await import("./init/init-command.ts")).initCommand,
   install: async () => (await import("./install/install-command.ts")).installCommand,
   list: async () => (await import("./list/list-command.ts")).listCommand,
   save: async () => (await import("./save/save-command.ts")).saveCommand,
