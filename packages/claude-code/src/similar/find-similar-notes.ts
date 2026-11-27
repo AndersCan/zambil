@@ -1,3 +1,4 @@
+import { appliesInPlace, isScoped } from "@zambil/core/applies-in-place";
 import { left, right, wrap } from "@zambil/core/either";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import type { Either } from "@zambil/core/either";
@@ -5,18 +6,20 @@ import { findNote } from "@zambil/core/find-note";
 import { nameKey } from "@zambil/core/index-names";
 import type { Note } from "@zambil/core/note";
 import type { NoteScore } from "@zambil/embed/score-notes";
+import type { ProjectPlace } from "@zambil/core/project-place";
 import type { ShownNotes } from "../session/shown-notes.ts";
 import type { UserEnvironment } from "@zambil/core/locate-repo";
 
 /**
- * The prompt as typed, the clock that decides which notes are expired, where the cache folder is, and
- * the notes that the context already holds, by name key.
+ * The prompt as typed, the clock that decides which notes are expired, where the cache folder is, the
+ * notes that the context already holds, by name key, and where the agent works.
  */
 export interface FindSimilarNotesOptions {
   prompt: string;
   now: Date;
   environment: UserEnvironment;
   inContext?: ShownNotes;
+  place?: ProjectPlace;
 }
 
 /** The notes that match the prompt, best first, and how many notes were left out because they are not in the index. */
@@ -56,9 +59,10 @@ export function readPrompt(prompt: string): PromptKind {
   return letter.test(trimmed) ? "text" : "no-text";
 }
 
-/** The notes that the context already holds, by name key. */
+/** The notes that the context already holds, by name key, and where the agent works. */
 export interface SearchableNotesOptions {
   inContext: ShownNotes;
+  place: ProjectPlace | undefined;
 }
 
 type SearchRepo = Pick<ConfigurationRepo, "notes" | "names">;
@@ -79,18 +83,19 @@ function expiryHelpers(repo: SearchRepo): Set<Note> {
 }
 
 /**
- * The notes that a prompt can match. A `SessionStart` note and a note in `inContext` are in the context
- * already, so they take no match, and a lower note can take the place. An expiry helper with no hook
+ * The notes that a prompt can match. A `SessionStart` note without scope and a note in `inContext` are
+ * in the context already, so they take no match, and a lower note can take the place. An expiry helper with no hook
  * takes no match either: the expiry warning and `z:<name>` reach it. A helper that names a hook is a
- * note of its own, so it still matches.
+ * note of its own, so it still matches. A note for another project or path takes no match.
  */
 export function searchableNotes(repo: SearchRepo, options: SearchableNotesOptions): Note[] {
   const helpers = expiryHelpers(repo);
   return repo.notes.filter((note) => {
-    const isInContext =
-      note.hooks.includes("SessionStart") || Object.hasOwn(options.inContext, nameKey(note.name));
+    const isSessionNote = note.hooks.includes("SessionStart") && !isScoped(note);
+    const isInContext = isSessionNote || Object.hasOwn(options.inContext, nameKey(note.name));
     const isHelper = note.hooks.length === 0 && helpers.has(note);
-    return !isInContext && !isHelper;
+    const isElsewhere = !appliesInPlace(note, { place: options.place });
+    return !isInContext && !isHelper && !isElsewhere;
   });
 }
 
@@ -125,7 +130,10 @@ export async function findSimilarNotes(
   const noteSearch = opened.value;
   if (!noteSearch.ok) return left({ kind: "no-model", message: noteSearch.error });
   const { prompt, now } = options;
-  const notes = searchableNotes(repo, { inContext: options.inContext ?? {} });
+  const notes = searchableNotes(repo, {
+    inContext: options.inContext ?? {},
+    place: options.place,
+  });
   const searchOptions = { text: prompt, now, unindexedLimit };
   const searched = await wrap(noteSearch.value.search({ ...repo, notes }, searchOptions));
   if (!searched.ok) return failed(`the search failed: ${describe(searched.error)}`);

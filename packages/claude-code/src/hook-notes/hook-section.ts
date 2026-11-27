@@ -3,15 +3,18 @@ import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import type { HookInput } from "../hook-input/parse-hook-input.ts";
 import { nameKey } from "@zambil/core/index-names";
 import { noteVersion } from "../session/shown-notes.ts";
+import type { ProjectPlace } from "@zambil/core/project-place";
 import { renderNote } from "@zambil/core/render-note";
 import type { RenderWording } from "@zambil/core/render-wording";
 import { selectHookNotes } from "./select-hook-notes.ts";
+import type { SelectHookNotesOptions } from "./select-hook-notes.ts";
 
-/** The hook that runs, the clock and the wording. */
+/** The hook that runs, the clock, the wording, and where the agent works. */
 export interface HookSectionOptions {
   input: HookInput;
   now: Date;
   wording: RenderWording;
+  place?: ProjectPlace;
 }
 
 function describeHook(input: HookInput): string {
@@ -31,7 +34,9 @@ export function hookSection(
 ): ContextSection {
   const { input, now, wording } = options;
   const blocks: ContextBlock[] = [];
-  for (const note of selectHookNotes(repo.notes, { input, now })) {
+  const selectOptions: SelectHookNotesOptions = { input, now };
+  if (options.place !== undefined) selectOptions.place = options.place;
+  for (const note of selectHookNotes(repo.notes, selectOptions)) {
     const rendered = renderNote(repo, { target: note.name, now, wording });
     const description = note.description?.replaceAll(/\s*\n\s*/g, " ") ?? "It has no description.";
     const open = wording.openNote(note.name);

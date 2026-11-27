@@ -4,6 +4,8 @@ import { parseHookInput } from "./parse-hook-input.ts";
 
 const session = { sessionId: "cb2b4f53-402c-410e-beaf-baa0b2af3da0" };
 
+const folder = "/home/ada/shop";
+
 describe("parseHookInput", () => {
   test("reads the prompt, the tool names and the plain hooks from real payload shapes", () => {
     const batch = hookPayload("PostToolBatch", {
@@ -37,6 +39,7 @@ describe("parseHookInput", () => {
           kind: "answer",
           input: { kind: "plain", hookEventName: "SessionStart", source: "startup" },
           session,
+          folder,
         },
       },
       {
@@ -45,6 +48,7 @@ describe("parseHookInput", () => {
           kind: "answer",
           input: { kind: "prompt", hookEventName: "UserPromptSubmit", prompt: "Use z:deploy" },
           session,
+          folder,
         },
       },
       {
@@ -53,6 +57,7 @@ describe("parseHookInput", () => {
           kind: "answer",
           input: { kind: "tool", hookEventName: "PreToolUse", toolNames: ["Bash"] },
           session,
+          folder,
         },
       },
       {
@@ -61,6 +66,7 @@ describe("parseHookInput", () => {
           kind: "answer",
           input: { kind: "tool", hookEventName: "PostToolBatch", toolNames: ["Bash", "Read"] },
           session,
+          folder,
         },
       },
       {
@@ -69,11 +75,12 @@ describe("parseHookInput", () => {
           kind: "answer",
           input: { kind: "plain", hookEventName: "SubagentStart" },
           session: { ...session, agentId: "a1" },
+          folder,
         },
       },
       {
         ok: true,
-        value: { kind: "answer", input: { kind: "plain", hookEventName: "Stop" }, session },
+        value: { kind: "answer", input: { kind: "plain", hookEventName: "Stop" }, session, folder },
       },
     ]);
   });

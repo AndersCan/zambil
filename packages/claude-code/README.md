@@ -12,7 +12,7 @@ The Claude Code adapter of zambil. Claude Code runs `zambil hook` at each hook, 
 
 It adds three kinds of note:
 
-1. Each current note whose `hooks` property names the hook that runs. At `SubagentStart`, also each current note that names `SessionStart`, because a subagent starts with a context of its own and gets no `SessionStart`. At a tool hook, a note with a `tools` property applies only to those tools. A note without `tools` applies to every tool. Names compare exactly, so write `PreToolUse` and `Bash` as Claude Code writes them.
+1. Each current note whose `hooks` property names the hook that runs. At `SubagentStart`, also each current note that names `SessionStart`, because a subagent starts with a context of its own and gets no `SessionStart`. A note with `projects` or `paths` applies only when the `cwd` of the hook input is in that project or under that path. See the Scope section of `docs/notes.md`. At a tool hook, a note with a `tools` property applies only to those tools. A note without `tools` applies to every tool. Names compare exactly, so write `PreToolUse` and `Bash` as Claude Code writes them.
 2. At `UserPromptSubmit`, each note that the user names with `z:<name>` in the prompt. See [Name a note in a prompt](#name-a-note-in-a-prompt).
 3. At `UserPromptSubmit`, each current note whose description is similar to the prompt. See [Similar notes](#similar-notes).
 
@@ -50,9 +50,9 @@ At `UserPromptSubmit`, the hook finds the notes whose `description` is similar t
 
 Run `zambil install` or `zambil index` once before you use the hook. Each downloads the model, about 23 MB, and embeds the descriptions ahead of time. `zambil save` adds the description of each note that it writes to the index. Run `zambil index` again after you change descriptions in your editor.
 
-The similar notes come after the notes that the prompt names and the notes of the hook. A note comes only once. A note that the prompt names with `z:<name>`, also in part, is not added again as a similar note. Neither is a note that the hook already added. A note that names `SessionStart` is not added either, because it is in the context for the whole session.
+The similar notes come after the notes that the prompt names and the notes of the hook. A note comes only once. A note that the prompt names with `z:<name>`, also in part, is not added again as a similar note. Neither is a note that the hook already added. A note that names `SessionStart` and has no `projects` or `paths` is not added either, because it is in the context for the whole session. A `SessionStart` note with a scope can come as a similar note when the context does not hold it yet, for example after the agent moved to its project.
 
-A note that another note names in `when-expired`, and that names no hook itself, is not a similar note either. It tells how to verify the other note, so it is for the agent that reads the expiry warning, not for a prompt about the topic. The expiry warning and `z:<name>` still reach it. A helper note that names a hook is a note of its own, so it can still match.
+A note that another note names in `when-expired`, and that names no hook itself, is not a similar note either. It tells how to verify the other note, so it is for the agent that reads the expiry warning, not for a prompt about the topic. The expiry warning and `z:<name>` still reach it. A helper note that names a hook is a note of its own, so it can still match. A note for another project or path is not a similar note either.
 
 The hook never blocks or slows a prompt for long:
 
@@ -135,10 +135,10 @@ The first part runs when `zambil` is gone, for example after the clone moved. Wi
 
 zambil knows its handlers by the words `zambil hook` in the command. `zambil uninstall` removes each such handler and the `zambil-save` skill. If zambil emptied an event or the `hooks` object, it removes that too. It keeps an event that was empty before.
 
-To make sure that the hook finds your notes, run the command of a handler with a `SessionStart` payload. It must print a JSON object with your `SessionStart` notes. If no note names `SessionStart`, it prints nothing:
+To make sure that the hook finds your notes, run the command of a handler with a `SessionStart` payload. It must print a JSON object with your `SessionStart` notes. If no note names `SessionStart`, it prints nothing. A note with `projects` or `paths` applies only when `cwd` is in that project or under that path, so run the command from that project:
 
 ```sh
-echo '{"hook_event_name":"SessionStart","source":"startup"}' | zambil hook --repo ~/notes
+echo '{"hook_event_name":"SessionStart","source":"startup","cwd":"'"$PWD"'"}' | zambil hook --repo ~/notes
 ```
 
 If it prints a message that starts with `zambil hook:`, fix that problem first.

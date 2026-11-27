@@ -75,6 +75,8 @@ zambil reads the properties in the table. The `properties` field of the note hol
 | `tags`         | list of text      | Obsidian tags. zambil also reads the `#tags` in the text of the note.                                                        |
 | `hooks`        | list of text      | The hooks where the note applies, with the hook names of Claude Code, for example `SessionStart` or `PreToolUse`.            |
 | `tools`        | list of text      | The tools that a tool hook applies to, for example `Bash` or `Edit`.                                                         |
+| `projects`     | list of text      | The projects where the note applies: the name of a git repo or of a folder, for example `webshop`. See [Scope](#scope).      |
+| `paths`        | list of text      | The folders where the note applies, as full paths or paths that start with `~/`, for example `"~/git/webshop"`.              |
 | `expires`      | date or date-time | The claims of the note hold until this moment. See [Expiry](#expiry).                                                        |
 | `when-expired` | link or name      | The note that tells how to update this note or verify its claims, for example `"[[refresh-today]]"`.                         |
 | `script`       | path              | Makes the note a script note. The path of the script, relative to the folder of the note. See [Scripts](#scripts).           |
@@ -83,7 +85,7 @@ zambil reads the properties in the table. The `properties` field of the note hol
 
 zambil accepts the same short forms as Obsidian:
 
-- A single text counts as a list. In `aliases`, `hooks` and `tools`, commas separate the items. In `tags`, commas and spaces separate the items.
+- A single text counts as a list. In `aliases`, `hooks`, `tools`, `projects` and `paths`, commas separate the items. In `tags`, commas and spaces separate the items.
 - A leading `#` on a tag is removed.
 - An empty value, such as `description:` with nothing after it, is the same as no property.
 - A number or `true` and `false` becomes text.
@@ -91,6 +93,23 @@ zambil accepts the same short forms as Obsidian:
 A property with the wrong shape, for example a list in `description`, gets an error. zambil then ignores that property and reads the others.
 
 The core does not check the hook names against Claude Code, because it does not depend on one agent tool. The Claude Code adapter checks them, and `zambil check` shows its warnings. See [Problems](#problems).
+
+## Scope
+
+A note without `projects` and `paths` applies in every project. A note with one of them applies only where the agent works in that project. The agent tool gives zambil the folder where the agent works.
+
+- `projects` matches the name of the git repo that holds the folder. zambil finds the git repo through the nearest `.git` above the folder. The repo has two names: the name of its root folder, and for a git worktree also the name of the main clone. Outside a git repo, the name is that of the folder itself. Names compare in any case.
+- `paths` matches the folder and each folder under it. `~` is your home folder. zambil follows symbolic links in both paths before it compares them.
+- If the note has both, either one is enough.
+
+A note for another project is left out of the hook notes and of the similar notes. `z:<name>` still adds it everywhere, because you named it. `zambil search` and `zambil show` do not use the scope.
+
+```markdown
+---
+description: How to deploy the webshop.
+projects: [webshop]
+---
+```
 
 ## Note kinds
 
@@ -216,22 +235,24 @@ After a save, zambil adds the descriptions that are new to the index for similar
 
 zambil reports two kinds of problem. An error makes `zambil check` exit with 1. A warning does not change the exit code.
 
-| Problem                                                           | Kind    |
-| ----------------------------------------------------------------- | ------- |
-| Two notes share a name or an alias.                               | error   |
-| The frontmatter is not valid YAML, or not a list of properties.   | error   |
-| A property has the wrong shape.                                   | error   |
-| `expires` is not a date.                                          | error   |
-| `when-expired` names a note that does not exist.                  | error   |
-| `script` points outside the repo, or to a missing file.           | error   |
-| A skill has a `name` that is not its folder name, or a `script`.  | error   |
-| A `SKILL.md` is in the root of the repo.                          | error   |
-| A note cannot be read.                                            | error   |
-| A skill has no `description`.                                     | warning |
-| `when-expired` without `expires`, or `run-with` without `script`. | warning |
-| Obsidian cannot link to a name or an alias.                       | warning |
-| A folder cannot be read.                                          | warning |
-| `hooks` names a hook that cannot add context, or no such hook.    | warning |
+| Problem                                                            | Kind    |
+| ------------------------------------------------------------------ | ------- |
+| Two notes share a name or an alias.                                | error   |
+| The frontmatter is not valid YAML, or not a list of properties.    | error   |
+| A property has the wrong shape.                                    | error   |
+| `expires` is not a date.                                           | error   |
+| `when-expired` names a note that does not exist.                   | error   |
+| `script` points outside the repo, or to a missing file.            | error   |
+| A skill has a `name` that is not its folder name, or a `script`.   | error   |
+| A `SKILL.md` is in the root of the repo.                           | error   |
+| A note cannot be read.                                             | error   |
+| A skill has no `description`.                                      | warning |
+| `when-expired` without `expires`, or `run-with` without `script`.  | warning |
+| A path in `paths` is not a full path and does not start with `~/`. | warning |
+| A name in `projects` holds a `/`.                                  | warning |
+| Obsidian cannot link to a name or an alias.                        | warning |
+| A folder cannot be read.                                           | warning |
+| `hooks` names a hook that cannot add context, or no such hook.     | warning |
 
 ## Rendering
 
@@ -268,12 +289,13 @@ The core names no agent tool. The caller passes a `RenderWording` with three fun
 
 ## Claude Code
 
-`packages/claude-code` is the adapter for Claude Code, and `zambil hook` runs it. At each hook, it adds the current notes whose `hooks` name that hook, filtered by `tools` at a tool hook. At `SubagentStart`, it also adds the `SessionStart` notes. At `UserPromptSubmit`, it also adds each note that the prompt names with `z:<name>`. Its README describes the rules, the `z:<name>` syntax, the hook list and `zambil install`. The hook warnings of `zambil check` come from the adapter, with the hook list from the Claude Code hooks reference.
+`packages/claude-code` is the adapter for Claude Code, and `zambil hook` runs it. At each hook, it adds the current notes whose `hooks` name that hook, filtered by `tools` at a tool hook. At `SubagentStart`, it also adds the `SessionStart` notes. It leaves out a note for another project, from the `cwd` of the hook input. At `UserPromptSubmit`, it also adds each note that the prompt names with `z:<name>`. Its README describes the rules, the `z:<name>` syntax, the hook list and `zambil install`. The hook warnings of `zambil check` come from the adapter, with the hook list from the Claude Code hooks reference.
 
 ## The core library
 
 Later features import from `@zambil/core`. Each export is one file. A new export gets its own line in this list, in alphabetical order:
 
+- `@zambil/core/applies-in-place`. `appliesInPlace` tells whether a note with `projects` or `paths` applies where the agent works.
 - `@zambil/core/as-record`. `asRecord` reads untyped input, such as parsed JSON, as an object.
 - `@zambil/core/check-repo`. `checkRepo` returns every problem, with the checks that the loader skips.
 - `@zambil/core/configuration-repo`. The `ConfigurationRepo` and `NameIndex` types.
@@ -290,6 +312,7 @@ Later features import from `@zambil/core`. Each export is one file. A new export
 - `@zambil/core/parse-frontmatter`. `parseFrontmatter` reads frontmatter YAML the same way as the loader.
 - `@zambil/core/parse-link-target`. `parseLinkTarget` returns the note name in a link such as `[[folder/name#heading]]`, or in a plain name.
 - `@zambil/core/parse-note`. `parseNote` reads one note from its text.
+- `@zambil/core/project-place`. `findProjectPlace` finds the project names of a folder: the name of its git repo and of the folder.
 - `@zambil/core/quote-argument`. `quoteArgument` quotes an argument for a POSIX shell, so that a printed command can be pasted as it is.
 - `@zambil/core/render-note`. `renderNote` turns a note into the text an agent gets. See [Rendering](#rendering).
 - `@zambil/core/render-wording`. The `RenderWording` type: the words of the agent tool that `renderNote` uses.

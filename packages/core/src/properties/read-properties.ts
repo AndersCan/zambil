@@ -9,6 +9,8 @@ export interface KnownProperties {
   tags: string[];
   hooks: string[];
   tools: string[];
+  projects: string[];
+  paths: string[];
   expires: string | undefined;
   whenExpired: string | undefined;
   script: string | undefined;
@@ -106,6 +108,8 @@ export function readProperties(properties: Record<string, unknown>): PropertyRea
     tags: list("tags", /[,\s]+/).map((tag) => tag.replace(/^#/, "")),
     hooks: list("hooks", /,/),
     tools: list("tools", /,/),
+    projects: list("projects", /,/),
+    paths: list("paths", /,/),
     expires: text("expires"),
     whenExpired: whenExpired === undefined ? undefined : parseLinkTarget(whenExpired),
     script: text("script"),

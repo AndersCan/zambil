@@ -5,15 +5,19 @@ import { answerHook } from "@zambil/claude-code/answer-hook";
 import type { AnswerHookOptions } from "@zambil/claude-code/answer-hook";
 import type { CliConfig } from "../config.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
+import { findProjectPlace } from "@zambil/core/project-place";
 import { findSimilarNotes } from "@zambil/claude-code/find-similar-notes";
+import type { FindSimilarNotesOptions } from "@zambil/claude-code/find-similar-notes";
 import { formatSystemMessage } from "@zambil/claude-code/format-hook-output";
 import type { HookList } from "@zambil/claude-code/hook-list";
 import { indexHint } from "../index/index-hint.ts";
+import { isScoped } from "@zambil/core/applies-in-place";
 import { loadHookList } from "@zambil/claude-code/load-hook-list";
 import type { Note } from "@zambil/core/note";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
 import { parseHookInput } from "@zambil/claude-code/parse-hook-input";
+import type { ProjectPlace } from "@zambil/core/project-place";
 import { repoOptionHelp } from "../parse-command-args.ts";
 import type { SessionNotesOptions } from "@zambil/claude-code/session-notes";
 import { sharedOptions } from "../parse-command-args.ts";
@@ -24,6 +28,7 @@ interface SimilarToOptions extends CommandRunOptions {
   prompt: string;
   repoFlag: string | undefined;
   inContext: ShownNotes;
+  place: ProjectPlace | undefined;
 }
 
 /**
@@ -32,12 +37,14 @@ interface SimilarToOptions extends CommandRunOptions {
  */
 async function similarTo(repo: ConfigurationRepo, options: SimilarToOptions): Promise<Note[]> {
   const { output } = options;
-  const similar = await findSimilarNotes(repo, {
+  const findOptions: FindSimilarNotesOptions = {
     prompt: options.prompt,
     now: options.now,
     environment: options.config.environment,
     inContext: options.inContext,
-  });
+  };
+  if (options.place !== undefined) findOptions.place = options.place;
+  const similar = await findSimilarNotes(repo, findOptions);
   const hint = indexHint(options.repoFlag);
   if (!similar.ok) {
     const { kind, message } = similar.error;
@@ -140,6 +147,10 @@ async function runHook(options: CommandRunOptions): Promise<ExitCode> {
     return 0;
   }
   const repoFlag = parsed.value.values.repo;
+  const { folder } = request.value;
+  const { home } = options.config.environment;
+  const hasScope = repo.value.notes.some((note) => isScoped(note));
+  const place = folder === undefined || !hasScope ? undefined : findProjectPlace(folder, { home });
   const similarNotes =
     input.kind === "prompt"
       ? await similarTo(repo.value, {
@@ -147,6 +158,7 @@ async function runHook(options: CommandRunOptions): Promise<ExitCode> {
           prompt: input.prompt,
           repoFlag,
           inContext: before,
+          place,
         })
       : [];
   const { config } = options;
@@ -156,6 +168,7 @@ async function runHook(options: CommandRunOptions): Promise<ExitCode> {
     : undefined;
   const answerOptions: AnswerHookOptions = { input, now: options.now, similarNotes, shown: before };
   if (systemMessage !== undefined) answerOptions.systemMessage = systemMessage;
+  if (place !== undefined) answerOptions.place = place;
   const answer = answerHook(repo.value, answerOptions);
   output.write(answer.output);
   const kept = await keepSessionNotes(request.value, {
@@ -180,6 +193,7 @@ export const hookCommand: Command = {
     "After a rewind, a note that a prompt after the rewind point added stays out until a clear, a compact or a new session. Name it with z:<name> to get it back.",
     "It prints nothing when no note applies, or the context already holds each one, and the setup works, and it always exits with 0, so that it never blocks a session.",
     "At SubagentStart, it also adds the SessionStart notes, because a subagent gets no SessionStart.",
+    "A note with projects or paths applies only in that project or under that path, from the cwd of the hook input. Without a cwd, such a note does not apply.",
     "At SessionStart, it warns the user in one line when the setup is broken, for example a moved notes folder, and points to zambil doctor.",
     "Run `zambil install` to set up the hooks. The file packages/claude-code/README.md in the zambil repo describes them.",
   ].join("\n"),

@@ -3,6 +3,7 @@ import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import { findNote } from "@zambil/core/find-note";
 import { findRecalls } from "../recall/find-recalls.ts";
 import { isNever } from "@zambil/core/is-never";
+import { isScoped } from "@zambil/core/applies-in-place";
 import { nameKey } from "@zambil/core/index-names";
 import type { Note } from "@zambil/core/note";
 import { noteVersion } from "../session/shown-notes.ts";
@@ -64,7 +65,7 @@ export function similarSection(repo: SectionRepo, options: SimilarSectionOptions
   const blocks: ContextBlock[] = [];
   for (const note of options.notes) {
     const key = nameKey(note.name);
-    const isInSession = note.hooks.includes(sessionHook);
+    const isInSession = note.hooks.includes(sessionHook) && !isScoped(note);
     if (recalled.has(key) || isInSession) continue;
     const rendered = renderNote(repo, { target: note.name, now, wording });
     if (rendered.status !== "shown") continue;

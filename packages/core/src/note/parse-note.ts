@@ -1,6 +1,7 @@
 import type { Expiry, Note, PlainNote } from "./note.ts";
 import type { NoteProblem, ProblemSeverity } from "./note-problem.ts";
 import { findInlineTags } from "../properties/find-inline-tags.ts";
+import { isScopePath } from "../scope/applies-in-place.ts";
 import type { KnownProperties } from "../properties/read-properties.ts";
 import type { NoteFile } from "./note-file.ts";
 import { parseExpires } from "../expiry/parse-expires.ts";
@@ -129,6 +130,20 @@ function propertyFindings(plain: PlainNote, options: KindOptions): void {
       message: "`when-expired` has no effect without `expires`",
     });
   }
+  for (const path of known.paths) {
+    if (isScopePath(path)) continue;
+    findings.push({
+      severity: "warning",
+      message: `\`paths\` holds "${path}", but each path must be a full path or start with ~/. The path matches no folder, so the note applies only through its other paths or projects`,
+    });
+  }
+  for (const project of known.projects) {
+    if (!project.includes("/")) continue;
+    findings.push({
+      severity: "warning",
+      message: `\`projects\` holds "${project}", but a project is the name of a repo or a folder, so it matches no project. Put a path in \`paths\``,
+    });
+  }
   for (const name of [plain.name, ...known.aliases]) {
     if (!unlinkableCharacters.test(name)) continue;
     findings.push({
@@ -162,6 +177,8 @@ export function parseNote(text: string, options: ParseNoteOptions): ParsedNote {
     tags: uniqueTags([...known.tags, ...findInlineTags(split.content)]),
     hooks: known.hooks,
     tools: known.tools,
+    projects: known.projects,
+    paths: known.paths,
     expiry: readExpiry({ frontmatter: split.frontmatter, properties: parsedProperties, known }),
     properties,
     content: split.content,
