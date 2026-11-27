@@ -48,7 +48,7 @@ At `UserPromptSubmit`, the hook finds the notes whose `description` is similar t
 
 Run `zambil index` once before you use the hook. It downloads the model, about 23 MB, and embeds the descriptions ahead of time. Run it again after you change many descriptions.
 
-The similar notes come after the notes that the prompt names and the notes of the hook. A note comes only once. A note that the prompt names with `z:<name>`, also in part, is not added again as a similar note. Neither is a note that the hook already added, nor a note that names `SessionStart`, because that note is in the context for the whole session.
+The similar notes come after the notes that the prompt names and the notes of the hook. A note comes only once. A note that the prompt names with `z:<name>`, also in part, is not added again as a similar note. Neither is a note that the hook already added. A note that names `SessionStart` is not added either, because it is in the context for the whole session.
 
 The hook never blocks or slows a prompt for long:
 
