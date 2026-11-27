@@ -76,8 +76,13 @@ describe("loadRepo", () => {
     });
   });
 
-  test("returns an error when the root cannot be read", () => {
-    const loaded = loadRepo("/no/such/zambil/repo");
-    expect(loaded.ok ? "loaded" : loaded.error.kind).toBe("unreadable-root");
+  test("tells a missing root apart from a file in its place", async () => {
+    const root = await writeTestRepo({ "notes.md": "" });
+    const roots = ["/no/such/zambil/repo", `${root}/notes.md`];
+    const kinds = roots.map((path) => {
+      const loaded = loadRepo(path);
+      return loaded.ok ? "loaded" : loaded.error.kind;
+    });
+    expect(kinds).toEqual(["missing-root", "not-a-folder"]);
   });
 });

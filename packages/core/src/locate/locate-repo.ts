@@ -25,10 +25,11 @@ export interface LocateRepoOptions {
 /** Where the repo path came from: the `--repo` flag, `ZAMBIL_REPO` or the user config file. */
 export type RepoSource = "flag" | "environment" | "user-config";
 
-/** The absolute path of the configuration repo, and where it came from. */
+/** The absolute path of the configuration repo, where it came from, and the path as the source wrote it. */
 export interface RepoLocation {
   root: string;
   source: RepoSource;
+  written: string;
 }
 
 /** The flag is blank, no source names a repo, or the user config file cannot be used. */
@@ -64,11 +65,12 @@ export function locateRepo(options: LocateRepoOptions): Either<LocateRepoError, 
     return right({
       root: resolve(environment.workingFolder, expandHome(options.flag, environment)),
       source: "flag",
+      written: options.flag,
     });
   }
   if (environment.repo !== undefined) {
     const root = resolve(environment.workingFolder, expandHome(environment.repo, environment));
-    return right({ root, source: "environment" });
+    return right({ root, source: "environment", written: environment.repo });
   }
 
   const configPath = userConfigPath(environment);
@@ -81,5 +83,5 @@ export function locateRepo(options: LocateRepoOptions): Either<LocateRepoError, 
   const config = parseUserConfig(text.value);
   if (!config.ok) return left({ kind: "invalid-config", configPath, message: config.error });
   const root = resolve(dirname(configPath), expandHome(config.value.repo, environment));
-  return right({ root, source: "user-config" });
+  return right({ root, source: "user-config", written: config.value.repo });
 }

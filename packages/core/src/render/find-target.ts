@@ -1,3 +1,4 @@
+import { closestMatch } from "../suggest/closest-match.ts";
 import type { ConfigurationRepo } from "../repo/configuration-repo.ts";
 import { isNever } from "../is-never.ts";
 import type { MarkdownLine } from "./scan-lines.ts";
@@ -42,12 +43,27 @@ function missingSection(note: Note, target: WikilinkTarget): string {
   }
 }
 
+function missingName(name: string, options: Pick<FindTargetOptions, "repo">): string {
+  const candidates = new Set<string>();
+  for (const entries of options.repo.names.values()) {
+    for (const { note } of entries) {
+      candidates.add(note.name);
+      for (const alias of note.aliases) candidates.add(alias);
+    }
+  }
+  const quoted = JSON.stringify(name);
+  const suggestion = closestMatch(name, { candidates });
+  if (suggestion === undefined) return `no note has the name ${quoted}`;
+  const quotedSuggestion = JSON.stringify(suggestion);
+  return `no note has the name ${quoted} (did you mean ${quotedSuggestion}?)`;
+}
+
 /** Resolves a link target with its expiry, then the heading or block it names. */
 export function findTarget(target: WikilinkTarget, options: FindTargetOptions): TargetLookup {
   const resolution = resolveNote(options.repo, { name: target.name, now: options.now });
   switch (resolution.kind) {
     case "missing":
-      return { kind: "unresolved", reason: `no note has the name ${JSON.stringify(target.name)}` };
+      return { kind: "unresolved", reason: missingName(target.name, options) };
     case "ambiguous": {
       const paths = resolution.notes.map((note) => note.path);
       const count = resolution.notes.length;

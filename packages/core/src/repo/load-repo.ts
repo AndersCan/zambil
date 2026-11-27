@@ -9,15 +9,30 @@ import { parseNote } from "../note/parse-note.ts";
 import { readTextFile } from "./read-text-file.ts";
 import { resolve } from "node:path";
 
-/** The repo root could not be read: it is missing, not a folder, or not readable. */
+/** Why the repo root could not be read: nothing is at the path, a file is there, or reading it failed. */
+export type LoadRepoErrorKind = "missing-root" | "not-a-folder" | "unreadable-root";
+
+/** The repo root could not be read. `message` is the error of the system. */
 export interface LoadRepoError {
-  kind: "unreadable-root";
+  kind: LoadRepoErrorKind;
   root: string;
   message: string;
 }
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function rootErrorKind(error: unknown): LoadRepoErrorKind {
+  const code = error instanceof Error && "code" in error ? error.code : undefined;
+  switch (code) {
+    case "ENOENT":
+      return "missing-root";
+    case "ENOTDIR":
+      return "not-a-folder";
+    default:
+      return "unreadable-root";
+  }
 }
 
 /**
@@ -29,7 +44,7 @@ export function loadRepo(root: string): Either<LoadRepoError, ConfigurationRepo>
   const found = findNoteFiles(absoluteRoot);
   if (!found.ok) {
     return left({
-      kind: "unreadable-root",
+      kind: rootErrorKind(found.error),
       root: absoluteRoot,
       message: describeError(found.error),
     });

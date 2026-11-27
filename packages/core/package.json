@@ -6,6 +6,7 @@
   "exports": {
     "./as-record": "./src/as-record.ts",
     "./check-repo": "./src/repo/check-repo.ts",
+    "./closest-match": "./src/suggest/closest-match.ts",
     "./configuration-repo": "./src/repo/configuration-repo.ts",
     "./either": "./src/either.ts",
     "./find-note": "./src/repo/find-note.ts",
