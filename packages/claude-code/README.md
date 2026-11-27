@@ -46,7 +46,7 @@ If no note has the name, or more than one note has it, the agent gets a warning.
 
 At `UserPromptSubmit`, the hook finds the notes whose `description` is similar to the prompt, with the model of `packages/embed`. It adds at most 3 notes that score 0.38 or more, best first. A question about iterating finds a note about for loops. `packages/embed/README.md` says how the model and the threshold were chosen.
 
-Run `zambil index` once before you use the hook. It downloads the model, about 23 MB, and embeds the descriptions ahead of time. Run it again after you change many descriptions.
+Run `zambil install` or `zambil index` once before you use the hook. Each downloads the model, about 23 MB, and embeds the descriptions ahead of time. Run it again after you change many descriptions.
 
 The similar notes come after the notes that the prompt names and the notes of the hook. A note comes only once. A note that the prompt names with `z:<name>`, also in part, is not added again as a similar note. Neither is a note that the hook already added. A note that names `SessionStart` is not added either, because it is in the context for the whole session.
 

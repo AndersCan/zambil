@@ -71,6 +71,7 @@ async function indexNotes(repo: ConfigurationRepo, options: CommandRunOptions): 
   const { openNoteSearch } = await import("@zambil/embed/open-note-search");
   const noteSearch = await openNoteSearch(options.config.environment, {
     report: (message) => output.write(`${message}\n`),
+    download: "allow",
   });
   const summary = noteSearch.ok ? await noteSearch.value.index(repo) : noteSearch;
   if (!summary.ok) {
