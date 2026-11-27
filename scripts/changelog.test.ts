@@ -22,10 +22,11 @@ describe("CHANGELOG.md", () => {
     ]);
     const { version } = JSON.parse(cliPackage);
     const names = sectionNames(changelog);
-    const isReleased = version !== "0.0.0";
-    expect({ first: names[0], hasVersion: !isReleased || names.includes(version) }).toEqual({
+    const isMissing = version !== "0.0.0" && !names.includes(version);
+    const missingSections = isMissing ? [`## ${version}`] : [];
+    expect({ first: names[0], missingSections }).toEqual({
       first: "Unreleased",
-      hasVersion: true,
+      missingSections: [],
     });
   });
 });

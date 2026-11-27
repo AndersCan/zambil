@@ -139,7 +139,13 @@ It updates the clone of zambil in `~/.local/share/zambil` and installs the new d
 
 The install command installs the newest release, a tag such as `v0.1.0`. Until the first release exists, it installs the newest commit of `main`. [`CHANGELOG.md`](CHANGELOG.md) lists what each release changed, and `zambil --version` prints the version that runs. A clone on `main` moves to the newest release when that release has the commit of the clone.
 
-To install one release, add its tag, for example `| ZAMBIL_GIT_REF=v0.1.0 sh`. The next run without the tag moves to the newest release again. To get each new commit of `main` instead, add `ZAMBIL_GIT_REF=main` once. zambil then follows `main` until you name a release.
+To install one release, add its tag:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/AndersCan/zambil/main/install.sh | ZAMBIL_GIT_REF=v0.1.0 sh
+```
+
+The next run without the tag moves to the newest release again. To get each new commit of `main` instead, add `ZAMBIL_GIT_REF=main` once. zambil then follows `main` until you name a release.
 
 ## Move the notes folder
 

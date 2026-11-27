@@ -104,11 +104,41 @@ resolve_ref() {
     fail "zambil cannot read the releases and branches of $1. git printed the reason above. Run the install command again."
   fi
   target=$git_ref
-  case $refs in
-    *refs/tags/*) kind=release ;;
-    *refs/heads/*) kind=branch ;;
-    *) fail "$1 has no release or branch named $git_ref. Fix ZAMBIL_GIT_REF, or leave it out to install the newest release." ;;
-  esac
+  if has_ref "refs/tags/$git_ref"; then
+    kind=release
+  elif has_ref "refs/heads/$git_ref"; then
+    kind=branch
+  else
+    fail "$1 has no release or branch named $git_ref. Releases are named like v0.1.0." \
+      "Fix ZAMBIL_GIT_REF, or leave it out to install the newest release."
+  fi
+}
+
+# Whether the output of git ls-remote in $refs names this exact ref. ls-remote reads its patterns as globs.
+has_ref() {
+  printf '%s\n' "$refs" | awk -v wanted="$1" '$2 == wanted { found = 1 } END { exit !found }'
+}
+
+# The last line of a refusal. It repeats ZAMBIL_GIT_REF, so that the next run keeps the choice of the user.
+rerun_line() {
+  if [ -n "$git_ref" ]; then
+    printf '%s\n' "Then run the install command again with ZAMBIL_GIT_REF=$git_ref."
+  else
+    printf '%s\n' "Then run the install command again."
+  fi
+}
+
+# Stops when HEAD is detached at commits that no tag, no branch and not $1 has, so that a switch loses none.
+keep_detached_commits() {
+  if [ -n "$branch" ]; then return; fi
+  if [ -n "$(git -C "$install_dir" tag --points-at HEAD)" ]; then return; fi
+  if [ -n "$(git -C "$install_dir" for-each-ref --points-at HEAD refs/heads)" ]; then return; fi
+  if git -C "$install_dir" merge-base --is-ancestor HEAD "$1"; then return; fi
+  keep_branch=$(free_branch_name)
+  fail "zambil did not update, because the clone in $(tilde "$install_dir") has commits that no release or branch has." \
+    "To keep them on the new branch $keep_branch, run:" "" \
+    "  git -C \"$install_dir\" branch $keep_branch" "" \
+    "$(rerun_line)"
 }
 
 # Sets target to the newest release of the repo at the URL, and kind to release. Without a release: main.
@@ -208,39 +238,62 @@ leave_branch_for_release() {
     return
   fi
   if git -C "$install_dir" merge-base --is-ancestor HEAD "$release"; then return; fi
-  say "The clone is ahead of the newest release $target, so it follows the branch main until a newer release."
+  if git -C "$install_dir" merge-base --is-ancestor "$release" HEAD; then
+    say "The clone is ahead of the newest release $target, so it follows the branch main until a newer release."
+  else
+    say "The newest release $target does not have the commit of the clone, so the clone follows the branch main."
+  fi
   target=main
   kind=branch
 }
 
 # Moves the clone forward to the newest commit of the branch $target on its origin.
 update_branch() {
-  if [ "$branch" != "$target" ]; then
+  is_named=no
+  if [ -z "$branch" ] && [ -n "$git_ref" ]; then is_named=yes; fi
+  if [ "$branch" != "$target" ] && [ "$is_named" = no ]; then
     fail "zambil did not update, because the clone in $install_dir is not on the branch $target. To switch to it, run:" "" \
       "  git -C \"$install_dir\" switch $target" "" \
-      "Then run the install command again."
+      "$(rerun_line)"
   fi
   say "Updating zambil in $(tilde "$install_dir") from $source_url."
   if ! git -C "$install_dir" fetch --quiet "$source" "$target" < /dev/null; then
     fail "zambil did not update. git printed the reason above, and the clone is as it was. Run the install command again."
   fi
   fetched=$(git -C "$install_dir" rev-parse FETCH_HEAD)
+  before=$(git -C "$install_dir" rev-parse HEAD)
+  if [ "$is_named" = yes ]; then switch_to_branch; fi
   if ! git -C "$install_dir" merge-base --is-ancestor HEAD "$fetched"; then
     keep_branch=$(free_branch_name)
     fail "zambil did not update, because the branch $target in $(tilde "$install_dir") has commits that $source_url does not have." \
       "To keep them on the new branch $keep_branch and update, run:" "" \
       "  git -C \"$install_dir\" branch $keep_branch && git -C \"$install_dir\" reset --keep $fetched" "" \
-      "Then run the install command again."
+      "$(rerun_line)"
   fi
-  before=$(git -C "$install_dir" rev-parse HEAD)
   if ! git -C "$install_dir" merge --quiet --ff-only "$fetched" < /dev/null; then
     fail "zambil did not update, because git cannot move the clone forward. git printed the reason above and changed no file."
   fi
-  if [ "$(git -C "$install_dir" rev-parse HEAD)" = "$before" ]; then
-    say "zambil is up to date."
+  if [ "$is_named" = yes ]; then
+    say "Switched zambil to the branch $target."
+  elif [ "$(git -C "$install_dir" rev-parse HEAD)" = "$before" ]; then
+    say "zambil is up to date on the branch $target."
   else
     say "Updated zambil to $(git -C "$install_dir" log -1 --format='%h %s')."
   fi
+}
+
+# Moves a clone at a release to the branch $target that ZAMBIL_GIT_REF names. The tree is clean already.
+switch_to_branch() {
+  keep_detached_commits "$fetched"
+  if git -C "$install_dir" show-ref --verify --quiet "refs/heads/$target"; then
+    switched=$(git -C "$install_dir" switch --quiet "$target" < /dev/null 2>&1) || is_named=failed
+  else
+    switched=$(git -C "$install_dir" switch --quiet --create "$target" "$fetched" < /dev/null 2>&1) || is_named=failed
+  fi
+  if [ "$is_named" = failed ]; then
+    fail "$switched" "zambil did not update, because git cannot switch the clone to the branch $target. git printed the reason above."
+  fi
+  branch=$target
 }
 
 # Fetches the tag of the release $target, and sets release to its commit.
@@ -255,16 +308,7 @@ fetch_release() {
 update_to_release() {
   say "Updating zambil in $(tilde "$install_dir") from $source_url."
   before=$(git -C "$install_dir" rev-parse HEAD)
-  is_kept=no
-  if [ -n "$branch" ] || [ -n "$(git -C "$install_dir" tag --points-at HEAD)" ]; then is_kept=yes; fi
-  if git -C "$install_dir" merge-base --is-ancestor HEAD "$release"; then is_kept=yes; fi
-  if [ "$is_kept" = no ]; then
-    keep_branch=$(free_branch_name)
-    fail "zambil did not update, because the clone in $(tilde "$install_dir") has commits that no release has." \
-      "To keep them on the new branch $keep_branch and update, run:" "" \
-      "  git -C \"$install_dir\" branch $keep_branch && git -C \"$install_dir\" switch --quiet --detach $target" "" \
-      "Then run the install command again."
-  fi
+  keep_detached_commits "$release"
   if [ "$before" = "$release" ] && [ -z "$branch" ]; then
     say "zambil is up to date: $target."
     return
@@ -272,7 +316,7 @@ update_to_release() {
   if ! git -C "$install_dir" switch --quiet --detach "refs/tags/$target" < /dev/null; then
     fail "zambil did not update, because git cannot switch the clone to $target. git printed the reason above."
   fi
-  say "Updated zambil to $target."
+  say "Switched zambil to $target."
 }
 
 # pnpm comes from npm, so it need not be installed. npm runs outside the clone, because the clone pins pnpm.

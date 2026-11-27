@@ -336,10 +336,12 @@ function runReleases(machine: Machine) {
   const afterAdvice = runInstall(releaseMachine);
   const afterAdviceAt = position(releaseClone);
   const kept = git(["-C", releaseClone, "log", "-1", "--format=%s", "my-zambil-changes"]);
+  const releaseMainVariables = { ...releaseMachine.variables, ZAMBIL_GIT_REF: "main" };
+  const releaseToMain = runInstall({ ...releaseMachine, variables: releaseMainVariables });
+  const releaseToMainAt = position(releaseClone);
   const mainMachine = { ...machine, variables: { ZAMBIL_GIT_REF: "main" } };
   const toMain = runInstall(mainMachine);
-  runPrinted(toMain.stderr);
-  const onMainAgain = runInstall(mainMachine);
+  const toMainAt = position(mainClone);
   const followsMain = runInstall(machine);
   const followsMainAt = position(mainClone);
   git(["-C", mainClone, "config", "--unset", "zambil.follow"]);
@@ -352,16 +354,17 @@ function runReleases(machine: Machine) {
       newer: {
         status: newer.status,
         at: newerAt,
-        said: newer.stdout.includes("Updated zambil to v0.10.0."),
+        said: newer.stdout.includes("Switched zambil to v0.10.0."),
       },
       again: again.stdout.includes("zambil is up to date: v0.10.0."),
       pinned: { status: pinned.status, at: pinnedAt },
       refused: { status: refused.status, commands: printedCommands(refused.stderr).length },
       afterAdvice: { status: afterAdvice.status, at: afterAdviceAt, kept },
+      releaseToMain: { status: releaseToMain.status, at: releaseToMainAt },
       toMain: {
-        refused: toMain.status,
-        commands: printedCommands(toMain.stderr).length,
-        afterAdvice: onMainAgain.status,
+        status: toMain.status,
+        at: toMainAt,
+        said: toMain.stdout.includes("Switched zambil to the branch main."),
       },
       followsMain: { status: followsMain.status, at: followsMainAt },
       ahead: {
@@ -379,15 +382,16 @@ function runReleases(machine: Machine) {
       pinned: { status: 0, at: `${first} detached` },
       refused: { status: 1, commands: 1 },
       afterAdvice: { status: 0, at: `${tenth} detached`, kept: "my release commit\n" },
-      toMain: { refused: 1, commands: 1, afterAdvice: 0 },
+      releaseToMain: { status: 0, at: `${head} main` },
+      toMain: { status: 0, at: `${head} main`, said: true },
       followsMain: { status: 0, at: `${head} main` },
       ahead: { status: 0, at: `${head} main`, said: true },
       typo: {
         status: 1,
-        firstLine: `${machine.upstream} has no release or branch named v9.9.9. Fix ZAMBIL_GIT_REF, or leave it out to install the newest release.`,
+        firstLine: `${machine.upstream} has no release or branch named v9.9.9. Releases are named like v0.1.0.`,
       },
     },
-    output: `${refused.stderr}${afterAdvice.stderr}${toMain.stderr}${onMainAgain.stderr}`,
+    output: `${refused.stderr}${afterAdvice.stderr}${releaseToMain.stderr}${toMain.stderr}${followsMain.stderr}`,
   };
 }
 
