@@ -30,7 +30,8 @@ The commands are:
 - `zambil save <name>` creates or rewrites a note from standard input, or records with `--verified` that its claims still hold. It is the one way to write a note. See "Write a note" in `docs/notes.md`.
 - `zambil save-guide` prints what an agent must know before it writes a note.
 - `zambil show <name>` prints a note as the agent gets it, with its embeds, links and expiry warnings. `--expired` prints an expired note anyway. `docs/notes.md` describes the text in [Rendering](../../docs/notes.md#rendering).
-- `zambil install` adds the zambil hooks and the `zambil-save` skill to Claude Code, and keeps the rest of `settings.json`. It also refreshes the hook list from the Claude Code docs and indexes the notes. `--offline` skips these two steps. It never changes a note, and a second run changes nothing. `packages/claude-code/README.md` describes what it writes.
+- `zambil init [folder]` sets up zambil in one run. It uses the folder, or the repo that zambil already knows, or `~/zambil-notes`. In a new folder, or a folder with only hidden entries such as `.obsidian`, it writes the starter note `zambil-welcome.md`, which names `SessionStart`. A folder with files stays as it is. Then it saves the folder in the user configuration file, does what `zambil install` does, and checks the notes. It never asks a question, and a second run changes nothing.
+- `zambil install` adds the zambil hooks and the `zambil-save` skill to Claude Code, and keeps the rest of `settings.json`. It also refreshes the hook list from the Claude Code docs and indexes the notes. `--offline` skips these two steps. With `--repo`, it also saves the repo in the user configuration file. It prints the problems that `zambil check` finds. It never changes a note, and a second run changes nothing. `packages/claude-code/README.md` describes what it writes.
 - `zambil index` embeds the description of each note ahead of time, so that search is fast. The first run downloads the model, about 23 MB, to `$XDG_CACHE_HOME/zambil`, or `~/.cache/zambil`. It never changes a note.
 - `zambil search <text>` prints at most 3 notes whose description is similar to the text, best first, with a score. It leaves out expired notes. `packages/embed/README.md` says how the model and the score threshold were chosen.
 - `zambil uninstall` removes the zambil hooks and the `zambil-save` skill from Claude Code, and nothing else.
@@ -41,8 +42,8 @@ Each command takes `--repo <path>`. Without it, zambil reads `ZAMBIL_REPO`, then
 The exit codes are:
 
 - 0: the command worked.
-- 1: the command ran and found a problem. `zambil check` found an error, or `zambil save` refused to save the note. `zambil show` cannot resolve the name, the heading or the block. `zambil index` or `zambil search` cannot get the model. `zambil install` or `zambil uninstall` cannot read or write `settings.json` of Claude Code.
-- 2: the usage is wrong, zambil cannot find the repo, or `zambil install` cannot find `zambil` on the `PATH`.
+- 1: the command ran and found a problem. `zambil check` found an error, or `zambil save` refused to save the note. `zambil show` cannot resolve the name, the heading or the block. `zambil index` or `zambil search` cannot get the model. `zambil install`, `zambil init` or `zambil uninstall` cannot read or write `settings.json` of Claude Code or the user configuration file. `zambil install` or `zambil init` found an error in the notes. The hooks are installed in that case.
+- 2: the usage is wrong, zambil cannot find the repo, or `zambil install` or `zambil init` cannot find `zambil` on the `PATH`.
 
 `zambil hook` is the exception: it exits with 0 in each of these cases.
 
