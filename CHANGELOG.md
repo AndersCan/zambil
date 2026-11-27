@@ -16,6 +16,7 @@ This is the first release. zambil adds the notes of your configuration repo to y
 - The `projects` and `paths` properties limit a note to some projects or folders.
 - A `when-expired` note that names no hook is no longer a similar note.
 - A note can list `triggers`: prompts that the note is for. Similarity search matches each trigger as well as the description.
+- A hook parses only the notes that changed since the last run, and reads the index of similar notes as one binary file. On 20,000 notes, a tool hook takes about 160 ms in place of 250 ms. Run `zambil index` once after this update.
 - At `PreToolUse`, `PostToolUse` and `PostToolUseFailure`, the zambil hook runs only for the tools that the notes name, when each note there has `tools`.
 - `zambil list <text>` finds notes by name, alias or description, and prints at most 100 notes.
 - `zambil init`, `zambil install`, `zambil doctor` and `zambil uninstall` set up, check and remove the Claude Code hooks and the `zambil-save` skill.

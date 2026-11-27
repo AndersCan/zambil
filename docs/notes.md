@@ -307,9 +307,9 @@ Later features import from `@zambil/core`. Each export is one file. A new export
 - `@zambil/core/index-names`. `nameKey` returns the form in which two names are the same.
 - `@zambil/core/is-expired`. `isExpired` tells whether a note is expired at a given moment.
 - `@zambil/core/is-never`. `isNever` is the `default` of an exhaustive `switch`.
-- `@zambil/core/load-repo`. `loadRepo` reads every note, with its problems and every duplicate name.
+- `@zambil/core/load-repo`. `loadRepo` reads every note, with its problems and every duplicate name. With a `cacheFolder`, it parses only the files that changed since the last load.
 - `@zambil/core/locate-repo`. `locateRepo` finds the repo from the flag, the environment and the configuration file. `UserEnvironment.cacheHome` is `XDG_CACHE_HOME`, for files that zambil can rebuild.
-- `@zambil/core/note`. The `Note` type and its kinds.
+- `@zambil/core/note`. The `Note` type and its kinds. A note does not hold its text. Rendering reads the file of each note that it shows.
 - `@zambil/core/note-file`. The `NoteFile` type: a note file before it is read.
 - `@zambil/core/note-problem`. The `NoteProblem` type.
 - `@zambil/core/parse-frontmatter`. `parseFrontmatter` reads frontmatter YAML the same way as the loader.
