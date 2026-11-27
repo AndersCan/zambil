@@ -94,7 +94,7 @@ cp ~/.cache/zambil/claude-code-hooks.json packages/claude-code/src/hook-list/bun
 Run `zambil install`. The root `README.md` tells you how to put `zambil` on your `PATH` first. `zambil install` does these steps:
 
 1. It refreshes the hook list. See [The hook list](#the-hook-list).
-2. It adds one hook handler to the Claude Code settings for `UserPromptSubmit` and for each other context hook that a note names. The file is `$CLAUDE_CONFIG_DIR/settings.json`, or `~/.claude/settings.json`. A handler that is already there keeps its place, its other fields such as `timeout`, and gets the new command. A zambil handler at a hook that no note names any more goes away. The other keys and handlers stay as they are.
+2. It adds one hook handler to the Claude Code settings for `UserPromptSubmit`, for `SessionStart`, and for each other context hook that a note names. `SessionStart` is always there, for the warning in [The hook never blocks a session](#the-hook-never-blocks-a-session). The file is `$CLAUDE_CONFIG_DIR/settings.json`, or `~/.claude/settings.json`. A handler that is already there keeps its place, its other fields such as `timeout`, and gets the new command. A zambil handler at a hook that no note names any more goes away. The other keys and handlers stay as they are.
 3. It writes the `zambil-save` skill, `skills/zambil-save/SKILL.md` in the same folder. If the user asks for a note, the skill tells the agent to run `zambil save-guide` and `zambil save`.
 4. It indexes the descriptions with `@zambil/embed`, the same as `zambil index`. The first run downloads the model.
 
@@ -122,7 +122,15 @@ If it prints a message that starts with `zambil hook:`, fix that problem first.
 
 ## The hook never blocks a session
 
-Claude Code reads exit code 2 from a hook as a blocking error. `zambil hook` always exits with 0. Bad input, a wrong option, or a repo that zambil cannot find or read prints a message on standard error and adds nothing. Claude Code does not show that message in the session. To see it, start Claude Code with `claude --debug=hooks`, or run the command in [Install the hooks](#install-the-hooks). A note with a problem still loads, and the other notes still apply. If Node itself fails, it exits with 1, and Claude Code reads that as an error that does not block.
+Claude Code reads exit code 2 from a hook as a blocking error. `zambil hook` always exits with 0. Bad input, a wrong option, or a repo that zambil cannot find or read prints a message on standard error and adds nothing. Claude Code does not show that message in the session.
+
+At `SessionStart`, the hook also checks the setup and warns the user in one short line. Claude Code shows the `systemMessage` field to the user and keeps it out of the context. The hook warns in these cases:
+
+- zambil cannot find or read the notes folder, for example after you moved it.
+- A note names a hook that has no zambil handler in the settings, for example after a new note.
+- A note has a description, but the model for similar notes is missing.
+
+The warning ends with `Run zambil doctor to see how to fix it.` It comes when a session starts, resumes or clears, and not after `compact`. The check reads the settings file and the sizes of the two model files, so it adds a few milliseconds to `SessionStart` only. If the check fails, the hook gives no warning. An install from before this warning has no `SessionStart` handler, so run `zambil install` once. To see it, start Claude Code with `claude --debug=hooks`, or run the command in [Install the hooks](#install-the-hooks). A note with a problem still loads, and the other notes still apply. If Node itself fails, it exits with 1, and Claude Code reads that as an error that does not block.
 
 ## Speed
 

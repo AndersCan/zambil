@@ -1,8 +1,9 @@
 import { claudeCodeWording, listNotes } from "./context/claude-code-wording.ts";
 import { defaultBudget, fitContext } from "./context/fit-context.ts";
+import { formatHookOutput, formatSystemMessage } from "./context/format-hook-output.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import type { ContextSection } from "./context/fit-context.ts";
-import { formatHookOutput } from "./context/format-hook-output.ts";
+import type { FormatHookOutputOptions } from "./context/format-hook-output.ts";
 import type { HookInput } from "./hook-input/parse-hook-input.ts";
 import { hookSection } from "./hook-notes/hook-section.ts";
 import { isNever } from "@zambil/core/is-never";
@@ -11,11 +12,15 @@ import { recallSection } from "./recall/recall-section.ts";
 import type { RenderWording } from "@zambil/core/render-wording";
 import { similarSection } from "./similar/similar-section.ts";
 
-/** The parsed hook input, the clock, and the notes whose description is similar to the prompt, best first. */
+/**
+ * The parsed hook input, the clock, the notes whose description is similar to the prompt, best first,
+ * and a message for the user, such as a warning about the setup.
+ */
 export interface AnswerHookOptions {
   input: HookInput;
   now: Date;
   similarNotes?: Note[];
+  systemMessage?: string;
 }
 
 interface SectionOptions extends AnswerHookOptions {
@@ -53,13 +58,16 @@ function contextSections(repo: HookRepo, options: SectionOptions): ContextSectio
 
 /**
  * The standard output for one Claude Code hook: the notes that apply, as the JSON that the hook reads.
- * It is empty when nothing applies, so that a hook that matches nothing adds nothing.
+ * It is empty when nothing applies and there is no message, so that a hook that matches nothing adds nothing.
  */
 export function answerHook(repo: HookRepo, options: AnswerHookOptions): string {
   const wording = claudeCodeWording({ root: repo.root });
   const sections = contextSections(repo, { ...options, wording });
   const findMore = listNotes({ root: repo.root });
   const text = fitContext(sections, { budget: defaultBudget, findMore });
-  if (text === "") return "";
-  return formatHookOutput(text, { hookEventName: options.input.hookEventName });
+  const { systemMessage } = options;
+  if (text === "") return systemMessage === undefined ? "" : formatSystemMessage(systemMessage);
+  const outputOptions: FormatHookOutputOptions = { hookEventName: options.input.hookEventName };
+  if (systemMessage !== undefined) outputOptions.systemMessage = systemMessage;
+  return formatHookOutput(text, outputOptions);
 }

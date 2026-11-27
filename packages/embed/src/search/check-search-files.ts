@@ -29,14 +29,10 @@ export interface CheckSearchFilesOptions {
 }
 
 /**
- * Whether similar notes can work: the model is in the cache, and how many descriptions the index
- * lacks. It reads two file sizes and the index, and never loads the model. A file that it cannot
- * read counts as missing.
+ * Whether each file of the search model is in the cache with its pinned size. It reads two file
+ * sizes, so a hook can call it. A file that it cannot read counts as missing.
  */
-export async function checkSearchFiles(
-  repo: ConfigurationRepo,
-  options: CheckSearchFilesOptions,
-): Promise<SearchFiles> {
+export async function checkModel(options: CheckSearchFilesOptions): Promise<ModelState> {
   const folder = cacheFolder(options.environment);
   const files = [searchModel.weights, searchModel.vocabulary];
   const sizes = await Promise.all(
@@ -46,13 +42,26 @@ export async function checkSearchFiles(
     const size = sizes[position];
     return size?.ok === true && size.value.size === file.bytes;
   });
+  return isReady ? "ready" : "missing";
+}
+
+/**
+ * Whether similar notes can work: the model is in the cache, and how many descriptions the index
+ * lacks. It reads two file sizes and the index, and never loads the model.
+ */
+export async function checkSearchFiles(
+  repo: ConfigurationRepo,
+  options: CheckSearchFilesOptions,
+): Promise<SearchFiles> {
+  const folder = cacheFolder(options.environment);
+  const model = await checkModel(options);
   const weights = modelFilePath(searchModel, { file: searchModel.weights, cacheFolder: folder });
   const modelKey = modelKeyOf(searchModel);
   const index = readNoteIndex(repo.root, { cacheFolder: folder, modelKey });
   const descriptions = listDescriptions(repo);
   const unindexed = descriptions.filter((description) => !index.vectors.has(description));
   return {
-    model: isReady ? "ready" : "missing",
+    model,
     modelFolder: dirname(weights),
     indexPath: noteIndexPath(repo.root, { cacheFolder: folder }),
     descriptions: descriptions.length,

@@ -246,7 +246,7 @@ describe("zambil install and zambil uninstall", () => {
         "Run zambil check after a fix to see the problems that are left.",
         "",
       ],
-      hooks: ["PreToolUse", "UserPromptSubmit"],
+      hooks: ["PreToolUse", "SessionStart", "UserPromptSubmit"],
     });
   });
 });

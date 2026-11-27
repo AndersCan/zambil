@@ -7,10 +7,11 @@ import { toolHookNames } from "./context-hooks.ts";
 
 /**
  * What zambil reads from the JSON that Claude Code sends to a context hook. A `plain` hook carries
- * neither a prompt nor a tool name that zambil reads.
+ * neither a prompt nor a tool name that zambil reads. `source` is why a `SessionStart` runs, such as
+ * `startup` or `compact`.
  */
 export type HookInput =
-  | { kind: "plain"; hookEventName: string }
+  | { kind: "plain"; hookEventName: string; source?: string }
   | { kind: "prompt"; hookEventName: "UserPromptSubmit"; prompt: string }
   | { kind: "tool"; hookEventName: ToolHookName; toolNames: string[] };
 
@@ -96,5 +97,7 @@ export function parseHookInput(
   }
   const isRepeatedStop = record.stop_hook_active === true;
   if (isRepeatedStop) return right({ kind: "ignore" });
-  return right({ kind: "answer", input: { kind: "plain", hookEventName } });
+  const input: HookInput = { kind: "plain", hookEventName };
+  if (typeof record.source === "string") input.source = record.source;
+  return right({ kind: "answer", input });
 }
