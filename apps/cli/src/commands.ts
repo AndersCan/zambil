@@ -6,6 +6,7 @@ import type { Command } from "./command.ts";
  */
 export const commands: Record<string, () => Promise<Command>> = {
   check: async () => (await import("./check/check-command.ts")).checkCommand,
+  doctor: async () => (await import("./doctor/doctor-command.ts")).doctorCommand,
   hook: async () => (await import("./hook/hook-command.ts")).hookCommand,
   index: async () => (await import("./index/index-command.ts")).indexCommand,
   init: async () => (await import("./init/init-command.ts")).initCommand,

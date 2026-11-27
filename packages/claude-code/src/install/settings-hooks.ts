@@ -129,6 +129,24 @@ export function installHooks(
   return right(withEvents(settings, { before: events.value, after: changed }));
 }
 
+/** Each event that runs `zambil hook`, with the command line of each of its zambil handlers. */
+export function listZambilHooks(settings: Settings): Either<string, Record<string, string[]>> {
+  const events = readHooks(settings);
+  if (!events.ok) return events;
+  const found: Record<string, string[]> = {};
+  for (const [event, groups] of Object.entries(events.value)) {
+    const commands: string[] = [];
+    for (const group of groups) {
+      for (const handler of handlersOf(group)) {
+        const command = asRecord(handler)?.command;
+        if (typeof command === "string" && isZambilHandler(handler)) commands.push(command);
+      }
+    }
+    if (commands.length > 0) found[event] = commands;
+  }
+  return right(found);
+}
+
 /** The settings without any `zambil hook` handler. Every other key and handler stays as it was. */
 export function uninstallHooks(settings: Settings): Either<string, Settings> {
   const events = readHooks(settings);
