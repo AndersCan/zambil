@@ -2,7 +2,7 @@
 
 Similarity search for zambil. An embedder is a model that turns a text into a vector, so that texts with a similar meaning get vectors that are close. This package matches a text, such as a prompt, against the `description` of each note. It runs the model on your machine with ONNX Runtime.
 
-The `zambil index` and `zambil search <text>` commands in `apps/cli` use it. So does `zambil hook` at `UserPromptSubmit`, through `packages/claude-code`.
+The `zambil index` and `zambil search <text>` commands in `apps/cli` use it. So does `zambil hook` at `UserPromptSubmit`, through `packages/claude-code`. `zambil save` uses it to add a new description to the index when the model is in the cache. It never downloads the model.
 
 ## The model
 

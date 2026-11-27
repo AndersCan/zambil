@@ -216,18 +216,19 @@ describe("saveCommand and the index for similar notes", () => {
 });
 
 describe("saveCommand and zambil install", () => {
-  test("says to run zambil install only for a hook that has no zambil hook yet", async () => {
+  test("says to run zambil install only for a hook of this repo that has no zambil hook yet", async () => {
     const config = await testMachine();
     const claude = config.claudeConfigFolder ?? "";
     const settings = join(claude, "settings.json");
-    const handler = { type: "command", command: "zambil hook --repo /notes" };
+    const root = await writeTestRepo({});
+    const otherRoot = await writeTestRepo({});
+    const handler = { type: "command", command: `zambil hook --repo ${root}` };
     const hooks = {
       SessionStart: [{ hooks: [handler] }],
       UserPromptSubmit: [{ hooks: [handler] }],
     };
     await mkdir(claude, { recursive: true });
     await writeFile(settings, JSON.stringify({ hooks }));
-    const root = await writeTestRepo({});
     const startNote = "---\ndescription: Greet.\nhooks: [SessionStart]\n---\nHello.\n";
     const toolNote = "---\ndescription: Shell.\nhooks: [PreToolUse]\n---\nUse bash.\n";
     const atStart = await run(["greet", "--repo", root, "--no-expires"], {
@@ -238,7 +239,11 @@ describe("saveCommand and zambil install", () => {
       input: toolNote,
       config,
     });
-    expect({ atStart, atTool }).toEqual({
+    const inOtherRepo = await run(["shell", "--repo", otherRoot, "--no-expires"], {
+      input: toolNote,
+      config,
+    });
+    expect({ atStart, atTool, inOtherRepo }).toEqual({
       atStart: { code: 0, stdout: "Created greet.md.\n", stderr: "" },
       atTool: {
         code: 0,
@@ -250,6 +255,7 @@ describe("saveCommand and zambil install", () => {
           "",
         ].join("\n"),
       },
+      inOtherRepo: { code: 0, stdout: "Created shell.md.\n", stderr: "" },
     });
   });
 });

@@ -28,7 +28,7 @@ export function saveSkillText(options: SaveSkillOptions): string {
     "",
     "Do not change the files of the repo with other tools. `zambil save` checks the names, the links and the expiry before it writes.",
     "",
-    "`zambil save` also tells you when the user must run `zambil install`, for example for a note that names a new hook in `hooks`. Pass that on to the user. If `zambil save` does not say it, the user does not need to run `zambil install`.",
+    "If the new note names a hook in `hooks` that the zambil hooks do not run at yet, `zambil save` prints the `zambil install` command that connects it. Pass that command on to the user. Do not tell the user to run `zambil install` for any other note. For other problems with the setup, `zambil doctor` gives the fix.",
     "",
   ].join("\n");
 }
