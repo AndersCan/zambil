@@ -1,10 +1,12 @@
 import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
 import { checkHookNames } from "@zambil/claude-code/check-hook-names";
 import { checkRepo } from "@zambil/core/check-repo";
+import { firstNoteHint } from "../save/first-note-hint.ts";
 import { loadHookList } from "@zambil/claude-code/load-hook-list";
 import type { NoteProblem } from "@zambil/core/note-problem";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
+import { repoOptionHelp } from "../parse-command-args.ts";
 import { sharedOptions } from "../parse-command-args.ts";
 
 interface CountOptions {
@@ -52,6 +54,10 @@ function runCheck(options: CommandRunOptions): ExitCode {
     output.write(`${problem.path}: ${problem.severity}: ${problem.message}\n`);
   }
   output.write(`${summarize(problems, { noteCount: repo.value.notes.length })}\n`);
+  if (repo.value.notes.length === 0) {
+    const hint = firstNoteHint({ root: repo.value.root, repoFlag: parsed.value.values.repo });
+    output.write(`${hint}\n`);
+  }
   const hasErrors = problems.some((problem) => problem.severity === "error");
   return hasErrors ? 1 : 0;
 }
@@ -63,7 +69,8 @@ function runCheck(options: CommandRunOptions): ExitCode {
 export const checkCommand: Command = {
   summary: "Report invalid notes and hook names that zambil never answers.",
   details:
-    "It also warns about a hook name that zambil never answers. An error sets the exit code to 1. A warning does not.",
+    "It prints one line for each problem, with the path of the note. An error, such as two notes with the same name, sets the exit code to 1. A warning does not.",
   usage: "Usage: zambil check [--repo <path>]",
+  options: [repoOptionHelp],
   run: runCheck,
 };

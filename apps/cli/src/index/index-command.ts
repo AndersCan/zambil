@@ -1,6 +1,7 @@
 import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
+import { repoOptionHelp } from "../parse-command-args.ts";
 import { sharedOptions } from "../parse-command-args.ts";
 
 async function runIndex(options: CommandRunOptions): Promise<ExitCode> {
@@ -41,5 +42,6 @@ export const indexCommand: Command = {
   details:
     "The index and the model are in $XDG_CACHE_HOME/zambil, or ~/.cache/zambil. The first run downloads the model, about 23 MB. zambil hook finds similar notes only after that run, because it never downloads the model. zambil never changes a note.",
   usage: "Usage: zambil index [--repo <path>]",
+  options: [repoOptionHelp],
   run: runIndex,
 };
