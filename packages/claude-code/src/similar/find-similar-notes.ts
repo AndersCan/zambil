@@ -1,6 +1,7 @@
 import { left, right, wrap } from "@zambil/core/either";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import type { Either } from "@zambil/core/either";
+import { findNote } from "@zambil/core/find-note";
 import { nameKey } from "@zambil/core/index-names";
 import type { Note } from "@zambil/core/note";
 import type { NoteScore } from "@zambil/embed/score-notes";
@@ -60,15 +61,36 @@ export interface SearchableNotesOptions {
   inContext: ShownNotes;
 }
 
+type SearchRepo = Pick<ConfigurationRepo, "notes" | "names">;
+
+/**
+ * The notes that tell how to verify another note: each `when-expired` target of a note with `expires`,
+ * other than the note itself. Such a note is for the agent that reads the expiry warning, not for a
+ * prompt about the topic.
+ */
+function expiryHelpers(repo: SearchRepo): Set<Note> {
+  const helpers = new Set<Note>();
+  for (const note of repo.notes) {
+    if (note.whenExpired === undefined || note.expiry.kind === "never") continue;
+    const lookup = findNote(repo, { name: note.whenExpired });
+    if (lookup.kind === "found" && lookup.note !== note) helpers.add(lookup.note);
+  }
+  return helpers;
+}
+
 /**
  * The notes that a prompt can match. A `SessionStart` note and a note in `inContext` are in the context
- * already, so they take no match, and a lower note can take the place.
+ * already, so they take no match, and a lower note can take the place. An expiry helper with no hook
+ * takes no match either: the expiry warning and `z:<name>` reach it. A helper that names a hook is a
+ * note of its own, so it still matches.
  */
-export function searchableNotes(notes: Note[], options: SearchableNotesOptions): Note[] {
-  return notes.filter((note) => {
+export function searchableNotes(repo: SearchRepo, options: SearchableNotesOptions): Note[] {
+  const helpers = expiryHelpers(repo);
+  return repo.notes.filter((note) => {
     const isInContext =
       note.hooks.includes("SessionStart") || Object.hasOwn(options.inContext, nameKey(note.name));
-    return !isInContext;
+    const isHelper = note.hooks.length === 0 && helpers.has(note);
+    return !isInContext && !isHelper;
   });
 }
 
@@ -103,7 +125,7 @@ export async function findSimilarNotes(
   const noteSearch = opened.value;
   if (!noteSearch.ok) return left({ kind: "no-model", message: noteSearch.error });
   const { prompt, now } = options;
-  const notes = searchableNotes(repo.notes, { inContext: options.inContext ?? {} });
+  const notes = searchableNotes(repo, { inContext: options.inContext ?? {} });
   const searchOptions = { text: prompt, now, unindexedLimit };
   const searched = await wrap(noteSearch.value.search({ ...repo, notes }, searchOptions));
   if (!searched.ok) return failed(`the search failed: ${describe(searched.error)}`);

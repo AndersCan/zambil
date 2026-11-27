@@ -19,14 +19,25 @@ function matchesTools(note: Note, options: ToolFilterOptions): boolean {
 }
 
 /**
- * The current notes whose `hooks` name the hook that runs. At a tool hook, a note with `tools` matches
- * only when one of the tools runs. An expired note is left out, never shown as current.
+ * A subagent starts with a context of its own and gets no `SessionStart`, so a standing note of the
+ * session reaches it at `SubagentStart`.
+ */
+function namesHook(note: Note, options: ToolFilterOptions): boolean {
+  const { hookEventName } = options.input;
+  if (note.hooks.includes(hookEventName)) return true;
+  return hookEventName === "SubagentStart" && note.hooks.includes("SessionStart");
+}
+
+/**
+ * The current notes whose `hooks` name the hook that runs, and the `SessionStart` notes at
+ * `SubagentStart`. At a tool hook, a note with `tools` matches only when one of the tools runs. An
+ * expired note is left out, never shown as current.
  */
 export function selectHookNotes(notes: Note[], options: SelectHookNotesOptions): Note[] {
   const { input } = options;
   const selected: Note[] = [];
   for (const note of notes) {
-    const isMatch = note.hooks.includes(input.hookEventName) && matchesTools(note, { input });
+    const isMatch = namesHook(note, { input }) && matchesTools(note, { input });
     if (isMatch && !isExpired(note, { now: options.now })) selected.push(note);
   }
   return selected;

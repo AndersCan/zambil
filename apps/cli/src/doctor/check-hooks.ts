@@ -28,8 +28,10 @@ interface WhyOptions {
 
 function whyInstalled(hook: string, options: WhyOptions): string {
   const note = options.notes.find((candidate) => candidate.hooks.includes(hook));
-  if (note === undefined) return "zambil always installs it";
-  return `the note ${note.path} names it`;
+  if (note !== undefined) return `the note ${note.path} names it`;
+  const subagentReason = "zambil always installs it, so that subagents get the SessionStart notes";
+  if (hook === "SubagentStart") return subagentReason;
+  return "zambil always installs it";
 }
 
 interface EventProblemsOptions {

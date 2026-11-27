@@ -27,9 +27,14 @@ function startsContext(request: HookAnswerRequest): boolean {
   return hookEventName === "SessionStart" || hookEventName === "SubagentStart";
 }
 
+/** A `SubagentStart` without `agent_id` cannot name the context of its subagent, so it gets no file. */
 function pathOf(request: HookAnswerRequest, options: SessionNotesOptions): string | undefined {
-  if (request.session === undefined) return undefined;
-  return sessionFilePath(request.session, options);
+  const { session } = request;
+  if (session === undefined) return undefined;
+  const isUnnamedSubagent =
+    request.input.hookEventName === "SubagentStart" && session.agentId === undefined;
+  if (isUnnamedSubagent) return undefined;
+  return sessionFilePath(session, options);
 }
 
 /**

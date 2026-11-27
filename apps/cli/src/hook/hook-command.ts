@@ -179,6 +179,7 @@ export const hookCommand: Command = {
     "It adds each note once in a session or subagent, and keeps the list in $XDG_CACHE_HOME/zambil/sessions/ or ~/.cache/zambil/sessions/. A note that the prompt names with z:<name> comes each time, and so does a note at Stop or SubagentStop.",
     "After a rewind, a note that a prompt after the rewind point added stays out until a clear, a compact or a new session. Name it with z:<name> to get it back.",
     "It prints nothing when no note applies, or the context already holds each one, and the setup works, and it always exits with 0, so that it never blocks a session.",
+    "At SubagentStart, it also adds the SessionStart notes, because a subagent gets no SessionStart.",
     "At SessionStart, it warns the user in one line when the setup is broken, for example a moved notes folder, and points to zambil doctor.",
     "Run `zambil install` to set up the hooks. The file packages/claude-code/README.md in the zambil repo describes them.",
   ].join("\n"),

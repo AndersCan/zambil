@@ -12,7 +12,7 @@ The Claude Code adapter of zambil. Claude Code runs `zambil hook` at each hook, 
 
 It adds three kinds of note:
 
-1. Each current note whose `hooks` property names the hook that runs. At a tool hook, a note with a `tools` property applies only to those tools. A note without `tools` applies to every tool. Names compare exactly, so write `PreToolUse` and `Bash` as Claude Code writes them.
+1. Each current note whose `hooks` property names the hook that runs. At `SubagentStart`, also each current note that names `SessionStart`, because a subagent starts with a context of its own and gets no `SessionStart`. At a tool hook, a note with a `tools` property applies only to those tools. A note without `tools` applies to every tool. Names compare exactly, so write `PreToolUse` and `Bash` as Claude Code writes them.
 2. At `UserPromptSubmit`, each note that the user names with `z:<name>` in the prompt. See [Name a note in a prompt](#name-a-note-in-a-prompt).
 3. At `UserPromptSubmit`, each current note whose description is similar to the prompt. See [Similar notes](#similar-notes).
 
@@ -51,6 +51,8 @@ At `UserPromptSubmit`, the hook finds the notes whose `description` is similar t
 Run `zambil install` or `zambil index` once before you use the hook. Each downloads the model, about 23 MB, and embeds the descriptions ahead of time. `zambil save` adds the description of each note that it writes to the index. Run `zambil index` again after you change descriptions in your editor.
 
 The similar notes come after the notes that the prompt names and the notes of the hook. A note comes only once. A note that the prompt names with `z:<name>`, also in part, is not added again as a similar note. Neither is a note that the hook already added. A note that names `SessionStart` is not added either, because it is in the context for the whole session.
+
+A note that another note names in `when-expired`, and that names no hook itself, is not a similar note either. It tells how to verify the other note, so it is for the agent that reads the expiry warning, not for a prompt about the topic. The expiry warning and `z:<name>` still reach it. A helper note that names a hook is a note of its own, so it can still match.
 
 The hook never blocks or slows a prompt for long:
 
@@ -113,7 +115,7 @@ cp ~/.cache/zambil/claude-code-hooks.json packages/claude-code/src/hook-list/bun
 Run `zambil install`. The root `README.md` tells you how to put `zambil` on your `PATH` first. `zambil install` does these steps:
 
 1. It refreshes the hook list. See [The hook list](#the-hook-list).
-2. It adds one hook handler to the Claude Code settings for `UserPromptSubmit`, for `SessionStart`, and for each other context hook that a note names. `SessionStart` is always there, for the warning in [The hook never blocks a session](#the-hook-never-blocks-a-session). The file is `$CLAUDE_CONFIG_DIR/settings.json`, or `~/.claude/settings.json`. A handler that is already there keeps its place, its other fields such as `timeout`, and gets the new command. A zambil handler at a hook that no note names any more goes away. The other keys and handlers stay as they are.
+2. It adds one hook handler to the Claude Code settings for `UserPromptSubmit`, for `SessionStart`, for `SubagentStart`, and for each other context hook that a note names. `SessionStart` is always there, for the warning in [The hook never blocks a session](#the-hook-never-blocks-a-session). `SubagentStart` is always there, so that each subagent gets the `SessionStart` notes. The file is `$CLAUDE_CONFIG_DIR/settings.json`, or `~/.claude/settings.json`. A handler that is already there keeps its place, its other fields such as `timeout`, and gets the new command. A zambil handler at a hook that no note names any more goes away. The other keys and handlers stay as they are.
 3. It writes the `zambil-save` skill, `skills/zambil-save/SKILL.md` in the same folder. If the user asks for a note, the skill tells the agent to run `zambil save-guide` and `zambil save`. It tells the agent to pass on a `zambil install` command only when `zambil save` prints one.
 4. It indexes the descriptions with `@zambil/embed`, the same as `zambil index`. The first run downloads the model.
 
@@ -149,6 +151,7 @@ At `SessionStart`, the hook also checks the setup and warns the user in one shor
 
 - zambil cannot find or read the notes folder, for example after you moved it.
 - A note names a hook that has no zambil handler in the user settings, for example after a new note. If the user settings have no zambil handler at all, the hook runs from other settings, such as those of a project, and this case gives no warning.
+- A note names `SessionStart`, but the user settings have no zambil handler at `SubagentStart`, so subagents do not get it. An install from before zambil added `SessionStart` notes to subagents has this problem.
 - zambil cannot read the user settings of Claude Code.
 - A note has a description, but the model for similar notes is missing.
 

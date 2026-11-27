@@ -27,6 +27,7 @@ const notes = {
   "a/twin.md": "One twin.\n",
   "b/twin.md": "Other twin.\n",
   "finish.md": "---\ndescription: Finish.\nhooks: Stop\n---\nSay done.\n",
+  "subagents.md": "---\nhooks: SubagentStart\n---\nReport in short lines.\n",
   "rebase.md":
     "---\ndescription: How to rebase.\n---\n# Steps\nRun git rebase.\n# Conflicts\nFix them.\n",
 };
@@ -118,11 +119,35 @@ describe("answerHook", () => {
 
   test("stays silent when no note applies", async () => {
     const outputs = await Promise.all([
-      answer(hookPayload("SubagentStart", { agent_id: "a1", agent_type: "Explore" })),
+      answer(hookPayload("SubagentStop", { stop_hook_active: false, agent_type: "Explore" })),
       answer(hookPayload("PostToolUse", { tool_name: "Bash", tool_input: {}, tool_response: {} })),
     ]);
     const stdouts = outputs.map((output) => output.stdout);
     expect(stdouts).toEqual(["", ""]);
+  });
+
+  test("gives a subagent the current SessionStart notes and the notes that name SubagentStart", async () => {
+    const { stdout } = await answer(
+      hookPayload("SubagentStart", { agent_id: "a1", agent_type: "Explore" }),
+    );
+    expect(contextOf(stdout)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "SubagentStart",
+        additionalContext: [
+          `${repoHeading} These notes name the SessionStart or SubagentStart hook. A subagent gets the SessionStart notes of the session too, so skip what is only for the main agent, such as a greeting:`,
+          "",
+          '<note name="welcome" path="session/welcome.md">',
+          "Description: Session start.",
+          "",
+          "Welcome.",
+          "</note>",
+          "",
+          '<note name="subagents" path="subagents.md">',
+          "Report in short lines.",
+          "</note>",
+        ].join("\n"),
+      },
+    });
   });
 
   test("adds each z:<name> next to the prompt, with offers for skills and scripts and clear warnings", async () => {

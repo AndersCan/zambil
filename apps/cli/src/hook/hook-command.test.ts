@@ -106,7 +106,7 @@ describe("hookCommand", () => {
 
   test("runs as a program: reads the payload on standard input and prints the hook JSON", async () => {
     const repo = await writeTestRepo({ "a.md": "---\nhooks: SessionStart\n---\nA.\n" });
-    const claude = await writeClaudeFolder(["SessionStart", "UserPromptSubmit"]);
+    const claude = await writeClaudeFolder(["SessionStart", "UserPromptSubmit", "SubagentStart"]);
     const stdout = execFileSync(main, ["hook", "--repo", repo], {
       input: sessionStart,
       encoding: "utf8",
@@ -173,23 +173,51 @@ describe("hookCommand", () => {
     const repo = await writeTestRepo({
       "a.md": "---\ndescription: Shell.\nhooks: [SessionStart, PreToolUse]\n---\nA.\n",
     });
-    const claudeConfigFolder = await writeClaudeFolder(["SessionStart", "UserPromptSubmit"]);
+    const claudeConfigFolder = await writeClaudeFolder([
+      "SessionStart",
+      "UserPromptSubmit",
+      "SubagentStart",
+    ]);
     const compact = JSON.stringify({ hook_event_name: "SessionStart", source: "compact" });
     const missing = { repo: "/no/such/repo", claudeConfigFolder };
     const toolNote = await writeTestRepo({ "a.md": "---\nhooks: PreToolUse\n---\nA.\n" });
     const elsewhere = await writeClaudeFolder([]);
+    const beforeSubagents = await writeClaudeFolder(["SessionStart", "UserPromptSubmit"]);
+    const sessionNote = await writeTestRepo({ "a.md": "---\nhooks: SessionStart\n---\nA.\n" });
+    const subagentNote = await writeTestRepo({ "a.md": "---\nhooks: SubagentStart\n---\nA.\n" });
     const results = await Promise.all([
       runHook([], { stdin: sessionStart, ...missing }),
       runHook([], { stdin: compact, ...missing }),
       runHook([], { stdin: sessionStart, repo, claudeConfigFolder }),
       runHook([], { stdin: sessionStart, repo: toolNote, claudeConfigFolder }),
       runHook([], { stdin: sessionStart, repo: toolNote, claudeConfigFolder: elsewhere }),
+      runHook([], { stdin: sessionStart, repo: sessionNote, claudeConfigFolder: beforeSubagents }),
+      runHook([], { stdin: sessionStart, repo: toolNote, claudeConfigFolder: beforeSubagents }),
+      runHook([], { stdin: sessionStart, repo: subagentNote, claudeConfigFolder: beforeSubagents }),
     ]);
-    const [moved, compacted, unhooked, onlyWarning, projectHooks] = results.map((result) => ({
+    const [
+      moved,
+      compacted,
+      unhooked,
+      onlyWarning,
+      projectHooks,
+      noSubagents,
+      noSessionNote,
+      subagentOnly,
+    ] = results.map((result) => ({
       code: result.code,
       stdout: result.stdout === "" ? "" : JSON.parse(result.stdout),
     }));
-    expect({ moved, compacted, unhooked, onlyWarning, projectHooks }).toEqual({
+    expect({
+      moved,
+      compacted,
+      unhooked,
+      onlyWarning,
+      projectHooks,
+      noSubagents: noSubagents?.stdout.systemMessage,
+      noSessionNote: noSessionNote?.stdout.systemMessage,
+      subagentOnly: subagentOnly?.stdout.systemMessage,
+    }).toEqual({
       moved: {
         code: 0,
         stdout: {
@@ -214,6 +242,12 @@ describe("hookCommand", () => {
         },
       },
       projectHooks: { code: 0, stdout: "" },
+      noSubagents:
+        "zambil: Subagents get no SessionStart notes, because no zambil hook runs at SubagentStart. Run zambil doctor to see the fix.",
+      noSessionNote:
+        "zambil: The notes for PreToolUse do not reach the agent, because no zambil hook runs there. Run zambil doctor to see the fix.",
+      subagentOnly:
+        "zambil: The notes for SubagentStart do not reach the agent, because no zambil hook runs there. Run zambil doctor to see the fix.",
     });
   });
 
@@ -221,11 +255,15 @@ describe("hookCommand", () => {
     const repo = await writeTestRepo({
       "a.md": "---\nhooks: [UserPromptSubmit, PreToolUse]\n---\nA.\n",
       "b.md": "B.\n",
-      "s.md": "---\nhooks: SessionStart\n---\nS.\n",
+      "s.md": "---\nhooks: [SessionStart, PreToolUse]\n---\nS.\n",
       "f.md": "---\nhooks: Stop\n---\nF.\n",
     });
     const cacheHome = await mkdtemp(join(tmpdir(), "zambil-cache-"));
-    const claudeConfigFolder = await writeClaudeFolder(["SessionStart", "UserPromptSubmit"]);
+    const claudeConfigFolder = await writeClaudeFolder([
+      "SessionStart",
+      "UserPromptSubmit",
+      "SubagentStart",
+    ]);
     const subagentTool = JSON.stringify({
       ...ids,
       agent_id: "agent1",
@@ -234,6 +272,17 @@ describe("hookCommand", () => {
     });
     const compact = JSON.stringify({ ...ids, hook_event_name: "SessionStart", source: "compact" });
     const stop = JSON.stringify({ ...ids, hook_event_name: "Stop", stop_hook_active: false });
+    const subagentStart = JSON.stringify({
+      ...ids,
+      agent_id: "agent2",
+      hook_event_name: "SubagentStart",
+    });
+    const subagentTwoTool = JSON.stringify({
+      ...ids,
+      agent_id: "agent2",
+      hook_event_name: "PreToolUse",
+      tool_name: "Bash",
+    });
     const payloads = [
       prompt("Hi"),
       prompt("Hi"),
@@ -245,6 +294,9 @@ describe("hookCommand", () => {
       stop,
       compact,
       prompt("Hi"),
+      subagentStart,
+      subagentTwoTool,
+      subagentStart,
     ];
     const names: string[][] = [];
     // Each hook reads the file that the hook before it wrote, so they run in order.
@@ -263,12 +315,15 @@ describe("hookCommand", () => {
       [],
       ["b"],
       ["b"],
-      ["a"],
+      ["a", "s"],
       [],
       ["f"],
       ["f"],
       ["s"],
       ["a"],
+      ["s"],
+      ["a"],
+      ["s"],
       ["a"],
       ["a"],
     ]);
