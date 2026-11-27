@@ -117,7 +117,7 @@ describe("zambil install and zambil uninstall", () => {
     const path = machine.nodeFolders.join(":");
     const handler = {
       type: "command",
-      command: `PATH=${path}:$PATH NODE_COMPILE_CACHE=${cache} ${machine.zambil} hook --repo ${repo}`,
+      command: `PATH=${path}\${PATH:+:$PATH} NODE_COMPILE_CACHE=${cache} ${machine.zambil} hook --repo ${repo}`,
       timeout: 10,
     };
     expect({
@@ -136,7 +136,7 @@ describe("zambil install and zambil uninstall", () => {
       first: {
         code: 0,
         stdout: [
-          "Skipped the hook list and the model, because of --offline. Run zambil index when you are online.",
+          "Skipped the hook list and the model, because of --offline. Run this command again when you are online.",
           `Installed the zambil hooks (SessionStart, UserPromptSubmit, PreToolUse) in ${settings}.`,
           `The hooks read the configuration repo ${repo}.`,
           "Skipped Notification, because zambil never answers there.",

@@ -158,7 +158,7 @@ async function refreshStep(options: SetUpClaudeCodeOptions): Promise<void> {
       return;
     case "offline":
       options.run.output.write(
-        "Skipped the hook list and the model, because of --offline. Run zambil index when you are online.\n",
+        "Skipped the hook list and the model, because of --offline. Run this command again when you are online.\n",
       );
       return;
     default:

@@ -15,7 +15,7 @@ export const starterNoteText = [
   "",
   "Start your first reply of the session with this line, then answer as usual:",
   "",
-  "> zambil works: the zambil-welcome note reached me. Delete zambil-welcome.md in your notes folder to stop this line.",
+  "> zambil works: the zambil-welcome note reached me. To stop this line, remove `hooks: [SessionStart]` from zambil-welcome.md in your notes folder, or delete the note.",
   "",
   "If the user asks how to use zambil, tell them:",
   "",

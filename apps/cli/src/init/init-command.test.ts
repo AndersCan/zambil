@@ -94,7 +94,7 @@ describe("zambil init", () => {
         stdout: [
           `Wrote the starter note zambil-welcome.md in ${notes}.`,
           `Saved the configuration repo ${notes} in ${machine.userConfig}.`,
-          "Skipped the hook list and the model, because of --offline. Run zambil index when you are online.",
+          "Skipped the hook list and the model, because of --offline. Run this command again when you are online.",
           `Installed the zambil hooks (SessionStart, UserPromptSubmit) in ${machine.settings}.`,
           `The hooks read the configuration repo ${notes}.`,
           expect.stringContaining("Installed the zambil-save skill"),

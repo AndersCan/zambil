@@ -5,7 +5,7 @@ import { nodeFolders } from "./node-folders.ts";
 import { tmpdir } from "node:os";
 
 describe("nodeFolders", () => {
-  test("keeps a folder that a manager updates, and leaves out a folder that is a link", async () => {
+  test("keeps a folder that a manager updates, also below a linked home, and leaves out a shell link", async () => {
     const root = await realpath(await mkdtemp(join(tmpdir(), "zambil-node-")));
     const installed = join(root, "installs", "24.1.0", "bin");
     await mkdir(installed, { recursive: true });
@@ -17,13 +17,22 @@ describe("nodeFolders", () => {
     const shell = join(root, "multishells", "4242_1");
     await mkdir(join(root, "multishells"));
     await symlink(join(root, "installs", "24.1.0"), shell);
+    const linkedHome = join(root, "home");
+    await symlink(root, linkedHome);
     expect(
       await Promise.all([
         nodeFolders({ searchPath: [shims] }),
         nodeFolders({ searchPath: [join(shell, "bin")] }),
         nodeFolders({ searchPath: [installed] }),
         nodeFolders({ searchPath: [root] }),
+        nodeFolders({ searchPath: [join(linkedHome, "shims")] }),
       ]),
-    ).toEqual([[shims, installed], [installed], [installed], []]);
+    ).toEqual([
+      [shims, installed],
+      [installed],
+      [installed],
+      [],
+      [join(linkedHome, "shims"), installed],
+    ]);
   });
 });

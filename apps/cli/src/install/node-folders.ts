@@ -11,7 +11,8 @@ export interface NodeFoldersOptions {
 /**
  * The folder of the `node` on the `PATH`, then the folder of the file that it links to. The first
  * one stays valid for a shim or a link that a manager updates, such as Homebrew, asdf or Volta. A
- * folder that is itself a link lives only as long as one shell, as with fnm, so it is left out.
+ * folder that links straight to the folder of `node` lives only as long as one shell, as with fnm, so
+ * it is left out.
  */
 export async function nodeFolders(options: NodeFoldersOptions): Promise<string[]> {
   const node = findOnPath("node", options);
@@ -23,7 +24,7 @@ export async function nodeFolders(options: NodeFoldersOptions): Promise<string[]
   ]);
   if (!resolvedNode.ok) return [folder];
   const target = dirname(resolvedNode.value);
-  const isLinkedFolder = resolvedFolder.ok && resolvedFolder.value !== folder;
-  if (isLinkedFolder || target === folder) return [target];
+  const isShellLink = resolvedFolder.ok && resolvedFolder.value === target;
+  if (isShellLink || target === folder) return [target];
   return [folder, target];
 }

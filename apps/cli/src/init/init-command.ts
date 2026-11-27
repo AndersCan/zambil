@@ -90,7 +90,6 @@ interface NextStepsOptions {
 }
 
 function sessionStep(options: NextStepsOptions): string {
-  if (options.level === "errors") return "Fix the errors above, then run zambil init again.";
   if (options.outcome === "has-files") {
     return "Start a new Claude Code session. Each note that names a hook reaches the agent at that hook.";
   }
@@ -107,6 +106,9 @@ function nextSteps(options: NextStepsOptions): string {
     '  2. Ask the agent for a note, for example: "Write a zambil note that we use pnpm, never npm."',
     `  3. Open ${folder.root} in Obsidian to read and edit the notes.`,
   ];
+  if (options.level === "errors") {
+    lines.push("  4. Fix the errors above, then run zambil init again.");
+  }
   lines.push("", "Run zambil init again after you change the version of Node.");
   if (folder.source !== "given") lines.push(otherFolderHint.trimEnd());
   lines.push("");
@@ -208,9 +210,9 @@ export const initCommand: Command = {
     "In a new or empty folder, it writes one starter note that shows up in the next Claude Code session. Hidden entries such as .obsidian do not count.",
     "A folder with notes or other files, such as an Obsidian vault in use, stays as it is.",
     "It saves the folder in the user config file and keeps the other keys, then does what `zambil install` does and checks the notes.",
-    "--offline skips the hook list and the model download. Run `zambil index` later for similar notes.",
+    "--offline skips the hook list and the model download. Run it again online for similar notes.",
     "It exits with 1 if a note has an error. The hooks are installed then too.",
-    "It never changes a note, and it never asks a question, so it runs the same without a terminal. Run it again at any time.",
+    "It never changes an existing note, and it never asks a question, so it runs the same without a terminal. Run it again at any time.",
   ].join("\n"),
   run: runInit,
 };

@@ -28,7 +28,7 @@ describe("hookCommandLine", () => {
       }),
       hookCommandLine({ ...paths, nodeFolders: [] }),
     ]).toEqual([
-      "PATH=/opt/homebrew/bin:/opt/homebrew/Cellar/node/24.1.0/bin:$PATH NODE_COMPILE_CACHE=/home/ada/.cache/zambil/node-compile-cache /home/ada/.local/bin/zambil hook --repo '/home/ada/my notes'",
+      "PATH=/opt/homebrew/bin:/opt/homebrew/Cellar/node/24.1.0/bin${PATH:+:$PATH} NODE_COMPILE_CACHE=/home/ada/.cache/zambil/node-compile-cache /home/ada/.local/bin/zambil hook --repo '/home/ada/my notes'",
       "NODE_COMPILE_CACHE=/home/ada/.cache/zambil/node-compile-cache /home/ada/.local/bin/zambil hook --repo '/home/ada/my notes'",
     ]);
   });

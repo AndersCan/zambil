@@ -20,7 +20,7 @@ interface ConfigErrorOptions {
 }
 
 function describeConfigError(path: string, options: ConfigErrorOptions): string {
-  return `zambil cannot save the repo in ${path}: ${options.reason}\nFix the file or delete it, then run the command again.\n`;
+  return `zambil cannot save the repo in ${path}: ${options.reason}\nFix the file or delete it, or make its folder writable, then run the command again.\n`;
 }
 
 /** Prints why the user config file cannot take the repo. `failed` stops a command before it changes anything. */
