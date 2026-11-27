@@ -1,7 +1,7 @@
 import { left, right } from "@zambil/core/either";
 import type { Either } from "@zambil/core/either";
 
-/** The longest word that WordPiece splits. A longer word becomes one unknown token, as in BERT. */
+/** A longer word becomes one unknown token, as in BERT. */
 const longestWord = 100;
 
 const controlCharacter = /[\p{Cc}\p{Cf}]/u;
