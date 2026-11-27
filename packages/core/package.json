@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./applies-in-place": "./src/scope/applies-in-place.ts",
     "./as-record": "./src/as-record.ts",
     "./check-repo": "./src/repo/check-repo.ts",
     "./closest-match": "./src/suggest/closest-match.ts",
@@ -21,6 +22,7 @@
     "./parse-frontmatter": "./src/properties/parse-frontmatter.ts",
     "./parse-link-target": "./src/properties/parse-link-target.ts",
     "./parse-note": "./src/note/parse-note.ts",
+    "./project-place": "./src/scope/project-place.ts",
     "./quote-argument": "./src/quote-argument.ts",
     "./render-note": "./src/render/render-note.ts",
     "./render-wording": "./src/render/render-wording.ts",

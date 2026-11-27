@@ -61,6 +61,10 @@ function prompt(text: string): string {
   return JSON.stringify({ ...ids, hook_event_name: "UserPromptSubmit", prompt: text });
 }
 
+function inFolder(cwd: string): string {
+  return JSON.stringify({ hook_event_name: "UserPromptSubmit", prompt: "Hi", cwd });
+}
+
 function noteNames(stdout: string): string[] {
   const matches = stdout.matchAll(/<note name=\\"(?<name>\w+)\\"/g);
   return [...matches].map((match) => match.groups?.name ?? "");
@@ -326,6 +330,26 @@ describe("hookCommand", () => {
       ["s"],
       ["a"],
       ["a"],
+    ]);
+  });
+
+  test("adds a note with projects only in a folder of that git repo", async () => {
+    const repo = await writeTestRepo({
+      "shop.md": "---\nhooks: UserPromptSubmit\nprojects: webshop\n---\nShop.\n",
+      "all.md": "---\nhooks: UserPromptSubmit\n---\nAll.\n",
+    });
+    const projects = await mkdtemp(join(tmpdir(), "zambil-projects-"));
+    await mkdir(join(projects, "webshop", ".git"), { recursive: true });
+    await mkdir(join(projects, "webshop", "src"));
+    const results = await Promise.all([
+      runHook([], { stdin: inFolder(join(projects, "webshop", "src")), repo }),
+      runHook([], { stdin: inFolder(join(projects, "blog")), repo }),
+      runHook([], { stdin: userPrompt, repo }),
+    ]);
+    expect(results.map((result) => noteNames(result.stdout))).toEqual([
+      ["all", "shop"],
+      ["all"],
+      ["all"],
     ]);
   });
 });

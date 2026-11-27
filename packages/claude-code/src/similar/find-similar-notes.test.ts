@@ -77,7 +77,8 @@ describe("searchableNotes", () => {
     });
     const repo = loadRepo(root);
     if (!repo.ok) throw new Error(repo.error.message);
-    const notes = searchableNotes(repo.value, { inContext: { deploy: "an older version" } });
+    const inContext = { deploy: "an older version" };
+    const notes = searchableNotes(repo.value, { inContext, place: undefined });
     expect(notes.map((note) => note.name)).toEqual([
       "billing",
       "check-deploy",
@@ -85,6 +86,35 @@ describe("searchableNotes", () => {
       "deploy-blog",
       "rebase",
       "today",
+    ]);
+  });
+
+  test("leaves out the deploy notes of other projects, so a deploy prompt in a third project gets neither", async () => {
+    const root = await writeTestRepo({
+      "deploy-blog.md":
+        "---\ndescription: How to deploy the blog.\nprojects: [blog]\n---\nmake blog\n",
+      "deploy-webshop.md":
+        '---\ndescription: How to deploy the webshop.\npaths: ["~/git/webshop"]\n---\nmake shop\n',
+      "deploy-checklist.md":
+        "---\ndescription: What to check before any deploy.\n---\nTests pass.\n",
+    });
+    const repo = loadRepo(root);
+    if (!repo.ok) throw new Error(repo.error.message);
+    const home = "/home/ada";
+    const places = [
+      { folder: "/home/ada/git/notes-app", projects: ["notes-app"], home },
+      { folder: "/home/ada/git/blog/posts", projects: ["blog", "posts"], home },
+      { folder: "/home/ada/git/webshop", projects: ["webshop"], home },
+    ];
+    const names: string[][] = [];
+    for (const place of places) {
+      const notes = searchableNotes(repo.value, { inContext: {}, place });
+      names.push(notes.map((note) => note.name));
+    }
+    expect(names).toEqual([
+      ["deploy-checklist"],
+      ["deploy-blog", "deploy-checklist"],
+      ["deploy-checklist", "deploy-webshop"],
     ]);
   });
 });

@@ -24,11 +24,12 @@ export interface HookSession {
   agentId?: string;
 }
 
-/** The input to answer, and its session when the payload names one. */
+/** The input to answer, its session, and the folder where the agent works (`cwd`), when the payload names them. */
 export interface HookAnswerRequest {
   kind: "answer";
   input: HookInput;
   session?: HookSession;
+  folder?: string;
 }
 
 /** `ignore`: the hook cannot add context, or adding it now would loop. zambil then prints nothing. */
@@ -137,7 +138,9 @@ export function parseHookInput(
   if (!options.contextHooks.includes(hookEventName)) return right({ kind: "ignore" });
   const request = readRequest(record, { hookEventName });
   if (!request.ok || request.value.kind === "ignore") return request;
+  const answer: HookAnswerRequest = { ...request.value };
   const session = readSession(record);
-  if (session === undefined) return request;
-  return right({ ...request.value, session });
+  if (session !== undefined) answer.session = session;
+  if (typeof record.cwd === "string" && record.cwd !== "") answer.folder = record.cwd;
+  return right(answer);
 }

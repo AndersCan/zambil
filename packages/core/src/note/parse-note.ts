@@ -129,6 +129,13 @@ function propertyFindings(plain: PlainNote, options: KindOptions): void {
       message: "`when-expired` has no effect without `expires`",
     });
   }
+  for (const path of known.paths) {
+    if (path.startsWith("/") || path.startsWith("~/")) continue;
+    findings.push({
+      severity: "warning",
+      message: `\`paths\` holds "${path}", but each path must be a full path or start with ~/, so zambil ignores it`,
+    });
+  }
   for (const name of [plain.name, ...known.aliases]) {
     if (!unlinkableCharacters.test(name)) continue;
     findings.push({
@@ -162,6 +169,8 @@ export function parseNote(text: string, options: ParseNoteOptions): ParsedNote {
     tags: uniqueTags([...known.tags, ...findInlineTags(split.content)]),
     hooks: known.hooks,
     tools: known.tools,
+    projects: known.projects,
+    paths: known.paths,
     expiry: readExpiry({ frontmatter: split.frontmatter, properties: parsedProperties, known }),
     properties,
     content: split.content,

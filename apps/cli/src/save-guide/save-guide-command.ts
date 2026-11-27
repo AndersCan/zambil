@@ -16,6 +16,8 @@ A note that makes claims goes out of date. The code changes, and then the note i
 
 Give each note a description in its frontmatter. Similarity search matches the prompt against it.
 
+A note about one project, such as how to deploy it, gets projects: [<name of the git repo>] in its frontmatter. Then it does not reach sessions in other projects.
+
 Before you save a new note, look for a note that covers it already. Search by meaning, and list by a word of the name or the description:
 
   zambil search "<what the note is about>"

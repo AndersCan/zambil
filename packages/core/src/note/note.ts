@@ -21,6 +21,8 @@ interface NoteFields {
   tags: string[];
   hooks: string[];
   tools: string[];
+  projects: string[];
+  paths: string[];
   expiry: Expiry;
   whenExpired?: string;
   properties: Record<string, unknown>;

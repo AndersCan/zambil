@@ -12,7 +12,7 @@ The Claude Code adapter of zambil. Claude Code runs `zambil hook` at each hook, 
 
 It adds three kinds of note:
 
-1. Each current note whose `hooks` property names the hook that runs. At `SubagentStart`, also each current note that names `SessionStart`, because a subagent starts with a context of its own and gets no `SessionStart`. At a tool hook, a note with a `tools` property applies only to those tools. A note without `tools` applies to every tool. Names compare exactly, so write `PreToolUse` and `Bash` as Claude Code writes them.
+1. Each current note whose `hooks` property names the hook that runs. At `SubagentStart`, also each current note that names `SessionStart`, because a subagent starts with a context of its own and gets no `SessionStart`. A note with `projects` or `paths` applies only when the `cwd` of the hook input is in that project or under that path. See the Scope section of `docs/notes.md`. At a tool hook, a note with a `tools` property applies only to those tools. A note without `tools` applies to every tool. Names compare exactly, so write `PreToolUse` and `Bash` as Claude Code writes them.
 2. At `UserPromptSubmit`, each note that the user names with `z:<name>` in the prompt. See [Name a note in a prompt](#name-a-note-in-a-prompt).
 3. At `UserPromptSubmit`, each current note whose description is similar to the prompt. See [Similar notes](#similar-notes).
 
@@ -52,7 +52,7 @@ Run `zambil install` or `zambil index` once before you use the hook. Each downlo
 
 The similar notes come after the notes that the prompt names and the notes of the hook. A note comes only once. A note that the prompt names with `z:<name>`, also in part, is not added again as a similar note. Neither is a note that the hook already added. A note that names `SessionStart` is not added either, because it is in the context for the whole session.
 
-A note that another note names in `when-expired`, and that names no hook itself, is not a similar note either. It tells how to verify the other note, so it is for the agent that reads the expiry warning, not for a prompt about the topic. The expiry warning and `z:<name>` still reach it. A helper note that names a hook is a note of its own, so it can still match.
+A note that another note names in `when-expired`, and that names no hook itself, is not a similar note either. It tells how to verify the other note, so it is for the agent that reads the expiry warning, not for a prompt about the topic. The expiry warning and `z:<name>` still reach it. A helper note that names a hook is a note of its own, so it can still match. A note for another project or path is not a similar note either.
 
 The hook never blocks or slows a prompt for long:
 

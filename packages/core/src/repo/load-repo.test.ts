@@ -41,6 +41,8 @@ describe("loadRepo", () => {
       tags: ["typescript", "style"],
       hooks: ["PreToolUse"],
       tools: ["Edit", "Write"],
+      projects: [],
+      paths: [],
       expiry: { kind: "never" },
       properties: {
         description: "How to write TypeScript in my projects.",

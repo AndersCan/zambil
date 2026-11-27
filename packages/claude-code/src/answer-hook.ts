@@ -8,6 +8,7 @@ import type { HookInput } from "./hook-input/parse-hook-input.ts";
 import { hookSection } from "./hook-notes/hook-section.ts";
 import { isNever } from "@zambil/core/is-never";
 import type { Note } from "@zambil/core/note";
+import type { ProjectPlace } from "@zambil/core/project-place";
 import { recallSection } from "./recall/recall-section.ts";
 import type { RenderWording } from "@zambil/core/render-wording";
 import type { ShownNotes } from "./session/shown-notes.ts";
@@ -15,7 +16,8 @@ import { similarSection } from "./similar/similar-section.ts";
 
 /**
  * The parsed hook input, the clock, the notes whose description is similar to the prompt, best first,
- * a message for the user, such as a warning about the setup, and the notes that the context already holds.
+ * a message for the user, such as a warning about the setup, the notes that the context already holds,
+ * and where the agent works. Without a place, a note with `projects` or `paths` is left out.
  */
 export interface AnswerHookOptions {
   input: HookInput;
@@ -23,6 +25,7 @@ export interface AnswerHookOptions {
   similarNotes?: Note[];
   systemMessage?: string;
   shown?: ShownNotes;
+  place?: ProjectPlace;
 }
 
 /** The standard output for the hook, and the notes that it adds in full, to keep for the next hook. */
