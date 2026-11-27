@@ -19,7 +19,7 @@ describe("fetchModel", () => {
     expect({ fetched, reports, files: readdirSync(cacheFolder) }).toEqual({
       fetched: {
         ok: false,
-        error: `the model Xenova/multi-qa-MiniLM-L6-cos-v1 is not in ${folder}. Run \`zambil index\` to download it.`,
+        error: `the model Xenova/multi-qa-MiniLM-L6-cos-v1 is missing or incomplete in ${folder}`,
       },
       reports: [],
       files: [],

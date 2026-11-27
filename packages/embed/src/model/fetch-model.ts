@@ -108,9 +108,7 @@ export async function fetchModel(
   );
   const folder = dirname(modelFilePath(model, { file: model.weights, cacheFolder }));
   if (missing.length > 0 && options.download === "never") {
-    return left(
-      `the model ${model.repository} is not in ${folder}. Run \`zambil index\` to download it.`,
-    );
+    return left(`the model ${model.repository} is missing or incomplete in ${folder}`);
   }
   if (missing.length > 0) {
     let bytes = 0;

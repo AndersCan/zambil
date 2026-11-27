@@ -26,6 +26,8 @@ const notes = {
   "a/twin.md": "One twin.\n",
   "b/twin.md": "Other twin.\n",
   "finish.md": "---\ndescription: Finish.\nhooks: Stop\n---\nSay done.\n",
+  "rebase.md":
+    "---\ndescription: How to rebase.\n---\n# Steps\nRun git rebase.\n# Conflicts\nFix them.\n",
 };
 
 /** The names of the notes that a similarity search found, best first. */
@@ -255,5 +257,13 @@ describe("answerHook", () => {
     const similar = ["language", "deploy", "check deploy", "welcome"];
     const names = await namesAt(hookPayload("UserPromptSubmit", { prompt }), { similar });
     expect(names).toEqual(["deploy", "check deploy", "deploy", "language", "welcome"]);
+  });
+
+  test("leaves out a similar note that the prompt names in part, though no hook adds it", async () => {
+    const prompt = "rebase it the way z:rebase#Steps says";
+    const names = await namesAt(hookPayload("UserPromptSubmit", { prompt }), {
+      similar: ["rebase"],
+    });
+    expect(names).toEqual(["rebase", "deploy", "language"]);
   });
 });

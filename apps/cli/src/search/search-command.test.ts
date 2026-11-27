@@ -60,7 +60,7 @@ describe("zambil search", () => {
       expect({
         hookBeforeIndex: {
           ...hookBeforeIndex,
-          stderr: hookBeforeIndex.stderr.replace(/ is not in .*\. Run/, " is not in <cache>. Run"),
+          stderr: hookBeforeIndex.stderr.replace(freshCache, "<cache>"),
         },
         indexed: indexed.stdout.startsWith("Indexed 20 descriptions, 20 of them new"),
         found,
@@ -71,8 +71,7 @@ describe("zambil search", () => {
         hookBeforeIndex: {
           code: 0,
           stdout: "",
-          stderr:
-            "zambil hook: no similar notes, because the model Xenova/multi-qa-MiniLM-L6-cos-v1 is not in <cache>. Run `zambil index` to download it.\n",
+          stderr: `zambil hook: no similar notes, because the model Xenova/multi-qa-MiniLM-L6-cos-v1 is missing or incomplete in <cache>/zambil/models/multi-qa-minilm-l6-cos-v1/3c96c1df3fec9a98a5de76e80877c8bec18498f6. Run \`zambil index --repo ${proseRepo}\`.\n`,
         },
         indexed: true,
         found: {

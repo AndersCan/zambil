@@ -29,10 +29,13 @@ export const unindexedLimit = 10;
 
 const letter = /\p{L}/u;
 
+/** A first word such as `/compact` or `/review:pr`. A path such as `/work/app.ts` has a second `/`. */
+const slashCommand = /^\/[^\s/]+(?:\s|$)/u;
+
 /** A slash command is for Claude Code, not a question for the notes, and a prompt with no letter carries no topic. */
 export function readPrompt(prompt: string): PromptKind {
   const trimmed = prompt.trim();
-  if (trimmed.startsWith("/")) return "command";
+  if (slashCommand.test(trimmed)) return "command";
   return letter.test(trimmed) ? "text" : "no-text";
 }
 
@@ -41,9 +44,10 @@ function describe(reason: unknown): string {
 }
 
 /**
- * Finds the current notes whose description is similar to the prompt. It never downloads the model:
- * a missing model is an error that tells the user to run `zambil index`. It writes nothing. It loads
- * the embedder only for a prompt with text, in a repo with at least one description.
+ * Finds the current notes whose description is similar to the prompt. It never downloads the model,
+ * so a missing model is an error. Every failure, a thrown one too, is an error value, so that the hook
+ * still adds its other notes. It writes nothing. It loads the embedder only for a prompt with text, in
+ * a repo with at least one description.
  */
 export async function findSimilarNotes(
   repo: ConfigurationRepo,
@@ -55,13 +59,16 @@ export async function findSimilarNotes(
   if (!hasDescription) return none;
   const loaded = await wrap(import("@zambil/embed/open-note-search"));
   if (!loaded.ok) return left(`cannot load the embedder: ${describe(loaded.error)}`);
-  const noteSearch = await loaded.value.openNoteSearch(options.environment, {
-    report: () => {},
-    download: "never",
-  });
+  const opened = await wrap(
+    loaded.value.openNoteSearch(options.environment, { report: () => {}, download: "never" }),
+  );
+  if (!opened.ok) return left(`the embedder failed: ${describe(opened.error)}`);
+  const noteSearch = opened.value;
   if (!noteSearch.ok) return noteSearch;
   const { prompt, now } = options;
-  const result = await noteSearch.value.search(repo, { text: prompt, now, unindexedLimit });
+  const searched = await wrap(noteSearch.value.search(repo, { text: prompt, now, unindexedLimit }));
+  if (!searched.ok) return left(`the search failed: ${describe(searched.error)}`);
+  const result = searched.value;
   if (!result.ok) return result;
   return right({ matches: result.value.matches, skipped: result.value.skipped });
 }

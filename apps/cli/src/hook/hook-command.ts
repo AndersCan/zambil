@@ -2,6 +2,7 @@ import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
 import { answerHook } from "@zambil/claude-code/answer-hook";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import { findSimilarNotes } from "@zambil/claude-code/find-similar-notes";
+import { indexHint } from "../index/index-hint.ts";
 import { loadHookList } from "@zambil/claude-code/load-hook-list";
 import type { Note } from "@zambil/core/note";
 import { openRepo } from "../open-repo.ts";
@@ -11,6 +12,7 @@ import { sharedOptions } from "../parse-command-args.ts";
 
 interface SimilarToOptions extends CommandRunOptions {
   prompt: string;
+  repoFlag: string | undefined;
 }
 
 /**
@@ -24,15 +26,16 @@ async function similarTo(repo: ConfigurationRepo, options: SimilarToOptions): Pr
     now: options.now,
     environment: options.config.environment,
   });
+  const hint = indexHint(options.repoFlag);
   if (!similar.ok) {
-    output.error(`zambil hook: no similar notes, because ${similar.error}\n`);
+    output.error(`zambil hook: no similar notes, because ${similar.error}. Run \`${hint}\`.\n`);
     return [];
   }
   const { matches, skipped } = similar.value;
   if (skipped > 0) {
-    const count = skipped === 1 ? "1 note is" : `${skipped} notes are`;
+    const count = skipped === 1 ? "1 description is" : `${skipped} descriptions are`;
     output.error(
-      `zambil hook: ${count} not in the index, so no similarity match can find them. Run \`zambil index\`.\n`,
+      `zambil hook: ${count} not in the index, so no similarity match can find their notes. Run \`${hint}\`.\n`,
     );
   }
   return matches.map((match) => match.note);
@@ -62,9 +65,10 @@ async function runHook(options: CommandRunOptions): Promise<ExitCode> {
     return 0;
   }
   const { input } = request.value;
+  const repoFlag = parsed.value.values.repo;
   const similarNotes =
     input.kind === "prompt"
-      ? await similarTo(repo.value, { ...options, prompt: input.prompt })
+      ? await similarTo(repo.value, { ...options, prompt: input.prompt, repoFlag })
       : [];
   output.write(answerHook(repo.value, { input, now: options.now, similarNotes }));
   return 0;
