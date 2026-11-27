@@ -30,6 +30,15 @@ function addNames(note: Note, names: NameIndex): void {
   }
 }
 
+interface SpellingOptions {
+  key: string;
+}
+
+function spellingOf(entry: NameEntry, options: SpellingOptions): string {
+  if (entry.source === "name") return entry.note.name;
+  return entry.note.aliases.find((alias) => nameKey(alias) === options.key) ?? options.key;
+}
+
 function describeEntries(entries: NameEntry[]): string {
   const files: string[] = [];
   for (const entry of entries) {
@@ -47,7 +56,8 @@ export function indexNames(notes: Note[]): IndexedNames {
   for (const [key, entries] of names) {
     const [first] = entries;
     if (first === undefined || entries.length < 2) continue;
-    const message = `the name "${key}" is used by ${entries.length} notes: ${describeEntries(entries)}`;
+    const spelling = spellingOf(first, { key });
+    const message = `the name "${spelling}" is used by ${entries.length} notes: ${describeEntries(entries)}`;
     problems.push({ severity: "error", path: first.note.path, message });
   }
   return { names, problems };

@@ -190,23 +190,26 @@ zambil reports two kinds of problem. An error makes `zambil check` exit with 1. 
 
 Later features import from `@zambil/core`. Each export is one file:
 
-| Import                            | What it gives                                                                                            |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `@zambil/core/locate-repo`        | `locateRepo`: finds the repo from the flag, the environment and the configuration file.                  |
-| `@zambil/core/load-repo`          | `loadRepo`: reads every note, with its problems and every duplicate name.                                |
-| `@zambil/core/configuration-repo` | The `ConfigurationRepo` and `NameIndex` types.                                                           |
-| `@zambil/core/find-note`          | `findNote`: looks up a name or alias. The result is found, missing or ambiguous.                         |
-| `@zambil/core/resolve-note`       | `resolveNote`: looks up a name and returns `expired`, with the `when-expired` note, for an expired note. |
-| `@zambil/core/parse-link-target`  | `parseLinkTarget`: the note name in a link such as `[[folder/name#heading]]`, or in a plain name.        |
-| `@zambil/core/index-names`        | `nameKey`: the form in which two names are the same.                                                     |
-| `@zambil/core/check-repo`         | `checkRepo`: every problem, with the checks that the loader skips.                                       |
-| `@zambil/core/is-expired`         | `isExpired`: tells whether a note is expired at a given moment.                                          |
-| `@zambil/core/note`               | The `Note` type and its kinds.                                                                           |
-| `@zambil/core/note-problem`       | The `NoteProblem` type.                                                                                  |
-| `@zambil/core/parse-note`         | `parseNote`: reads one note from its text.                                                               |
-| `@zambil/core/split-frontmatter`  | `splitFrontmatter`: splits the frontmatter from the text, for a feature that rewrites a note.            |
-| `@zambil/core/parse-frontmatter`  | `parseFrontmatter`: reads frontmatter YAML the same way as the loader.                                   |
-| `@zambil/core/either`             | The `Either` type for expected failures.                                                                 |
-| `@zambil/core/write-test-repo`    | `writeTestRepo`: writes a repo into a temporary folder for a test.                                       |
+| Import                            | What it gives                                                                                                                                                               |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@zambil/core/locate-repo`        | `locateRepo`: finds the repo from the flag, the environment and the configuration file. `UserEnvironment.cacheHome` is `XDG_CACHE_HOME`, for files that zambil can rebuild. |
+| `@zambil/core/load-repo`          | `loadRepo`: reads every note, with its problems and every duplicate name.                                                                                                   |
+| `@zambil/core/configuration-repo` | The `ConfigurationRepo` and `NameIndex` types.                                                                                                                              |
+| `@zambil/core/find-note`          | `findNote`: looks up a name or alias. The result is found, missing or ambiguous.                                                                                            |
+| `@zambil/core/resolve-note`       | `resolveNote`: looks up a name and returns `expired`, with the `when-expired` note, for an expired note.                                                                    |
+| `@zambil/core/parse-link-target`  | `parseLinkTarget`: the note name in a link such as `[[folder/name#heading]]`, or in a plain name.                                                                           |
+| `@zambil/core/index-names`        | `nameKey`: the form in which two names are the same.                                                                                                                        |
+| `@zambil/core/check-repo`         | `checkRepo`: every problem, with the checks that the loader skips.                                                                                                          |
+| `@zambil/core/is-expired`         | `isExpired`: tells whether a note is expired at a given moment.                                                                                                             |
+| `@zambil/core/note`               | The `Note` type and its kinds.                                                                                                                                              |
+| `@zambil/core/note-problem`       | The `NoteProblem` type.                                                                                                                                                     |
+| `@zambil/core/parse-note`         | `parseNote`: reads one note from its text.                                                                                                                                  |
+| `@zambil/core/split-frontmatter`  | `splitFrontmatter`: splits the frontmatter from the text, for a feature that rewrites a note.                                                                               |
+| `@zambil/core/parse-frontmatter`  | `parseFrontmatter`: reads frontmatter YAML the same way as the loader.                                                                                                      |
+| `@zambil/core/either`             | The `Either` type for expected failures.                                                                                                                                    |
+| `@zambil/core/is-never`           | `isNever`: the `default` of an exhaustive `switch`.                                                                                                                         |
+| `@zambil/core/as-record`          | `asRecord`: reads untyped input, such as parsed JSON, as an object.                                                                                                         |
+| `@zambil/core/note-file`          | The `NoteFile` type: a note file before it is read.                                                                                                                         |
+| `@zambil/core/write-test-repo`    | `writeTestRepo`: writes a repo into a temporary folder for a test.                                                                                                          |
 
 The loader is synchronous. The CLI runs on every prompt, and synchronous reads of many small files are about seven times faster than parallel promises. `loadRepo` reads each note once and keeps its text in `note.content`, the Markdown after the frontmatter. It does not check script files or `when-expired` names, because `checkRepo` does that.

@@ -19,11 +19,11 @@ ln -s "$PWD/apps/cli/src/main.ts" ~/.local/bin/zambil
 
 Then `zambil list` works in every folder.
 
-| Command        | What it does                                                                    |
-| -------------- | ------------------------------------------------------------------------------- |
-| `zambil list`  | Prints one line per note: the name, the kind, the path and the description.     |
-| `zambil check` | Prints each problem with its path. An error sets the exit code to 1.            |
-| `zambil help`  | Prints the commands. `zambil <command> --help` prints the usage of one command. |
+| Command        | What it does                                                                                               |
+| -------------- | ---------------------------------------------------------------------------------------------------------- |
+| `zambil list`  | Prints one line per note: the name, the kind, the path and the description.                                |
+| `zambil check` | Prints each problem with its path. An error sets the exit code to 1.                                       |
+| `zambil help`  | Prints the commands. `zambil help <command>` or `zambil <command> --help` prints the usage of one command. |
 
 Each command takes `--repo <path>`. Without it, zambil reads `ZAMBIL_REPO`, then `~/.config/zambil/config.json`.
 
@@ -47,6 +47,8 @@ Each command lives in its own folder and file, for example `src/show/show-comman
 3. Parse the arguments with `parseCommandArgs` and spread `sharedOptions` into your options, so that `--repo` works.
 4. Load the repo with `openRepo`. If zambil cannot find or read the repo, `openRepo` returns a message for the user.
 
-Commands read the environment only through `CliConfig`. `src/config.ts` reads `process.env` once at startup.
+Commands read the environment only through `CliConfig`. `src/config.ts` reads `process.env` once at startup. A command that needs standard input calls `options.input.readAll()`.
+
+A command that runs as an agent hook must exit with 0, also when it cannot find the repo. It reports the problem on standard error. Claude Code reads exit code 2 from a hook as a blocking error: it stops the prompt or the tool call.
 
 `zambil help` imports every command file. If a command needs a slow module, for example an embedder, import that module inside `run`, not at the top of the file.

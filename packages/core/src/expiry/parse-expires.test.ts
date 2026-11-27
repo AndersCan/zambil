@@ -26,10 +26,9 @@ describe("parseExpires", () => {
   });
 
   test("marks text that is not a real date as unreadable", () => {
-    expect(["tomorrow", "2026-02-30", "28.11.2026"].map((text) => parseExpires(text))).toEqual([
-      { kind: "unreadable", text: "tomorrow" },
-      { kind: "unreadable", text: "2026-02-30" },
-      { kind: "unreadable", text: "28.11.2026" },
-    ]);
+    const texts = ["tomorrow", "2026-02-30", "28.11.2026", "2026-11-28T09:75", "2026-02-30T09:30Z"];
+    expect(texts.map((text) => parseExpires(text))).toEqual(
+      texts.map((text) => ({ kind: "unreadable", text })),
+    );
   });
 });

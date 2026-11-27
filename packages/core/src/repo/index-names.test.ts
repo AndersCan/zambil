@@ -37,7 +37,7 @@ describe("indexNames", () => {
       {
         severity: "error",
         path: "Deploy.md",
-        message: 'the name "deploy" is used by 2 notes: Deploy.md, ship.md (alias)',
+        message: 'the name "Deploy" is used by 2 notes: Deploy.md, ship.md (alias)',
       },
     ]);
   });

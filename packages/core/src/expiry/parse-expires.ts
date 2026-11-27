@@ -14,7 +14,8 @@ function readLocal(text: string): Date | undefined {
   const minute = Number(parts.minute ?? "0");
   const time = new Date(Number(parts.year), month, day, hour, minute, Number(parts.second ?? "0"));
   const isRealDate = time.getMonth() === month && time.getDate() === day;
-  return isRealDate ? time : undefined;
+  const isRealTime = hour < 24 && minute < 60 && Number(parts.second ?? "0") < 60;
+  return isRealDate && isRealTime ? time : undefined;
 }
 
 /**
@@ -25,7 +26,8 @@ export function parseExpires(text: string | undefined): Expiry {
   if (text === undefined) return { kind: "never" };
   const local = readLocal(text);
   if (local !== undefined) return { kind: "at", time: local };
-  const zoned = zonedPattern.test(text) ? new Date(text) : undefined;
+  const hasRealDay = readLocal(text.slice(0, "2026-11-28".length)) !== undefined;
+  const zoned = zonedPattern.test(text) && hasRealDay ? new Date(text) : undefined;
   if (zoned === undefined || Number.isNaN(zoned.getTime())) return { kind: "unreadable", text };
   return { kind: "at", time: zoned };
 }
