@@ -17,4 +17,5 @@ export const commands: Record<string, () => Promise<Command>> = {
   search: async () => (await import("./search/search-command.ts")).searchCommand,
   show: async () => (await import("./show/show-command.ts")).showCommand,
   uninstall: async () => (await import("./install/uninstall-command.ts")).uninstallCommand,
+  update: async () => (await import("./update/update-command.ts")).updateCommand,
 };

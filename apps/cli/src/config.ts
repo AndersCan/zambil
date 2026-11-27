@@ -1,15 +1,17 @@
-import { delimiter } from "node:path";
+import { delimiter, resolve } from "node:path";
 import { homedir } from "node:os";
 import type { UserEnvironment } from "@zambil/core/locate-repo";
 
 /**
  * Everything the CLI reads from the process at startup. Commands read this, never `process.env`.
- * `claudeConfigFolder` is `CLAUDE_CONFIG_DIR`, and `searchPath` holds the folders of `PATH`.
+ * `claudeConfigFolder` is `CLAUDE_CONFIG_DIR`, `searchPath` holds the folders of `PATH`, and
+ * `zambilFolder` is the root of the zambil clone that runs.
  */
 export interface CliConfig {
   environment: UserEnvironment;
   claudeConfigFolder?: string;
   searchPath?: string[];
+  zambilFolder?: string;
 }
 
 function nonEmpty(value: string | undefined): string | undefined {
@@ -28,7 +30,11 @@ export function readCliConfig(): CliConfig {
   if (configHome !== undefined) environment.configHome = configHome;
   const cacheHome = nonEmpty(process.env.XDG_CACHE_HOME);
   if (cacheHome !== undefined) environment.cacheHome = cacheHome;
-  const config: CliConfig = { environment, searchPath: (process.env.PATH ?? "").split(delimiter) };
+  const config: CliConfig = {
+    environment,
+    searchPath: (process.env.PATH ?? "").split(delimiter),
+    zambilFolder: resolve(import.meta.dirname, "../../.."),
+  };
   const claudeConfigFolder = nonEmpty(process.env.CLAUDE_CONFIG_DIR);
   if (claudeConfigFolder !== undefined) config.claudeConfigFolder = claudeConfigFolder;
   return config;

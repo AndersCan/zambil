@@ -400,6 +400,26 @@ function checkReleases(machine: Machine): void {
   deepEqual(actual, expected, output);
 }
 
+function checkUpdateCommand(machine: Machine): void {
+  const link = join(machine.home, ".local/bin/zambil");
+  commitFile("smoke-update-command.txt", machine);
+  const updated = spawnSync(link, ["update"], {
+    encoding: "utf8",
+    env: { HOME: machine.home, PATH: machine.path },
+  });
+  deepEqual(
+    {
+      ran: updated.status === 0 || updated.status === 1,
+      updated: updated.stdout.includes("Updated zambil to"),
+      commits: updated.stdout.includes("The new commits:\n"),
+      subject: updated.stdout.includes(" add smoke-update-command.txt\n"),
+      doctor: updated.stdout.includes("\nzambil doctor checks the setup:\n"),
+    },
+    { ran: true, updated: true, commits: true, subject: true, doctor: true },
+    `${updated.stdout}${updated.stderr}`,
+  );
+}
+
 function main(): void {
   const work = realpathSync(mkdtempSync(join(tmpdir(), "zambil-smoke-")));
   const upstream = join(work, "upstream");
@@ -428,6 +448,10 @@ function main(): void {
     {
       name: "installs take the newest release, a pin, or the branch that the user names",
       run: () => checkReleases(machine),
+    },
+    {
+      name: "zambil update updates, lists the new commits and runs zambil doctor",
+      run: () => checkUpdateCommand(machine),
     },
   ];
   for (const check of checks) {
