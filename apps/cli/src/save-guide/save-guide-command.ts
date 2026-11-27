@@ -16,7 +16,14 @@ A note that makes claims goes out of date. The code changes, and then the note i
 
 Give each note a description in its frontmatter. Similarity search matches the prompt against it.
 
-To see if a note exists, run \`zambil list\`. Then save it:
+To see if a note exists, run \`zambil list\`. Then save the when-expired note and the note:
+
+  zambil save check-deploy --no-expires <<'EOF'
+  ---
+  description: How to check the deploy note.
+  ---
+  Read the Makefile and compare the deploy target with the deploy note.
+  EOF
 
   zambil save deploy --expires 2027-01-15 --when-expired check-deploy <<'EOF'
   ---

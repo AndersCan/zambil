@@ -1,5 +1,6 @@
 import { findExistingTarget, findNewTarget } from "./find-save-target.ts";
 import { left, right } from "../either.ts";
+import { addedRepoErrors } from "./added-repo-errors.ts";
 import type { ConfigurationRepo } from "../repo/configuration-repo.ts";
 import { editFrontmatter } from "./edit-frontmatter.ts";
 import type { Either } from "../either.ts";
@@ -272,7 +273,7 @@ function takenSpelling(note: Note, options: ReviewOptions): string | undefined {
     const entries = options.repo.names.get(nameKey(spelling)) ?? [];
     for (const entry of entries) {
       if (entry.note.path !== note.path) {
-        return `The name "${spelling}" is already used by ${entry.note.path}.`;
+        return `The alias "${spelling}" in the text is already used by ${entry.note.path}. Pick another alias.`;
       }
     }
   }
@@ -306,7 +307,12 @@ function reviewNote(text: string, options: ReviewOptions): Either<SaveRefusal, R
     return invalid(`The note would be invalid: ${listed}.`);
   }
   const taken = takenSpelling(parsed.note, options);
-  if (taken !== undefined) return left({ reason: "taken", message: taken });
+  if (taken !== undefined) return invalid(taken);
+  const added = addedRepoErrors(parsed.note, { repo: options.repo });
+  if (added.length > 0) {
+    const listed = added.join("; ");
+    return invalid(`The repo would get an error: ${listed}.`);
+  }
   return right({ note: parsed.note, warnings });
 }
 

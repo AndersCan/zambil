@@ -201,7 +201,7 @@ zambil refuses to save, and changes no file, in these cases:
 - The new text gives the note an alias that another note uses.
 - The `expires` date is not a date, or it is not in the future. The `when-expired` note does not exist.
 - The frontmatter of the note does not parse. Or zambil cannot change it line by line without changes to other properties.
-- The saved note has an error that the old note did not have.
+- The saved note has an error that the old note did not have. Or the repo gets an error from `zambil check` that it did not have, for example a missing script file, or a `when-expired` name of another note that no longer resolves.
 
 A refusal exits with 1. A wrong usage, such as no choice about expiry, exits with 2.
 

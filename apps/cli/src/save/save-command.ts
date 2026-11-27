@@ -213,7 +213,7 @@ export const saveCommand: Command = {
     "Its properties are set on the note. The other properties of the note stay as they are.",
     "",
     "  --expires <date>       The note is current until this date, for example 2027-01-15.",
-    "  --no-expires           The note makes no claims that can go out of date.",
+    "  --no-expires           The note makes no claims that can go out of date. Removes expires and when-expired.",
     "  --when-expired <name>  The note that tells how to update this note or verify its claims.",
     "  --folder <path>        The folder for a new note, relative to the repo. The default is the root.",
     "  --rewrite              Change an existing note. Text without content keeps the old content.",

@@ -353,7 +353,11 @@ describe("saveNote", () => {
         },
       },
       {
-        refused: { reason: "taken", message: 'The name "Ship" is already used by ops/deploy.md.' },
+        refused: {
+          reason: "invalid",
+          message:
+            'The alias "Ship" in the text is already used by ops/deploy.md. Pick another alias.',
+        },
       },
       {
         refused: {
@@ -389,6 +393,53 @@ describe("saveNote", () => {
       },
       text: broken,
     });
+  });
+});
+
+describe("saveNote and the errors that zambil check reports across notes", () => {
+  test("refuses a missing script file and an alias that the when-expired note of another note uses", async () => {
+    const root = await writeTestRepo({
+      "a.md": '---\nexpires: 2026-12-01\nwhen-expired: "[[old-b]]"\n---\nA.\n',
+      "b.md": "---\naliases: [old-b]\n---\nB.\n",
+    });
+    const none = { kind: "none" } as const;
+    const script = "---\nscript: missing.sh\n---\nRun it.\n";
+    const results = await Promise.all([
+      save({ mode: "create", name: "runner", text: script, expiry: none }, { root }),
+      save(
+        { mode: "rewrite", name: "b", text: "---\naliases: [new-b]\n---\n", expiry: none },
+        { root },
+      ),
+    ]);
+    expect(results.map((result) => result.summary)).toEqual([
+      {
+        refused: {
+          reason: "invalid",
+          message:
+            "The repo would get an error: runner.md: `script` points to missing.sh, but no file is there.",
+        },
+      },
+      {
+        refused: {
+          reason: "invalid",
+          message:
+            'The repo would get an error: a.md: `when-expired` names "old-b", but no note has that name.',
+        },
+      },
+    ]);
+  });
+
+  test("creates a note whose when-expired note is the note itself", async () => {
+    const root = await writeTestRepo({});
+    const request: SaveRequest = {
+      mode: "create",
+      name: "today",
+      text: "Today is 2026-11-27.",
+      expiry: { kind: "expires", text: "2026-11-28" },
+      whenExpired: "today",
+    };
+    const { summary } = await save(request, { root });
+    expect(summary).toEqual({ saved: "today.md", mode: "create", warnings: [] });
   });
 });
 

@@ -18,7 +18,11 @@ async function run(args: string[], options: RunOptions = {}) {
       printed.stderr += text;
     },
   };
-  const input = { readAll: () => Promise.resolve(options.input ?? "") };
+  const text = options.input;
+  const input = {
+    readAll: () =>
+      text === undefined ? Promise.reject(new Error("read standard input")) : Promise.resolve(text),
+  };
   const config = { environment: { home: "/home/ada", workingFolder: "/" } };
   const code = await saveCommand.run({ args, config, input, output, now: new Date(2026, 10, 27) });
   return { code, ...printed };
@@ -54,9 +58,7 @@ describe("saveCommand", () => {
     const root = await writeTestRepo({
       "deploy.md": "---\nexpires: 2026-12-01\nwhen-expired: deploy\n---\nText.\n",
     });
-    const result = await run(["deploy", "--verified", "--expires", "2027-03-01", "--repo", root], {
-      input: "ignored",
-    });
+    const result = await run(["deploy", "--verified", "--expires", "2027-03-01", "--repo", root]);
     expect({ result, text: await readFile(join(root, "deploy.md"), "utf8") }).toEqual({
       result: { code: 0, stdout: "Verified deploy.md. It expires 2027-03-01 now.\n", stderr: "" },
       text: "---\nexpires: 2027-03-01\nwhen-expired: deploy\n---\nText.\n",
@@ -68,9 +70,10 @@ describe("saveCommand", () => {
     const results = await Promise.all([
       run(["deploy", "--repo", root], { input: note }),
       run(["deploy", "--repo", root, "--no-expires"], { input: note }),
-      run(["new", "--repo", root, "--no-expires"]),
+      run(["new", "--repo", root, "--no-expires"], { input: "" }),
       run(["deploy", "--repo", root, "--verified", "--no-expires"]),
       run(["new", "--repo", root, "--no-expires", "--when-expired", "deploy"], { input: note }),
+      run(["new", "--repo", root, "--no-expires"], { input: "---\naliases: [deploy]\n---\nText." }),
     ]);
     const messages = results.map((result) => {
       const lines = result.stderr.split("\n");
@@ -89,6 +92,10 @@ describe("saveCommand", () => {
       [2, "Give the text of the new note on standard input."],
       [2, "--verified sets a new expires date only. Use --rewrite to change more."],
       [2, "--when-expired needs --expires. A note without expires has no when-expired note."],
+      [
+        1,
+        'zambil did not save "new". The alias "deploy" in the text is already used by deploy.md. Pick another alias.',
+      ],
     ]);
   });
 });
