@@ -6,8 +6,10 @@ import type { Command } from "./command.ts";
  */
 export const commands: Record<string, () => Promise<Command>> = {
   check: async () => (await import("./check/check-command.ts")).checkCommand,
+  index: async () => (await import("./index/index-command.ts")).indexCommand,
   list: async () => (await import("./list/list-command.ts")).listCommand,
   save: async () => (await import("./save/save-command.ts")).saveCommand,
   "save-guide": async () => (await import("./save-guide/save-guide-command.ts")).saveGuideCommand,
+  search: async () => (await import("./search/search-command.ts")).searchCommand,
   show: async () => (await import("./show/show-command.ts")).showCommand,
 };

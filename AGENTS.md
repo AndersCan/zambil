@@ -1,6 +1,6 @@
 # zambil
 
-zambil has two packages: `packages/core` reads a configuration repo of notes, and `apps/cli` is the `zambil` command. `docs/notes.md` is the contract for the note format. This file tells you how to set up, test and change the repo. It is written for a task that has no other context.
+zambil has three packages: `packages/core` reads a configuration repo of notes, `packages/embed` is the similarity search, and `apps/cli` is the `zambil` command. `docs/notes.md` is the contract for the note format. This file tells you how to set up, test and change the repo. It is written for a task that has no other context.
 
 `vision.md` says what zambil is for and how to make trade-offs. Read it before you make a design decision. If a section of it is still empty, the maintainer did not decide that part yet.
 
@@ -9,7 +9,7 @@ zambil has two packages: `packages/core` reads a configuration repo of notes, an
 You need Node 24 or later. The repo pins pnpm 11.22.0 in `package.json`. If your pnpm has a different version, pnpm downloads the pinned version for you.
 
 1. Run `pnpm install` in the root of the repo.
-2. Run `pnpm test` to make sure that the setup works.
+2. Run `pnpm test` to make sure that the setup works. The tests of `packages/embed` download a 23 MB model from huggingface.co, so they need a network connection.
 
 The install also points git at the hooks in `.vite-hooks/`. The pre-commit hook formats and lints the files that you stage.
 

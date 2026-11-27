@@ -10,6 +10,8 @@ Node 24 runs the TypeScript directly, so the CLI has no build step. Run these co
 node apps/cli/src/main.ts list --repo packages/core/fixtures/sample-repo
 node apps/cli/src/main.ts check --repo packages/core/fixtures/sample-repo
 node apps/cli/src/main.ts show welcome --repo packages/core/fixtures/sample-repo
+node apps/cli/src/main.ts index --repo packages/embed/fixtures/prose-repo
+node apps/cli/src/main.ts search "my branch is behind main" --repo packages/embed/fixtures/prose-repo
 ```
 
 To put `zambil` on your `PATH`, link `apps/cli/src/main.ts` into a folder on your `PATH`. Run this command from the root of the repo:
@@ -27,6 +29,8 @@ The commands are:
 - `zambil save <name>` creates or rewrites a note from standard input, or records with `--verified` that its claims still hold. It is the one way to write a note. See "Write a note" in `docs/notes.md`.
 - `zambil save-guide` prints what an agent must know before it writes a note.
 - `zambil show <name>` prints a note as the agent gets it, with its embeds, links and expiry warnings. `--expired` prints an expired note anyway. `docs/notes.md` describes the text in [Rendering](../../docs/notes.md#rendering).
+- `zambil index` embeds the description of each note ahead of time, so that search is fast. The first run downloads the model, about 23 MB, to `$XDG_CACHE_HOME/zambil`, or `~/.cache/zambil`. It never changes a note.
+- `zambil search <text>` prints at most 3 notes whose description is similar to the text, best first, with a score. It leaves out expired notes. `packages/embed/README.md` says how the model and the score threshold were chosen.
 - `zambil help` prints the commands. `zambil help <command>` or `zambil <command> --help` prints the usage of one command.
 
 Each command takes `--repo <path>`. Without it, zambil reads `ZAMBIL_REPO`, then `$XDG_CONFIG_HOME/zambil/config.json`. If `XDG_CONFIG_HOME` is not set, the file is `~/.config/zambil/config.json`.
@@ -34,7 +38,7 @@ Each command takes `--repo <path>`. Without it, zambil reads `ZAMBIL_REPO`, then
 The exit codes are:
 
 - 0: the command worked.
-- 1: `zambil check` found an error, `zambil save` refused to save the note, or `zambil show` could not resolve the name, the heading or the block.
+- 1: `zambil check` found an error, `zambil save` refused to save the note, `zambil show` could not resolve the name, the heading or the block, or `zambil index` or `zambil search` cannot get the model.
 - 2: the usage is wrong, or zambil cannot find the repo.
 
 ## Add a command

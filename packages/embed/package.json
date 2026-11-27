@@ -1,0 +1,15 @@
+{
+  "name": "@zambil/embed",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./open-note-search": "./src/search/open-note-search.ts",
+    "./score-notes": "./src/search/score-notes.ts",
+    "./search-model": "./src/model/search-model.ts"
+  },
+  "dependencies": {
+    "@zambil/core": "workspace:*",
+    "onnxruntime-node": "catalog:"
+  }
+}
