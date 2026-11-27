@@ -1,11 +1,12 @@
 import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
+import type { HookAnswerRequest, HookInput } from "@zambil/claude-code/parse-hook-input";
+import { keepSessionNotes, readSessionNotes } from "@zambil/claude-code/session-notes";
 import { answerHook } from "@zambil/claude-code/answer-hook";
 import type { AnswerHookOptions } from "@zambil/claude-code/answer-hook";
 import type { CliConfig } from "../config.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import { findSimilarNotes } from "@zambil/claude-code/find-similar-notes";
 import { formatSystemMessage } from "@zambil/claude-code/format-hook-output";
-import type { HookInput } from "@zambil/claude-code/parse-hook-input";
 import type { HookList } from "@zambil/claude-code/hook-list";
 import { indexHint } from "../index/index-hint.ts";
 import { loadHookList } from "@zambil/claude-code/load-hook-list";
@@ -14,12 +15,15 @@ import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
 import { parseHookInput } from "@zambil/claude-code/parse-hook-input";
 import { repoOptionHelp } from "../parse-command-args.ts";
+import type { SessionNotesOptions } from "@zambil/claude-code/session-notes";
 import { sharedOptions } from "../parse-command-args.ts";
+import type { ShownNotes } from "@zambil/claude-code/shown-notes";
 import { wrap } from "@zambil/core/either";
 
 interface SimilarToOptions extends CommandRunOptions {
   prompt: string;
   repoFlag: string | undefined;
+  inContext: ShownNotes;
 }
 
 /**
@@ -32,6 +36,7 @@ async function similarTo(repo: ConfigurationRepo, options: SimilarToOptions): Pr
     prompt: options.prompt,
     now: options.now,
     environment: options.config.environment,
+    inContext: options.inContext,
   });
   const hint = indexHint(options.repoFlag);
   if (!similar.ok) {
@@ -48,6 +53,24 @@ async function similarTo(repo: ConfigurationRepo, options: SimilarToOptions): Pr
     );
   }
   return matches.map((match) => match.note);
+}
+
+const sessionProblem =
+  "zambil hook: cannot keep the notes of this session, so the next hook can add them again:";
+
+interface SessionNotesRunOptions extends SessionNotesOptions {
+  output: CommandRunOptions["output"];
+}
+
+/** The notes that the context already holds. A file that cannot be removed is a message, and the hook goes on. */
+async function sessionNotes(
+  request: HookAnswerRequest,
+  options: SessionNotesRunOptions,
+): Promise<ShownNotes> {
+  const read = await readSessionNotes(request, options);
+  if (read.ok) return read.value;
+  options.output.error(`${sessionProblem} ${read.error}\n`);
+  return {};
 }
 
 /** A `SessionStart` that starts or resumes a session. After `compact`, the session goes on, so it gets no second warning. */
@@ -105,6 +128,8 @@ async function runHook(options: CommandRunOptions): Promise<ExitCode> {
   }
   if (request.value.kind === "ignore") return 0;
   const { input } = request.value;
+  const sessionOptions = { environment: options.config.environment, now: options.now };
+  const before = await sessionNotes(request.value, { ...sessionOptions, output });
   const isStart = isSessionStart(input);
   const repo = openRepo({ flag: parsed.value.values.repo, config: options.config });
   if (!repo.ok) {
@@ -117,16 +142,28 @@ async function runHook(options: CommandRunOptions): Promise<ExitCode> {
   const repoFlag = parsed.value.values.repo;
   const similarNotes =
     input.kind === "prompt"
-      ? await similarTo(repo.value, { ...options, prompt: input.prompt, repoFlag })
+      ? await similarTo(repo.value, {
+          ...options,
+          prompt: input.prompt,
+          repoFlag,
+          inContext: before,
+        })
       : [];
   const { config } = options;
   const { hookEventName } = input;
   const systemMessage = isStart
     ? await setupWarning(repo.value, { config, hookList: list, hookEventName })
     : undefined;
-  const answerOptions: AnswerHookOptions = { input, now: options.now, similarNotes };
+  const answerOptions: AnswerHookOptions = { input, now: options.now, similarNotes, shown: before };
   if (systemMessage !== undefined) answerOptions.systemMessage = systemMessage;
-  output.write(answerHook(repo.value, answerOptions));
+  const answer = answerHook(repo.value, answerOptions);
+  output.write(answer.output);
+  const kept = await keepSessionNotes(request.value, {
+    ...sessionOptions,
+    before,
+    added: answer.shown,
+  });
+  if (!kept.ok) output.error(`${sessionProblem} ${kept.error}\n`);
   return 0;
 }
 
@@ -139,7 +176,9 @@ export const hookCommand: Command = {
   details: [
     "It reads the JSON that Claude Code sends to a hook on standard input, and prints the notes that apply.",
     "At UserPromptSubmit it also adds the notes whose description is similar to the prompt. It never downloads the model, so run zambil index once first.",
-    "It prints nothing when no note applies and the setup works, and it always exits with 0, so that it never blocks a session.",
+    "It adds each note once in a session or subagent, and keeps the list in $XDG_CACHE_HOME/zambil/sessions/ or ~/.cache/zambil/sessions/. A note that the prompt names with z:<name> comes each time, and so does a note at Stop or SubagentStop.",
+    "After a rewind, a note that a prompt after the rewind point added stays out until a clear, a compact or a new session. Name it with z:<name> to get it back.",
+    "It prints nothing when no note applies, or the context already holds each one, and the setup works, and it always exits with 0, so that it never blocks a session.",
     "At SessionStart, it warns the user in one line when the setup is broken, for example a moved notes folder, and points to zambil doctor.",
     "Run `zambil install` to set up the hooks. The file packages/claude-code/README.md in the zambil repo describes them.",
   ].join("\n"),

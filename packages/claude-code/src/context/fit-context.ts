@@ -1,11 +1,13 @@
 /**
  * One note for the context: its full text, one line that tells how to read it if the text does not fit,
- * and a key. A later block with the key of an earlier one is left out, so that no note comes twice.
+ * a key, and the version of the note from `noteVersion`. A later block with the key of an earlier one is
+ * left out, so that no note comes twice.
  */
 export interface ContextBlock {
   key: string;
   text: string;
   pointer: string;
+  version: string;
 }
 
 /** Blocks under one heading. A heading with no block that fits is left out. */
@@ -64,13 +66,20 @@ function leftOutList(pointers: string[], options: LeftOutOptions): string {
   return lines.join("\n");
 }
 
+/** The text for the context, and the blocks that it holds in full. A block that became a pointer is not in `shown`. */
+export interface FittedContext {
+  text: string;
+  shown: ContextBlock[];
+}
+
 /**
  * Joins the sections into one text for the context, in order, so that the first blocks win the room.
  * A block that does not fit becomes its pointer in a list at the end. No block gives an empty text.
  */
-export function fitContext(sections: ContextSection[], options: FitContextOptions): string {
+export function fitContext(sections: ContextSection[], options: FitContextOptions): FittedContext {
   const parts: string[] = [];
   const pointers: string[] = [];
+  const shown: ContextBlock[] = [];
   const keys = new Set<string>();
   let used = 0;
   for (const section of sections) {
@@ -87,10 +96,11 @@ export function fitContext(sections: ContextSection[], options: FitContextOption
       if (!hasHeading) parts.push(section.heading);
       hasHeading = true;
       parts.push(block.text);
+      shown.push(block);
       used += cost;
     }
   }
   const leftOut = leftOutList(pointers, { ...options, used });
   if (leftOut !== "") parts.push(leftOut);
-  return parts.join("\n\n");
+  return { text: parts.join("\n\n"), shown };
 }

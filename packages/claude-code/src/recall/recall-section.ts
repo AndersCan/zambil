@@ -6,6 +6,7 @@ import { isNever } from "@zambil/core/is-never";
 import { listNotes } from "../context/claude-code-wording.ts";
 import { nameKey } from "@zambil/core/index-names";
 import type { Note } from "@zambil/core/note";
+import { noteVersion } from "../session/shown-notes.ts";
 import { parseLinkTarget } from "@zambil/core/parse-link-target";
 import type { Recall } from "./find-recalls.ts";
 import type { RenderedNote } from "@zambil/core/render-note";
@@ -86,7 +87,8 @@ export function recallSection(
     const key = recallKey(recall, { rendered, note });
     const open = wording.openNote(recall.target);
     const pointer = `${recall.typed}: ${open}`;
-    blocks.push({ key, text: `${intro}\n${rendered.text}${hint}`, pointer });
+    const version = noteVersion(rendered.text);
+    blocks.push({ key, text: `${intro}\n${rendered.text}${hint}`, pointer, version });
   }
   return { heading, blocks };
 }

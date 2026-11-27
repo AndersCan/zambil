@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 import { hookPayload, preToolUse } from "./hook-input/hook-payloads.ts";
 import { answerHook } from "./answer-hook.ts";
+import type { HookRequest } from "./hook-input/parse-hook-input.ts";
 import { loadRepo } from "@zambil/core/load-repo";
 import { parseHookInput } from "./hook-input/parse-hook-input.ts";
 import { writeTestRepo } from "@zambil/core/write-test-repo";
@@ -45,7 +46,7 @@ async function answer(payload: string, options: AnswerOptions = { similar: [] })
   const similarNotes = options.similar.flatMap((name) =>
     repo.value.notes.filter((note) => note.name === name),
   );
-  return { root, stdout: answerHook(repo.value, { input, now, similarNotes }) };
+  return { root, stdout: answerHook(repo.value, { input, now, similarNotes }).output };
 }
 
 function contextOf(stdout: string): unknown {
@@ -58,6 +59,10 @@ async function namesAt(
   options: AnswerOptions = { similar: [] },
 ): Promise<string[]> {
   const { stdout } = await answer(payload, options);
+  return namesIn(stdout);
+}
+
+function namesIn(stdout: string): string[] {
   const names: string[] = [];
   for (const match of stdout.matchAll(/<(?:note|skill|script) name=\\"(?<name>[^\\]+)\\"/g)) {
     names.push(match.groups?.name ?? "");
@@ -265,5 +270,31 @@ describe("answerHook", () => {
       similar: ["rebase"],
     });
     expect(names).toEqual(["rebase", "deploy", "language"]);
+  });
+
+  test("leaves out a note that the context holds in the same version, but a z:<name> and a changed note come again", async () => {
+    const repo = loadRepo(await writeTestRepo(notes));
+    const request = parseHookInput(hookPayload("UserPromptSubmit", { prompt: "z:rebase" }));
+    const answered: HookRequest = request.ok ? request.value : { kind: "ignore" };
+    if (!repo.ok || answered.kind !== "answer") throw new Error("no answer");
+    const { input } = answered;
+    const similarNotes = repo.value.notes.filter((note) => note.name === "check deploy");
+    const first = answerHook(repo.value, { input, now, similarNotes });
+    const again = answerHook(repo.value, { input, now, similarNotes, shown: first.shown });
+    const changed = { ...first.shown, language: "an older version" };
+    const afterChange = answerHook(repo.value, { input, now, similarNotes, shown: changed });
+    expect({
+      first: namesIn(first.output),
+      shown: Object.keys(first.shown),
+      again: namesIn(again.output),
+      againShown: Object.keys(again.shown),
+      afterChange: namesIn(afterChange.output),
+    }).toEqual({
+      first: ["rebase", "deploy", "language", "check deploy"],
+      shown: ["rebase", "deploy", "language", "check deploy"],
+      again: ["rebase"],
+      againShown: ["rebase"],
+      afterChange: ["rebase", "language"],
+    });
   });
 });

@@ -2,6 +2,7 @@ import type { ContextBlock, ContextSection } from "../context/fit-context.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import type { HookInput } from "../hook-input/parse-hook-input.ts";
 import { nameKey } from "@zambil/core/index-names";
+import { noteVersion } from "../session/shown-notes.ts";
 import { renderNote } from "@zambil/core/render-note";
 import type { RenderWording } from "@zambil/core/render-wording";
 import { selectHookNotes } from "./select-hook-notes.ts";
@@ -32,7 +33,8 @@ export function hookSection(
     const description = note.description?.replaceAll(/\s*\n\s*/g, " ") ?? "It has no description.";
     const open = wording.openNote(note.name);
     const pointer = `[[${note.name}]]: ${description} ${open}`;
-    blocks.push({ key: nameKey(note.name), text: rendered.text, pointer });
+    const version = noteVersion(rendered.text);
+    blocks.push({ key: nameKey(note.name), text: rendered.text, pointer, version });
   }
   const hook = describeHook(input);
   const heading = `zambil reads notes from the user's configuration repo. These notes name ${hook}:`;

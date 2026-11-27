@@ -2,6 +2,8 @@ import { describe, expect, test } from "vite-plus/test";
 import { hookPayload, preToolUse } from "./hook-payloads.ts";
 import { parseHookInput } from "./parse-hook-input.ts";
 
+const session = { sessionId: "cb2b4f53-402c-410e-beaf-baa0b2af3da0" };
+
 describe("parseHookInput", () => {
   test("reads the prompt, the tool names and the plain hooks from real payload shapes", () => {
     const batch = hookPayload("PostToolBatch", {
@@ -34,6 +36,7 @@ describe("parseHookInput", () => {
         value: {
           kind: "answer",
           input: { kind: "plain", hookEventName: "SessionStart", source: "startup" },
+          session,
         },
       },
       {
@@ -41,6 +44,7 @@ describe("parseHookInput", () => {
         value: {
           kind: "answer",
           input: { kind: "prompt", hookEventName: "UserPromptSubmit", prompt: "Use z:deploy" },
+          session,
         },
       },
       {
@@ -48,6 +52,7 @@ describe("parseHookInput", () => {
         value: {
           kind: "answer",
           input: { kind: "tool", hookEventName: "PreToolUse", toolNames: ["Bash"] },
+          session,
         },
       },
       {
@@ -55,13 +60,21 @@ describe("parseHookInput", () => {
         value: {
           kind: "answer",
           input: { kind: "tool", hookEventName: "PostToolBatch", toolNames: ["Bash", "Read"] },
+          session,
         },
       },
       {
         ok: true,
-        value: { kind: "answer", input: { kind: "plain", hookEventName: "SubagentStart" } },
+        value: {
+          kind: "answer",
+          input: { kind: "plain", hookEventName: "SubagentStart" },
+          session: { ...session, agentId: "a1" },
+        },
       },
-      { ok: true, value: { kind: "answer", input: { kind: "plain", hookEventName: "Stop" } } },
+      {
+        ok: true,
+        value: { kind: "answer", input: { kind: "plain", hookEventName: "Stop" }, session },
+      },
     ]);
   });
 
