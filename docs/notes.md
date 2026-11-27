@@ -249,6 +249,7 @@ zambil reports two kinds of problem. An error makes `zambil check` exit with 1. 
 | A skill has no `description`.                                      | warning |
 | `when-expired` without `expires`, or `run-with` without `script`.  | warning |
 | A path in `paths` is not a full path and does not start with `~/`. | warning |
+| A name in `projects` holds a `/`.                                  | warning |
 | Obsidian cannot link to a name or an alias.                        | warning |
 | A folder cannot be read.                                           | warning |
 | `hooks` names a hook that cannot add context, or no such hook.     | warning |

@@ -73,7 +73,7 @@ function storeName(store: string): string {
 function repoName(root: string): string {
   if (gitEntry(join(root, ".git")) !== "file") return basename(root);
   const store = worktreeGitDir.exec(readText(join(root, ".git")))?.groups?.store;
-  return store === undefined ? basename(root) : storeName(store);
+  return store === undefined ? basename(root) : storeName(resolve(root, store));
 }
 
 function findRepoRoot(folder: string): string | undefined {

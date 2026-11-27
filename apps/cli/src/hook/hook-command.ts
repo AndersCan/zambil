@@ -11,6 +11,7 @@ import type { FindSimilarNotesOptions } from "@zambil/claude-code/find-similar-n
 import { formatSystemMessage } from "@zambil/claude-code/format-hook-output";
 import type { HookList } from "@zambil/claude-code/hook-list";
 import { indexHint } from "../index/index-hint.ts";
+import { isScoped } from "@zambil/core/applies-in-place";
 import { loadHookList } from "@zambil/claude-code/load-hook-list";
 import type { Note } from "@zambil/core/note";
 import { openRepo } from "../open-repo.ts";
@@ -148,8 +149,8 @@ async function runHook(options: CommandRunOptions): Promise<ExitCode> {
   const repoFlag = parsed.value.values.repo;
   const { folder } = request.value;
   const { home } = options.config.environment;
-  const isScoped = repo.value.notes.some((note) => note.projects.length + note.paths.length > 0);
-  const place = folder === undefined || !isScoped ? undefined : findProjectPlace(folder, { home });
+  const hasScope = repo.value.notes.some((note) => isScoped(note));
+  const place = folder === undefined || !hasScope ? undefined : findProjectPlace(folder, { home });
   const similarNotes =
     input.kind === "prompt"
       ? await similarTo(repo.value, {

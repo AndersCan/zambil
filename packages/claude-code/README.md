@@ -50,7 +50,7 @@ At `UserPromptSubmit`, the hook finds the notes whose `description` is similar t
 
 Run `zambil install` or `zambil index` once before you use the hook. Each downloads the model, about 23 MB, and embeds the descriptions ahead of time. `zambil save` adds the description of each note that it writes to the index. Run `zambil index` again after you change descriptions in your editor.
 
-The similar notes come after the notes that the prompt names and the notes of the hook. A note comes only once. A note that the prompt names with `z:<name>`, also in part, is not added again as a similar note. Neither is a note that the hook already added. A note that names `SessionStart` is not added either, because it is in the context for the whole session.
+The similar notes come after the notes that the prompt names and the notes of the hook. A note comes only once. A note that the prompt names with `z:<name>`, also in part, is not added again as a similar note. Neither is a note that the hook already added. A note that names `SessionStart` and has no `projects` or `paths` is not added either, because it is in the context for the whole session. A `SessionStart` note with a scope can come as a similar note when the context does not hold it yet, for example after the agent moved to its project.
 
 A note that another note names in `when-expired`, and that names no hook itself, is not a similar note either. It tells how to verify the other note, so it is for the agent that reads the expiry warning, not for a prompt about the topic. The expiry warning and `z:<name>` still reach it. A helper note that names a hook is a note of its own, so it can still match. A note for another project or path is not a similar note either.
 

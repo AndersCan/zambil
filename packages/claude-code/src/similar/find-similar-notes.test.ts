@@ -97,6 +97,9 @@ describe("searchableNotes", () => {
         '---\ndescription: How to deploy the webshop.\npaths: ["~/git/webshop"]\n---\nmake shop\n',
       "deploy-checklist.md":
         "---\ndescription: What to check before any deploy.\n---\nTests pass.\n",
+      "blog-start.md":
+        "---\ndescription: The blog setup.\nhooks: SessionStart\nprojects: blog\n---\nHugo.\n",
+      "start.md": "---\ndescription: The general setup.\nhooks: SessionStart\n---\npnpm.\n",
     });
     const repo = loadRepo(root);
     if (!repo.ok) throw new Error(repo.error.message);
@@ -113,7 +116,7 @@ describe("searchableNotes", () => {
     }
     expect(names).toEqual([
       ["deploy-checklist"],
-      ["deploy-blog", "deploy-checklist"],
+      ["blog-start", "deploy-blog", "deploy-checklist"],
       ["deploy-checklist", "deploy-webshop"],
     ]);
   });

@@ -12,6 +12,11 @@ interface PathOptions {
   place: ProjectPlace;
 }
 
+/** A note with `projects` or `paths` applies only in some places. */
+export function isScoped(note: Note): boolean {
+  return note.projects.length > 0 || note.paths.length > 0;
+}
+
 /** A path in `paths` is full, or starts at the home folder with `~`. `zambil check` warns about any other path. */
 export function isScopePath(path: string): boolean {
   return path === "~" || path.startsWith("~/") || path.startsWith("/");
@@ -32,8 +37,7 @@ function isUnderPath(path: string, options: PathOptions): boolean {
  * compare in any case. With no place, a scoped note does not apply.
  */
 export function appliesInPlace(note: Note, options: AppliesInPlaceOptions): boolean {
-  const isScoped = note.projects.length > 0 || note.paths.length > 0;
-  if (!isScoped) return true;
+  if (!isScoped(note)) return true;
   const { place } = options;
   if (place === undefined) return false;
   const projects = new Set(place.projects.map((project) => project.toLowerCase()));

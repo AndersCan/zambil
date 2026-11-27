@@ -20,6 +20,9 @@ describe("findProjectPlace", () => {
     await mkdir(bareWorktree, { recursive: true });
     const bareStore = join(root, "git", "blog", ".bare", "worktrees", "main");
     await writeFile(join(bareWorktree, ".git"), `gitdir: ${bareStore}\n`);
+    const nested = join(webshop, "trees", "fix");
+    await mkdir(nested, { recursive: true });
+    await writeFile(join(nested, ".git"), "gitdir: ../../.git/worktrees/fix\n");
     const link = join(root, "shop-link");
     await symlink(webshop, link);
     const home = "/home/ada";
@@ -30,6 +33,7 @@ describe("findProjectPlace", () => {
       findProjectPlace(loose, { home }).projects,
       findProjectPlace(bareWorktree, { home }).projects,
       findProjectPlace(join(link, "apps"), { home }),
+      findProjectPlace(nested, { home }).projects,
     ]).toEqual([
       { folder: join(webshop, "apps", "web"), projects: ["webshop"], home },
       { folder: worktree, projects: ["webshop", "webshop-dark-mode"], home },
@@ -37,6 +41,7 @@ describe("findProjectPlace", () => {
       ["scratch"],
       ["blog", "main"],
       { folder: join(webshop, "apps"), projects: ["webshop"], home },
+      ["webshop", "fix"],
     ]);
   });
 });

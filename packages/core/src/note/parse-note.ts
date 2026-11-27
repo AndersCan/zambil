@@ -134,14 +134,14 @@ function propertyFindings(plain: PlainNote, options: KindOptions): void {
     if (isScopePath(path)) continue;
     findings.push({
       severity: "warning",
-      message: `\`paths\` holds "${path}", but each path must be a full path or start with ~/, so zambil ignores it`,
+      message: `\`paths\` holds "${path}", but each path must be a full path or start with ~/. The path matches no folder, so the note applies only through its other paths or projects`,
     });
   }
   for (const project of known.projects) {
     if (!project.includes("/")) continue;
     findings.push({
       severity: "warning",
-      message: `\`projects\` holds "${project}", but a project is the name of a repo or a folder. Put a path in \`paths\``,
+      message: `\`projects\` holds "${project}", but a project is the name of a repo or a folder, so it matches no project. Put a path in \`paths\``,
     });
   }
   for (const name of [plain.name, ...known.aliases]) {

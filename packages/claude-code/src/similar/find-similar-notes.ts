@@ -1,5 +1,5 @@
+import { appliesInPlace, isScoped } from "@zambil/core/applies-in-place";
 import { left, right, wrap } from "@zambil/core/either";
-import { appliesInPlace } from "@zambil/core/applies-in-place";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import type { Either } from "@zambil/core/either";
 import { findNote } from "@zambil/core/find-note";
@@ -83,16 +83,16 @@ function expiryHelpers(repo: SearchRepo): Set<Note> {
 }
 
 /**
- * The notes that a prompt can match. A `SessionStart` note and a note in `inContext` are in the context
- * already, so they take no match, and a lower note can take the place. An expiry helper with no hook
+ * The notes that a prompt can match. A `SessionStart` note without scope and a note in `inContext` are
+ * in the context already, so they take no match, and a lower note can take the place. An expiry helper with no hook
  * takes no match either: the expiry warning and `z:<name>` reach it. A helper that names a hook is a
  * note of its own, so it still matches. A note for another project or path takes no match.
  */
 export function searchableNotes(repo: SearchRepo, options: SearchableNotesOptions): Note[] {
   const helpers = expiryHelpers(repo);
   return repo.notes.filter((note) => {
-    const isInContext =
-      note.hooks.includes("SessionStart") || Object.hasOwn(options.inContext, nameKey(note.name));
+    const isSessionNote = note.hooks.includes("SessionStart") && !isScoped(note);
+    const isInContext = isSessionNote || Object.hasOwn(options.inContext, nameKey(note.name));
     const isHelper = note.hooks.length === 0 && helpers.has(note);
     const isElsewhere = !appliesInPlace(note, { place: options.place });
     return !isInContext && !isHelper && !isElsewhere;
