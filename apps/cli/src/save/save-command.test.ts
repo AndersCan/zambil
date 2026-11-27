@@ -88,6 +88,10 @@ describe("saveCommand", () => {
       run(["deploy", "--repo", root, "--verified", "--no-expires"]),
       run(["new", "--repo", root, "--no-expires", "--when-expired", "deploy"], { input: note }),
       run(["new", "--repo", root, "--no-expires"], { input: "---\naliases: [deploy]\n---\nText." }),
+      run(["deploy", "--repo", root, "--rewrite", "--no-expires", "--allow-similar"], {
+        input: note,
+      }),
+      run(["deploy", "--repo", root, "--verified", "--expires", "2027-01-01", "--allow-similar"]),
     ]);
     const messages = results.map((result) => {
       const lines = result.stderr.split("\n");
@@ -110,6 +114,8 @@ describe("saveCommand", () => {
         1,
         'zambil did not save "new". The alias "deploy" in the text is already used by deploy.md. Pick another alias.',
       ],
+      [2, "--allow-similar is only for a new note."],
+      [2, "--verified sets a new expires date only. Use --rewrite to change more."],
     ]);
   });
 
@@ -276,7 +282,7 @@ describe("saveCommand and notes with a similar description", () => {
             expect.stringMatching(
               /^ {2}0\.9\d {3}deploy-blog {2}ops\/deploy-blog\.md {2}How to deploy the blog\.$/,
             ),
-            "If the new note says the same, put its text into that note instead. This command keeps the expiry of that note:",
+            "If the new note says the same, put its text into deploy-blog, the best match, instead. This command keeps the expiry of that note:",
             `  zambil save deploy-blog --rewrite --expires 2027-06-01 --repo ${root} < merged-text.md`,
             "If it is about something else, run the same save again with --allow-similar.",
             "",

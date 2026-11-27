@@ -4,9 +4,9 @@ import { left, right } from "@zambil/core/either";
 import type { CliConfig } from "../config.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import type { Either } from "@zambil/core/either";
+import { findDuplicateNotes } from "./find-duplicate-notes.ts";
 import { findNote } from "@zambil/core/find-note";
 import { findRecalls } from "@zambil/claude-code/find-recalls";
-import { findSimilarNotes } from "./find-similar-notes.ts";
 import { formatColumns } from "../list/format-columns.ts";
 import { indexHint } from "../index/index-hint.ts";
 import { installHint } from "./install-hint.ts";
@@ -240,7 +240,7 @@ function describeSimilar(similar: NoteScore[], options: SimilarMessageOptions): 
   return [
     `zambil did not save "${options.name}". ${subject} a very similar description:`,
     formatColumns(rows),
-    "If the new note says the same, put its text into that note instead. This command keeps the expiry of that note:",
+    `If the new note says the same, put its text into ${name}, the best match, instead. This command keeps the expiry of that note:`,
     `  zambil save ${name} --rewrite ${expiry}${repo} < merged-text.md`,
     "If it is about something else, run the same save again with --allow-similar.",
   ].join("\n");
@@ -266,7 +266,7 @@ async function similarRefusal(
   const file: NoteFile = { name: request.name, path: `${request.name}.md`, kind: "note" };
   const { description } = parseNote(request.text, { file }).note;
   if (description === undefined) return undefined;
-  const similar = await findSimilarNotes(description, options);
+  const similar = await findDuplicateNotes(description, options);
   if (similar.length === 0) return undefined;
   return describeSimilar(similar, { name: request.name, repoFlag: flags.repo });
 }
@@ -390,7 +390,7 @@ export const saveCommand: Command = {
     },
     {
       flag: "--allow-similar",
-      text: "Save a new note, also when a current note has a very similar description.",
+      text: "Save a new note, also when a current note has a very similar description. zambil checks this only when the search model is in the cache.",
     },
     {
       flag: "--verified",

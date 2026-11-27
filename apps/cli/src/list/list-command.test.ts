@@ -72,7 +72,7 @@ describe("listCommand", () => {
         code: 0,
         stdout: [
           'No note has each word of "commit blog" in its name, an alias or its description.',
-          `To find notes with a similar description, run \`zambil search 'commit blog' --repo ${root}\`.`,
+          `To find notes with a similar description, run \`zambil search 'commit blog' --repo ${root}\`. To see every name, run \`zambil list --repo ${root}\`.`,
           "",
         ].join("\n"),
         stderr: "",

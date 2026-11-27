@@ -68,7 +68,7 @@ function noMatch(options: NoMatchOptions): string {
   const search = commandLine(`zambil search ${quoteArgument(options.text)}`, options);
   return [
     `No note has each word of "${options.text}" in its name, an alias or its description.`,
-    `To find notes with a similar description, run \`${search}\`.`,
+    `To find notes with a similar description, run \`${search}\`. To see every name, run \`${commandLine("zambil list", options)}\`.`,
   ].join("\n");
 }
 

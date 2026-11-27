@@ -12,7 +12,7 @@ import { wrap } from "@zambil/core/either";
 export const duplicateScore = 0.8;
 
 /** The repo before the save, the startup config, and the moment that decides which notes are expired. */
-export interface FindSimilarNotesOptions {
+export interface FindDuplicateNotesOptions {
   repo: ConfigurationRepo;
   config: CliConfig;
   now: Date;
@@ -21,11 +21,11 @@ export interface FindSimilarNotesOptions {
 /**
  * The current notes whose description scores `duplicateScore` or more against the description, best
  * first. It loads the model only when the model is in the cache, so a save never waits for a download.
- * When the model does not load, it finds no notes and the save goes on.
+ * When the model does not load, or the search fails or throws, it finds no notes and the save goes on.
  */
-export async function findSimilarNotes(
+export async function findDuplicateNotes(
   description: string,
-  options: FindSimilarNotesOptions,
+  options: FindDuplicateNotesOptions,
 ): Promise<NoteScore[]> {
   const { repo, config, now } = options;
   const { environment } = config;
@@ -33,12 +33,14 @@ export async function findSimilarNotes(
   if (files.model === "missing") return [];
   const loaded = await wrap(import("@zambil/embed/open-note-search"));
   if (!loaded.ok) return [];
-  const noteSearch = await loaded.value.openNoteSearch(environment, {
-    report: () => undefined,
-    download: "never",
-  });
+  const opened = await wrap(
+    loaded.value.openNoteSearch(environment, { report: () => undefined, download: "never" }),
+  );
+  const noteSearch = opened.ok ? opened.value : opened;
   if (!noteSearch.ok) return [];
-  const result = await noteSearch.value.search(repo, { text: description, now });
+  if (files.unindexed > 0) await wrap(noteSearch.value.index(repo));
+  const searched = await wrap(noteSearch.value.search(repo, { text: description, now }));
+  const result = searched.ok ? searched.value : searched;
   if (!result.ok) return [];
   return result.value.matches.filter((match) => match.score >= duplicateScore);
 }
