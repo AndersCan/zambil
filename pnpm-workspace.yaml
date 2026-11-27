@@ -10,6 +10,7 @@ catalogMode: prefer
 # Every dependency version lives here. A package.json refers to it as "catalog:".
 catalog:
   "@types/node": ^24
+  js-yaml: ^5.5.0
   vite: npm:@voidzero-dev/vite-plus-core@8.3.8001
   vite-plus: 1.8.0
 
