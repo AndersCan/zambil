@@ -182,7 +182,6 @@ export function parseNote(text: string, options: ParseNoteOptions): ParsedNote {
     triggers: known.triggers,
     expiry: readExpiry({ frontmatter: split.frontmatter, properties: parsedProperties, known }),
     properties,
-    content: split.content,
   };
   if (known.description !== undefined) plain.description = known.description;
   if (known.whenExpired !== undefined) plain.whenExpired = known.whenExpired;

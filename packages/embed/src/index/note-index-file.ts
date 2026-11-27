@@ -18,15 +18,25 @@ export interface WriteNoteIndexOptions {
   cacheFolder: string;
 }
 
+function rootHash(root: string): string {
+  return createHash("sha256").update(root).digest("hex").slice(0, 16);
+}
+
 /** The index file of a repo. Its name is a hash of the repo root, so each repo has its own file. */
 export function noteIndexPath(root: string, options: WriteNoteIndexOptions): string {
-  const name = createHash("sha256").update(root).digest("hex").slice(0, 16);
+  const name = rootHash(root);
+  return join(options.cacheFolder, "index", `${name}.index`);
+}
+
+/** The JSON index file that zambil wrote before the binary one. A write removes it. */
+function oldIndexPath(root: string, options: WriteNoteIndexOptions): string {
+  const name = rootHash(root);
   return join(options.cacheFolder, "index", `${name}.json`);
 }
 
-function readIndexText(path: string): string | undefined {
+function readIndexBytes(path: string): Uint8Array | undefined {
   try {
-    return readFileSync(path, "utf8");
+    return readFileSync(path);
   } catch {
     return undefined;
   }
@@ -38,14 +48,17 @@ function readIndexText(path: string): string | undefined {
  */
 export function readNoteIndex(root: string, options: ReadNoteIndexOptions): NoteIndex {
   const empty = { modelKey: options.modelKey, root, vectors: new Map<string, Float32Array>() };
-  const text = readIndexText(noteIndexPath(root, options));
-  if (text === undefined) return empty;
-  const index = parseNoteIndex(text);
+  const bytes = readIndexBytes(noteIndexPath(root, options));
+  if (bytes === undefined) return empty;
+  const index = parseNoteIndex(bytes);
   const isUsable = index?.modelKey === options.modelKey && index.root === root;
   return isUsable ? index : empty;
 }
 
-/** Writes the index of a repo, through a temporary file, so that a reader never sees half a file. */
+/**
+ * Writes the index of a repo, through a temporary file, so that a reader never sees half a file. It
+ * removes the JSON index of an older zambil.
+ */
 export async function writeNoteIndex(
   index: NoteIndex,
   options: WriteNoteIndexOptions,
@@ -62,5 +75,6 @@ export async function writeNoteIndex(
     await rm(partial, { force: true });
     return left(`cannot write ${path}: ${String(moved.error)}`);
   }
+  await wrap(rm(oldIndexPath(index.root, options), { force: true }));
   return right(path);
 }

@@ -10,33 +10,35 @@ const index = {
   ]),
 };
 
-function withEntries(entries: unknown[]): string {
-  return JSON.stringify({ format: 2, modelKey: "model@1", root: "/notes", entries });
+/** An index file with this header and no vectors, padded to a float boundary. */
+function withHeader(header: unknown): Uint8Array {
+  const text = Buffer.from(JSON.stringify(header));
+  const bytes = new Uint8Array(Math.ceil((4 + text.byteLength) / 4) * 4);
+  new DataView(bytes.buffer).setUint32(0, text.byteLength, true);
+  bytes.set(text, 4);
+  return bytes;
 }
 
 describe("parseNoteIndex", () => {
-  test("reads what formatNoteIndex writes, and no index from a broken vector or another format", () => {
-    const twoFloats = Buffer.from(Float32Array.of(1, 2).buffer).toString("base64");
-    const oneFloat = Buffer.from(Float32Array.of(1).buffer).toString("base64");
+  test("reads what formatNoteIndex writes, also off a float boundary, and no index from a cut file or another format", () => {
+    const bytes = formatNoteIndex(index);
+    const shifted = new Uint8Array(bytes.byteLength + 1);
+    shifted.set(bytes, 1);
+    const header = { modelKey: "model@1", root: "/notes", dimensions: 2, texts: [] };
     expect({
-      roundTrip: parseNoteIndex(formatNoteIndex(index)),
-      partialFloat: parseNoteIndex(withEntries([{ description: "Git.", vector: "abc" }])),
-      mixedLengths: parseNoteIndex(
-        withEntries([
-          { description: "Git.", vector: twoFloats },
-          { description: "Deploy.", vector: oneFloat },
-        ]),
-      ),
-      otherFormat: parseNoteIndex(
-        JSON.stringify({ format: 1, modelKey: "model@1", root: "/notes", entries: [] }),
-      ),
-      notJson: parseNoteIndex("{"),
+      roundTrip: parseNoteIndex(bytes),
+      offBoundary: parseNoteIndex(shifted.subarray(1)),
+      cut: parseNoteIndex(bytes.subarray(0, bytes.byteLength - 4)),
+      otherFormat: parseNoteIndex(withHeader({ ...header, format: 2 })),
+      emptyIndex: parseNoteIndex(withHeader({ ...header, format: 3 }))?.vectors.size,
+      notAnIndex: parseNoteIndex(Buffer.from("{}")),
     }).toEqual({
       roundTrip: index,
-      partialFloat: undefined,
-      mixedLengths: undefined,
+      offBoundary: index,
+      cut: undefined,
       otherFormat: undefined,
-      notJson: undefined,
+      emptyIndex: 0,
+      notAnIndex: undefined,
     });
   });
 });
