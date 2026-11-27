@@ -70,6 +70,33 @@ describe("installHooks", () => {
     });
   });
 
+  test("moves a zambil hook out of a group with a matcher and keeps one zambil hook per event", () => {
+    const old = { type: "command", command: "zambil hook" };
+    const narrow = {
+      hooks: { PreToolUse: [{ matcher: "Bash", hooks: [lint, old] }, { hooks: [old, old] }] },
+    };
+    const twice = { hooks: { Stop: [{ hooks: [old, lint, old] }] } };
+    const hookNames = ["PreToolUse", "Stop"];
+    expect([
+      installHooks(narrow, { command, hookNames }),
+      installHooks(twice, { command, hookNames }),
+    ]).toEqual([
+      {
+        ok: true,
+        value: {
+          hooks: {
+            PreToolUse: [{ matcher: "Bash", hooks: [lint] }, { hooks: [zambil] }],
+            Stop: [{ hooks: [zambil] }],
+          },
+        },
+      },
+      {
+        ok: true,
+        value: { hooks: { Stop: [{ hooks: [zambil, lint] }], PreToolUse: [{ hooks: [zambil] }] } },
+      },
+    ]);
+  });
+
   test("refuses settings whose hooks it cannot read", () => {
     const results = [
       installHooks({ hooks: [] }, { command, hookNames: ["UserPromptSubmit"] }),

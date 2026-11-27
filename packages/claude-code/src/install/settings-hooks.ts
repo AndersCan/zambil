@@ -55,16 +55,32 @@ interface ReplaceOptions {
   handler: Record<string, unknown>;
 }
 
-/** Puts the handler in place of the first zambil handler, or in a new group at the end. */
+/** A group without a `matcher` runs for every tool. zambil filters by `tools` itself, so it needs one. */
+function matchesEveryTool(group: unknown): boolean {
+  const matcher = asRecord(group)?.matcher;
+  return matcher === undefined || matcher === "" || matcher === "*";
+}
+
+/**
+ * Puts the handler in place of the first zambil handler in a group for every tool, or in a new group
+ * at the end. Each other zambil handler goes away, so the hook runs once.
+ */
 function withHandler(groups: unknown[], options: ReplaceOptions): unknown[] {
-  const position = groups.findIndex((group) => handlersOf(group).some(isZambilHandler));
-  if (position === -1) return [...groups, { hooks: [options.handler] }];
+  const position = groups.findIndex(
+    (group) => matchesEveryTool(group) && handlersOf(group).some(isZambilHandler),
+  );
+  if (position === -1) return [...withoutZambil(groups), { hooks: [options.handler] }];
   const group = asRecord(groups[position]);
   const handlers = handlersOf(group);
   const first = handlers.findIndex(isZambilHandler);
-  const replaced = [...handlers.slice(0, first), options.handler, ...handlers.slice(first + 1)];
-  const rest = withoutZambil(groups.slice(position + 1));
-  return [...groups.slice(0, position), { ...group, hooks: replaced }, ...rest];
+  const replaced: unknown[] = [];
+  for (const [index, handler] of handlers.entries()) {
+    if (index === first) replaced.push(options.handler);
+    else if (!isZambilHandler(handler)) replaced.push(handler);
+  }
+  const before = withoutZambil(groups.slice(0, position));
+  const after = withoutZambil(groups.slice(position + 1));
+  return [...before, { ...group, hooks: replaced }, ...after];
 }
 
 interface WithEventsOptions {
