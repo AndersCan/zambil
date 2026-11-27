@@ -1,6 +1,6 @@
 # zambil and Obsidian
 
-Obsidian is a Markdown editor that works on a folder of notes, a vault. The notes folder of zambil opens as a vault. zambil uses the same properties, tags, aliases, links and embeds as Obsidian. It skips the folders that start with `.`, such as `.obsidian` and `.trash`. The root [`README.md`](../README.md#use-an-obsidian-vault-that-you-have) tells you how to connect a vault that you already use.
+Obsidian is a Markdown editor that works on a folder of notes, a vault. The notes folder of zambil can be a vault, or a folder in a vault. The root [`README.md`](../README.md#use-an-obsidian-vault-that-you-have) tells you how to connect a vault that you already use.
 
 ## Find the notes for a hook
 
@@ -18,8 +18,6 @@ Obsidian ignores case in a search, and it also finds part of a name. So `[hooks:
 
 These results come from Obsidian 1.15.1 with the sample repo in `packages/core/fixtures/sample-repo`.
 
-## Links
+## Links and names
 
-`[[deploy]]` links to the note `deploy` in any folder. To link with an alias, write `[[deploy|ship]]`. zambil also reads `[[ship]]`, but Obsidian cannot follow that link. `z:ship` in a prompt works with the alias.
-
-zambil needs a unique name for each note in the whole folder, in any case. Obsidian allows the same name in two folders. `docs/notes.md` describes the names in [Names](notes.md#names).
+`docs/notes.md` describes how zambil reads links, aliases and names in [Names](notes.md#names). Two differences from Obsidian matter most. zambil needs a unique name for each note in the whole folder. A `[[link]]` that uses an alias works in zambil, but Obsidian cannot follow it, so write `[[deploy|ship]]`.

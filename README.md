@@ -28,7 +28,7 @@ You need Node 24 or later with npm, git and Claude Code. The steps work on Linux
    zambil init
    ```
 
-   `zambil init` makes the notes folder `~/zambil-notes` with one starter note. It connects the folder to Claude Code. It also downloads a model of 23 MB that finds similar notes. To keep the notes in another folder, run `zambil init <folder>` in place of `zambil init`. The output ends with the next steps:
+   On the first run, `zambil init` makes the notes folder `~/zambil-notes` with one starter note. It connects the folder to Claude Code. It also downloads a model of 23 MB that finds similar notes. To keep the notes in another folder, run `zambil init <folder>` in place of `zambil init`. The output lists the next steps. The first one is:
 
    ```text
    Checked 1 note: no problems.
@@ -37,13 +37,13 @@ You need Node 24 or later with npm, git and Claude Code. The steps work on Linux
      1. Start a new Claude Code session. Its first reply says that the zambil-welcome note reached it.
    ```
 
-3. Start a new Claude Code session in any project, and send a prompt, for example `hello`. The first reply starts with this line:
+3. Start a new Claude Code session in any project, and send a short prompt, for example `hello`. The first reply starts with this line:
 
    ```text
-   zambil works: the zambil-welcome note reached me. To stop this line, remove `hooks: [SessionStart]` from zambil-welcome.md in your notes folder, or delete the note.
+   > zambil works: the zambil-welcome note reached me. To stop this line, remove `hooks: [SessionStart]` from zambil-welcome.md in your notes folder, or delete the note.
    ```
 
-   A session that started before `zambil init` has no zambil hooks. If you do not see the line in a new session, run `zambil doctor`. See [When something is wrong](#when-something-is-wrong).
+   If the first prompt is a task, the agent can skip the line. A session that started before `zambil init` has no zambil hooks. If you do not see the line in a new session, run `zambil doctor`. See [When something is wrong](#when-something-is-wrong).
 
 ## Write your first note
 
@@ -55,7 +55,7 @@ To let the agent write a note, ask for it in a Claude Code prompt:
 Write a zambil note that we use pnpm, never npm.
 ```
 
-The agent chooses a name, for example `use-pnpm`, and a description. It saves the note with `zambil save`. zambil never writes a note on its own. The agent writes a note only on your request.
+The agent chooses a name, for example `use-pnpm`, and a description. It saves the note with `zambil save`. Claude Code asks you to allow the `zambil` commands. Allow them. Apart from the starter note, zambil never writes a note on its own. The agent writes a note only on your request.
 
 To write a note yourself, make a file in the notes folder, for example `~/zambil-notes/shell-style.md`:
 
@@ -87,9 +87,9 @@ To keep the zambil notes in one folder of the vault, run:
 zambil init ~/vault/zambil
 ```
 
-Use the path of your vault in place of `~/vault`. zambil reads only the `zambil` folder, and writes the starter note there. Your other notes stay out of the sessions. In Obsidian, keep the vault open as before. The notes show in its `zambil` folder.
+Use the path of your vault in place of `~/vault`. zambil reads only the `zambil` folder, and writes the starter note there. Your other notes stay out of the sessions. In Obsidian, keep the vault open as before. The notes show in its `zambil` folder. The output of `zambil init` says to open the `zambil` folder in Obsidian. Skip that step.
 
-To use the whole vault, run `zambil init ~/vault`. zambil writes no starter note and changes no file in a folder that has files. So no line comes at the start of a session. To make sure that it works, type `z:<name>` with the name of one of your notes in a prompt. A note reaches the agent only in the three ways above. If a daily note has no `hooks` and no `description`, only `z:<name>` brings it to the agent.
+To use the whole vault, run `zambil init ~/vault`. zambil writes no starter note and changes no file in a folder that has files. So no line comes at the start of a session. To make sure that it works, type `z:<name>` with the name of one of your notes in a prompt. If the name has spaces, write it in brackets, for example `z:[[Meeting notes]]`. A note reaches the agent only in the three ways above. If a daily note has no `hooks` and no `description`, only `z:<name>` brings it to the agent.
 
 zambil needs a unique name for each note in the whole folder. Obsidian allows the same name in two folders, but zambil reports it as an error:
 
@@ -101,7 +101,7 @@ Daily/launch.md: error: the name "launch" is used by 2 notes: Daily/launch.md, P
 
 ## When something is wrong
 
-Run `zambil doctor`. It checks the whole setup and changes nothing. For each problem, it prints a `Fix:` line with the command that fixes it:
+Run `zambil doctor`. It checks the whole setup and changes nothing. For each problem, it prints a `Fix:` line with the command that fixes it. For example, after you add `hooks: [PreToolUse]` to `shell-style.md`, it prints:
 
 ```text
 fail  The zambil hooks in /home/ada/.claude/settings.json do not match what zambil install writes now.
@@ -143,7 +143,7 @@ The install command puts zambil in `~/.local/share/zambil`. To put zambil in ano
 curl -fsSL https://raw.githubusercontent.com/AndersCan/zambil/main/install.sh | ZAMBIL_HOME=~/apps/zambil sh
 ```
 
-It installs zambil in the new folder and points `~/.local/bin/zambil` at it. The hooks run `~/.local/bin/zambil`, so they keep working. Then delete the old folder with `rm -rf ~/.local/share/zambil`. Set the same `ZAMBIL_HOME` each time that you update. To link `zambil` into a folder other than `~/.local/bin`, set `ZAMBIL_BIN_DIR`.
+It installs zambil in the new folder and points `~/.local/bin/zambil` at it. The hooks run `~/.local/bin/zambil`, so they keep working. You do not need to run the `zambil init` that the output names. Then delete the old folder with `rm -rf ~/.local/share/zambil`. Set the same `ZAMBIL_HOME` each time that you update.
 
 ## Uninstall
 
@@ -153,17 +153,18 @@ To disconnect zambil from Claude Code, run:
 zambil uninstall
 ```
 
-It removes the zambil hooks from `~/.claude/settings.json` and the `zambil-save` skill from `~/.claude/skills/zambil-save`. The other settings and hooks stay as they are. Start a new Claude Code session to stop the hooks.
+It removes the zambil hooks from `~/.claude/settings.json` and the `zambil-save` skill from `~/.claude/skills/zambil-save`. The other settings and hooks stay as they are. If `zambil init` made `settings.json`, the file stays with `{}` in it. Start a new Claude Code session to stop the hooks.
 
 `zambil uninstall` never changes your notes. It also leaves these files in place:
 
-| What                                          | Where                                               | Size         |
-| --------------------------------------------- | --------------------------------------------------- | ------------ |
-| zambil and its dependencies                   | `~/.local/share/zambil`                             | About 300 MB |
-| The `zambil` command, a link                  | `~/.local/bin/zambil`                               | One link     |
-| The path of the notes folder                  | `~/.config/zambil/config.json`                      | One file     |
-| The model, the index and the hook list        | `~/.cache/zambil`                                   | About 23 MB  |
-| The download caches of npm and pnpm, on Linux | `~/.npm`, `~/.cache/pnpm` and `~/.local/share/pnpm` | About 330 MB |
+| What                                            | Where                                               | Size         |
+| ----------------------------------------------- | --------------------------------------------------- | ------------ |
+| zambil and its dependencies                     | `~/.local/share/zambil`                             | About 300 MB |
+| The `zambil` command, a link                    | `~/.local/bin/zambil`                               | One link     |
+| The path of the notes folder                    | `~/.config/zambil/config.json`                      | One file     |
+| The model, the index and the hook list          | `~/.cache/zambil`                                   | About 23 MB  |
+| The download caches of npm and pnpm, on Linux   | `~/.npm`, `~/.cache/pnpm` and `~/.local/share/pnpm` | About 330 MB |
+| The files of ONNX Runtime, which runs the model | `~/.cache/Microsoft/DeveloperTools/.onnxruntime`    | About 40 KB  |
 
 To remove zambil completely, run these commands after `zambil uninstall`. They keep your notes:
 
@@ -172,7 +173,7 @@ rm -rf ~/.local/share/zambil ~/.cache/zambil ~/.config/zambil
 rm ~/.local/bin/zambil
 ```
 
-The download caches of npm and pnpm are for all programs that use npm or pnpm, so these commands keep them. The table gives the default paths. If you set `ZAMBIL_HOME`, `ZAMBIL_BIN_DIR`, `CLAUDE_CONFIG_DIR`, `XDG_DATA_HOME`, `XDG_CONFIG_HOME` or `XDG_CACHE_HOME`, the files are in those folders.
+Other programs share the download caches of npm and pnpm and the files of ONNX Runtime, so these commands keep them. The table gives the default paths. If you set `ZAMBIL_HOME`, `ZAMBIL_BIN_DIR`, `CLAUDE_CONFIG_DIR`, `XDG_DATA_HOME`, `XDG_CONFIG_HOME` or `XDG_CACHE_HOME`, the files are in those folders.
 
 ## Learn more
 

@@ -172,8 +172,9 @@ function checkUpdate(machine: Machine): void {
       updated: existsSync(join(clone, "smoke-update.txt")),
       otherTool: readFileSync(otherTool, "utf8"),
       ownFile: readFileSync(ownFile, "utf8"),
+      ready: result.stdout.endsWith("\nzambil is ready.\n"),
     },
-    { status: 0, updated: true, otherTool: "keep\n", ownFile: "keep\n" },
+    { status: 0, updated: true, otherTool: "keep\n", ownFile: "keep\n", ready: true },
     result.stderr,
   );
 }
