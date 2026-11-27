@@ -27,7 +27,6 @@ interface NoteFields {
   expiry: Expiry;
   whenExpired?: string;
   properties: Record<string, unknown>;
-  content: string;
 }
 
 /** A plain note: text that zambil adds to the context. */
@@ -46,5 +45,8 @@ export interface ScriptNote extends NoteFields {
   script: Script;
 }
 
-/** One Markdown note of a configuration repo. `path` is relative to the repo root and uses `/`. */
+/**
+ * One Markdown note of a configuration repo. `path` is relative to the repo root and uses `/`. The text
+ * of the note is not here: rendering reads it from the file when it shows the note.
+ */
 export type Note = PlainNote | SkillNote | ScriptNote;

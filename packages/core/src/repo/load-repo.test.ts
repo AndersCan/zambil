@@ -52,7 +52,6 @@ describe("loadRepo", () => {
         hooks: ["PreToolUse"],
         tools: ["Edit", "Write"],
       },
-      content: "\nUse `function` declarations and named exports. #style\n",
     });
   });
 

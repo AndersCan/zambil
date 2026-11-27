@@ -29,7 +29,6 @@ describe("parseNote", () => {
           tags: ["ops"],
           hooks: ["SessionStart"],
         },
-        content: "Run it. #ops #prod\n",
       },
       problems: [],
     });
@@ -90,12 +89,12 @@ describe("parseNote", () => {
     const unreadable = parseNote("---\nexpires: soon\n---\n", { file: noteFile });
     expect({
       broken: {
-        content: broken.note.content,
+        name: broken.note.name,
         severity: broken.problems.map((problem) => problem.severity),
       },
       unreadable: { expiry: unreadable.note.expiry, problems: unreadable.problems },
     }).toEqual({
-      broken: { content: "Body\n", severity: ["error"] },
+      broken: { name: "deploy", severity: ["error"] },
       unreadable: {
         expiry: { kind: "unreadable", text: "soon" },
         problems: [

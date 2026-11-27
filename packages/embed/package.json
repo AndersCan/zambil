@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./cache-folder": "./src/model/cache-folder.ts",
     "./check-search-files": "./src/search/check-search-files.ts",
     "./open-note-search": "./src/search/open-note-search.ts",
     "./score-notes": "./src/search/score-notes.ts",

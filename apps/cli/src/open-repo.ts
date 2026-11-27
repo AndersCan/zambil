@@ -1,5 +1,6 @@
 import { left, right } from "@zambil/core/either";
 import type { LocateRepoError, RepoLocation } from "@zambil/core/locate-repo";
+import { cacheFolder } from "@zambil/embed/cache-folder";
 import type { CliConfig } from "./config.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import type { Either } from "@zambil/core/either";
@@ -100,7 +101,7 @@ export function openRepo(options: OpenRepoOptions): Either<string, Configuration
   const location = locateRepo({ flag: options.flag, environment: config.environment });
   if (!location.ok) return left(describeLocateError(location.error));
 
-  const repo = loadRepo(location.value.root);
+  const repo = loadRepo(location.value.root, { cacheFolder: cacheFolder(config.environment) });
   if (repo.ok) return right(repo.value);
   const configPath = userConfigPath(config.environment);
   const source = describeSource(location.value, { configPath, problem: repo.error.kind });

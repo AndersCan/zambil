@@ -3,6 +3,7 @@ import type { ConfigurationRepo } from "../repo/configuration-repo.ts";
 import { isNever } from "../is-never.ts";
 import type { MarkdownLine } from "./scan-lines.ts";
 import type { Note } from "../note/note.ts";
+import { readNoteContent } from "./read-note-content.ts";
 import { resolveNote } from "../expiry/resolve-note.ts";
 import { scanLines } from "./scan-lines.ts";
 import { selectSection } from "./select-section.ts";
@@ -28,7 +29,7 @@ export type SuggestMode = "closest" | "none";
 
 /** The repo and the clock to resolve against, what to do with an expired note, and whether to suggest a name. */
 export interface FindTargetOptions {
-  repo: Pick<ConfigurationRepo, "names">;
+  repo: Pick<ConfigurationRepo, "names" | "root">;
   now: Date;
   expired: ExpiredMode;
   suggest: SuggestMode;
@@ -83,7 +84,9 @@ export function findTarget(target: WikilinkTarget, options: FindTargetOptions): 
     case "found": {
       const { note } = resolution;
       const expiry = resolution.kind === "expired" ? "expired" : "current";
-      const lines = selectSection(scanLines(note.content), target.subpath);
+      const content = readNoteContent(note, { root: options.repo.root });
+      if (!content.ok) return { kind: "unresolved", reason: content.error };
+      const lines = selectSection(scanLines(content.value), target.subpath);
       if (lines === undefined) return { kind: "unresolved", reason: missingSection(note, target) };
       if (expiry === "expired" && options.expired === "warn") return { kind: "expired", note };
       return { kind: "found", note, lines, expiry };

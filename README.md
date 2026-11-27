@@ -181,14 +181,14 @@ It removes the zambil hooks from `~/.claude/settings.json` and the `zambil-save`
 
 `zambil uninstall` never changes your notes. It also leaves these files in place:
 
-| What                                            | Where                                               | Size         |
-| ----------------------------------------------- | --------------------------------------------------- | ------------ |
-| zambil and its dependencies                     | `~/.local/share/zambil`                             | About 300 MB |
-| The `zambil` command, a link                    | `~/.local/bin/zambil`                               | One link     |
-| The path of the notes folder                    | `~/.config/zambil/config.json`                      | One file     |
-| The model, the index and the hook list          | `~/.cache/zambil`                                   | About 23 MB  |
-| The download caches of npm and pnpm, on Linux   | `~/.npm`, `~/.cache/pnpm` and `~/.local/share/pnpm` | About 330 MB |
-| The files of ONNX Runtime, which runs the model | `~/.cache/Microsoft/DeveloperTools/.onnxruntime`    | About 40 KB  |
+| What                                                     | Where                                               | Size                                       |
+| -------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------ |
+| zambil and its dependencies                              | `~/.local/share/zambil`                             | About 300 MB                               |
+| The `zambil` command, a link                             | `~/.local/bin/zambil`                               | One link                                   |
+| The path of the notes folder                             | `~/.config/zambil/config.json`                      | One file                                   |
+| The model, the index, the parsed notes and the hook list | `~/.cache/zambil`                                   | About 23 MB, more for a large notes folder |
+| The download caches of npm and pnpm, on Linux            | `~/.npm`, `~/.cache/pnpm` and `~/.local/share/pnpm` | About 330 MB                               |
+| The files of ONNX Runtime, which runs the model          | `~/.cache/Microsoft/DeveloperTools/.onnxruntime`    | About 40 KB                                |
 
 To remove zambil completely, run these commands after `zambil uninstall`. They keep your notes:
 

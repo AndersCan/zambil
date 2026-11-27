@@ -173,6 +173,16 @@ Each event starts a new Node process that loads the whole repo. Measured in the 
 
 The table above was measured before the similarity search. At `UserPromptSubmit`, the search loads the model in each new process. `packages/embed/measurements.md` times the whole hook from a cold start, with `NODE_COMPILE_CACHE`. On the prose repo of 50 notes, the search adds about 60 ms to a short prompt. It adds about 100 ms to a prompt of 300 words. A slash command and a prompt with no letter add nothing, because the hook does not load the model for them. `packages/embed/README.md` says why zambil has no background process that keeps the model loaded.
 
+zambil supports up to 20,000 notes in one repo. The CLI keeps the parsed notes in a cache, `$XDG_CACHE_HOME/zambil/notes/`. A note in the cache is used again while its file keeps its size, its modified time and its status change time. A change of time zone parses every note again. So a hook reads only the files that changed, and the text of each note that it adds. These times are the median of 7 runs on generated folders, without `NODE_COMPILE_CACHE`, before and after the cache:
+
+| Notes  | `PreToolUse`     | `UserPromptSubmit`, with search |
+| ------ | ---------------- | ------------------------------- |
+| 1,000  | 91 ms to 80 ms   | 177 ms to 160 ms                |
+| 5,000  | 131 ms to 96 ms  | 247 ms to 193 ms                |
+| 20,000 | 252 ms to 164 ms | 463 ms to 285 ms                |
+
+The first hook after an update of zambil parses every note again. So does a hook in the 2 seconds after a file changes, for that file. `packages/core/src/note-cache/parse-note-files.test.ts` loads 10,000 notes of about 1.5 KB. If a load from the cache takes more than three quarters of the time of a full parse, the test fails. Today it takes less than half.
+
 ## Code
 
 - `src/answer-hook.ts`: `answerHook` turns a parsed hook input, a loaded repo and the similar notes into the standard output. `promptSections` lists the parts of the `UserPromptSubmit` text.
