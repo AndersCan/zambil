@@ -225,6 +225,39 @@ zambil reports two kinds of problem. An error makes `zambil check` exit with 1. 
 | Obsidian cannot link to a name or an alias.                       | warning |
 | A folder cannot be read.                                          | warning |
 
+## Rendering
+
+`renderNote` turns a note into the text that an agent gets. `zambil show <name>` prints the same text. The name can also point to a part of a note, the same way as in a link: `deploy#Steps` is the section under the heading `Steps`, and `deploy#^intro` is the block with the id `intro`.
+
+Each note is a block between two tags, for example `<note name="deploy" path="ops/deploy.md">` and `</note>`. A skill uses `<skill>`, and a script note uses `<script>`. The block starts with the description of the note.
+
+Links and embeds work as in Obsidian:
+
+- `[[name]]` stays in the text as written. The block ends with a `Links:` list. Each item gives the name and the description of the linked note, and how to open it. The content of the linked note is not added.
+- `![[name]]` puts the block of the note in place of the embed. The embeds in that note are filled in too.
+- `![[name#Heading]]` adds the section from that heading to the next heading of the same or a higher level. `![[name#A#B]]` adds the heading `B` under the heading `A`. zambil compares headings without regard to case.
+- `![[name#^id]]` adds the block that ends with `^id`: a paragraph, or a list item with the items under it. An `^id` alone on a line points to the block above it.
+- `[[#Heading]]` and `![[#Heading]]` point to the note that holds them.
+- A link in a code block or in inline code is plain text.
+
+An embed gets a warning in its place when no note has the name, when more than one note has it, or when the note has no such heading or block. It also gets a warning when it embeds itself, directly or through other notes. A link with one of these problems gets the same warning in the `Links:` list.
+
+Expired notes follow the rules in [Expiry](#expiry):
+
+- An expired note gets a warning in place of its content, in an embed and in `zambil show`. The warning names the `when-expired` note, if the note has one. It says that the agent can skip the note, or read it anyway with `zambil show <name> --expired`. It says that the agent can offer an update, but saves a change only when the user asks for it.
+- `--expired`, or the option `expired: "show"`, reads only the named note anyway. An expired note that it embeds still gets the warning.
+- A link to an expired note gives its description with a warning.
+- A current note that has `when-expired` names that note as the way to verify its claims, because a note can be wrong before its date. If the `when-expired` note expired too, it gets the expiry warning.
+
+Skills and scripts are offers:
+
+- A skill gives its name, its description and how to load it. The text of its `SKILL.md` is not added.
+- A script note gives its description, the full path of the script, the command that runs it, and the text of the note. zambil never reads the script.
+
+The core names no agent tool. The caller passes a `RenderWording` with three functions: how to open a note, how to read an expired note anyway, and how to load a skill. `zambil show` passes wording that runs `zambil show`. An adapter for an agent tool passes its own wording.
+
+`zambil show` exits with 1 when the name, the heading or the block does not resolve. For an expired note it exits with 0, because the warning is the answer.
+
 ## The core library
 
 Later features import from `@zambil/core`. Each export is one file. A new export gets its own line in this list, in alphabetical order:
@@ -245,6 +278,7 @@ Later features import from `@zambil/core`. Each export is one file. A new export
 - `@zambil/core/parse-frontmatter`. `parseFrontmatter` reads frontmatter YAML the same way as the loader.
 - `@zambil/core/parse-link-target`. `parseLinkTarget` returns the note name in a link such as `[[folder/name#heading]]`, or in a plain name.
 - `@zambil/core/parse-note`. `parseNote` reads one note from its text.
+- `@zambil/core/render-note`. `renderNote` turns a note into the text an agent gets. See [Rendering](#rendering).
 - `@zambil/core/resolve-note`. `resolveNote` looks up a name and returns `expired`, with the `when-expired` note, for an expired note.
 - `@zambil/core/save-note`. `saveNote` creates, rewrites or verifies one note. Only `zambil save` calls it, so that a note is always written on purpose.
 - `@zambil/core/split-frontmatter`. `splitFrontmatter` splits the frontmatter from the text, for a feature that rewrites a note.

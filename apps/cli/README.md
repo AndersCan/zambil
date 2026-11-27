@@ -9,6 +9,7 @@ Node 24 runs the TypeScript directly, so the CLI has no build step. Run these co
 ```sh
 node apps/cli/src/main.ts list --repo packages/core/fixtures/sample-repo
 node apps/cli/src/main.ts check --repo packages/core/fixtures/sample-repo
+node apps/cli/src/main.ts show welcome --repo packages/core/fixtures/sample-repo
 ```
 
 To put `zambil` on your `PATH`, link `apps/cli/src/main.ts` into a folder on your `PATH`. Run this command from the root of the repo:
@@ -25,6 +26,7 @@ The commands are:
 - `zambil check` prints each problem with its path. An error sets the exit code to 1.
 - `zambil save <name>` creates or rewrites a note from standard input, or records with `--verified` that its claims still hold. It is the one way to write a note. See "Write a note" in `docs/notes.md`.
 - `zambil save-guide` prints what an agent must know before it writes a note.
+- `zambil show <name>` prints a note as the agent gets it, with its embeds, links and expiry warnings. `--expired` prints an expired note anyway. `docs/notes.md` describes the text in [Rendering](../../docs/notes.md#rendering).
 - `zambil help` prints the commands. `zambil help <command>` or `zambil <command> --help` prints the usage of one command.
 
 Each command takes `--repo <path>`. Without it, zambil reads `ZAMBIL_REPO`, then `$XDG_CONFIG_HOME/zambil/config.json`. If `XDG_CONFIG_HOME` is not set, the file is `~/.config/zambil/config.json`.
@@ -32,7 +34,7 @@ Each command takes `--repo <path>`. Without it, zambil reads `ZAMBIL_REPO`, then
 The exit codes are:
 
 - 0: the command worked.
-- 1: `zambil check` found an error, or `zambil save` refused to save the note.
+- 1: `zambil check` found an error, `zambil save` refused to save the note, or `zambil show` could not resolve the name, the heading or the block.
 - 2: the usage is wrong, or zambil cannot find the repo.
 
 ## Add a command
