@@ -53,7 +53,7 @@ jobs:
           - os: macos-latest
             node: "24"
           - os: ubuntu-latest
-            node: latest
+            node: "26"
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:

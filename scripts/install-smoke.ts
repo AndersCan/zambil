@@ -225,24 +225,58 @@ function checkLocalChange(machine: Machine): void {
   );
 }
 
-function checkLocalCommit(machine: Machine): void {
+/** Which round of "local commit, new upstream commit, rerun, follow the advice" this is. */
+interface LocalCommitOptions {
+  round: number;
+}
+
+/** The exit codes of the refused run and of the run after the advice, and the branches that keep local commits. */
+interface CommitRound {
+  refused: number | undefined;
+  afterAdvice: number | undefined;
+  kept: string;
+}
+
+/** One round of a local commit that the advice keeps, and the branch that holds it afterwards. */
+function followCommitAdvice(machine: Machine, options: LocalCommitOptions): CommitRound {
   const clone = join(machine.home, ".local/share/zambil");
-  writeFileSync(join(clone, "README.md"), "my own commit\n");
-  git(["-C", clone, "commit", "--quiet", "--all", "-m", "my own commit"]);
-  commitFile("smoke-third.txt", machine);
+  const message = `my own commit ${options.round}`;
+  writeFileSync(join(clone, "README.md"), `${message}\n`);
+  git(["-C", clone, "commit", "--quiet", "--all", "-m", message]);
+  commitFile(`smoke-round-${options.round}.txt`, machine);
   const refused = runInstall(machine);
   runPrinted(refused.stderr);
   const afterAdvice = runInstall(machine);
+  const branches = git([
+    "-C",
+    clone,
+    "branch",
+    "--format=%(refname:short) %(subject)",
+    "--list",
+    "my-zambil-changes*",
+  ]);
+  return { refused: refused.status, afterAdvice: afterAdvice.status, kept: branches };
+}
+
+function checkLocalCommit(machine: Machine): void {
+  const clone = join(machine.home, ".local/share/zambil");
+  const rounds = [
+    followCommitAdvice(machine, { round: 1 }),
+    followCommitAdvice(machine, { round: 2 }),
+  ];
   deepEqual(
+    { rounds, updated: existsSync(join(clone, "smoke-round-2.txt")) },
     {
-      status: refused.status,
-      commands: printedCommands(refused.stderr).length,
-      statusAfterAdvice: afterAdvice.status,
-      updated: existsSync(join(clone, "smoke-third.txt")),
-      keptCommit: git(["-C", clone, "log", "-1", "--format=%s", "my-zambil-changes"]),
+      rounds: [
+        { refused: 1, afterAdvice: 0, kept: "my-zambil-changes my own commit 1\n" },
+        {
+          refused: 1,
+          afterAdvice: 0,
+          kept: "my-zambil-changes my own commit 1\nmy-zambil-changes-2 my own commit 2\n",
+        },
+      ],
+      updated: true,
     },
-    { status: 1, commands: 2, statusAfterAdvice: 0, updated: true, keptCommit: "my own commit\n" },
-    afterAdvice.stderr,
   );
 }
 
@@ -265,7 +299,7 @@ function main(): void {
       run: () => checkLocalChange(machine),
     },
     {
-      name: "the advice for a local commit leads to an update",
+      name: "the advice for local commits keeps them in two rounds",
       run: () => checkLocalCommit(machine),
     },
   ];

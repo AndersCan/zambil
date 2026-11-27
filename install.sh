@@ -78,15 +78,28 @@ check_link() {
 clone() {
   say "Downloading zambil into $(tilde "$install_dir")."
   mkdir -p "$(dirname "$install_dir")"
-  git clone --quiet --branch "$git_ref" "$git_url" "$install_dir" < /dev/null
+  if ! git clone --quiet --branch "$git_ref" "$git_url" "$install_dir" < /dev/null; then
+    fail "zambil did not install. git printed the reason above. Run this script again."
+  fi
   fresh=yes
 }
 
 is_zambil_clone() {
   [ -f "$install_dir/package.json" ] || return 1
-  grep -q '"name": "zambil"' "$install_dir/package.json" || return 1
+  [ "$(node -p 'require(process.argv[1]).name' "$install_dir/package.json" 2> /dev/null)" = zambil ] || return 1
   top_level=$(git -C "$install_dir" rev-parse --show-toplevel 2> /dev/null) || return 1
   [ "$(cd "$top_level" && pwd -P)" = "$(cd "$install_dir" && pwd -P)" ]
+}
+
+# A branch name that the clone does not have yet, so that advice to keep commits never fails on an old name.
+free_branch_name() {
+  candidate=my-zambil-changes
+  number=1
+  while git -C "$install_dir" show-ref --verify --quiet "refs/heads/$candidate"; do
+    number=$((number + 1))
+    candidate=my-zambil-changes-$number
+  done
+  printf '%s\n' "$candidate"
 }
 
 # Moves the clone forward to the newest commit of the branch on its origin. It never merges, resets or stashes.
@@ -98,7 +111,7 @@ update() {
   if [ -n "$(git -C "$install_dir" status --porcelain --untracked-files=no)" ]; then
     fail "zambil did not update, because the clone in $install_dir has local changes. To put them aside, run:" "" \
       "  git -C \"$install_dir\" stash" "" \
-      "Then run this script again."
+      "Then run this script again. After the update, \`git -C \"$install_dir\" stash pop\` brings the changes back."
   fi
   branch=$(git -C "$install_dir" symbolic-ref --quiet --short HEAD || true)
   if [ "$branch" != "$git_ref" ]; then
@@ -113,16 +126,19 @@ update() {
     source_url=$origin_url
   fi
   say "Updating zambil in $(tilde "$install_dir") from $source_url."
-  git -C "$install_dir" fetch --quiet "$source" "$git_ref" < /dev/null
-  if ! git -C "$install_dir" merge-base --is-ancestor HEAD FETCH_HEAD; then
+  if ! git -C "$install_dir" fetch --quiet "$source" "$git_ref" < /dev/null; then
+    fail "zambil did not update. git printed the reason above, and the clone is as it was. Run this script again."
+  fi
+  fetched=$(git -C "$install_dir" rev-parse FETCH_HEAD)
+  if ! git -C "$install_dir" merge-base --is-ancestor HEAD "$fetched"; then
+    keep_branch=$(free_branch_name)
     fail "zambil did not update, because the branch $git_ref in $install_dir has commits that $source_url does not have." \
-      "To keep them on a new branch and update, run:" "" \
-      "  git -C \"$install_dir\" branch my-zambil-changes" \
-      "  git -C \"$install_dir\" reset --keep FETCH_HEAD" "" \
+      "To keep them on the new branch $keep_branch and update, run:" "" \
+      "  git -C \"$install_dir\" branch $keep_branch && git -C \"$install_dir\" reset --keep $fetched" "" \
       "Then run this script again."
   fi
   before=$(git -C "$install_dir" rev-parse HEAD)
-  if ! git -C "$install_dir" merge --quiet --ff-only FETCH_HEAD < /dev/null; then
+  if ! git -C "$install_dir" merge --quiet --ff-only "$fetched" < /dev/null; then
     fail "zambil did not update, because git cannot move the clone forward. git printed the reason above and changed no file."
   fi
   if [ "$(git -C "$install_dir" rev-parse HEAD)" = "$before" ]; then
@@ -226,7 +242,9 @@ main() {
   install_dependencies
   link_zambil
   report_path
-  if [ -d "$install_dir/apps/cli/src/init" ]; then
+  if [ "$fresh" != yes ]; then
+    say "" "zambil is ready."
+  elif [ -d "$install_dir/apps/cli/src/init" ]; then
     say "" "zambil is ready. To set it up, run:" "" "  zambil init"
   else
     say "" "zambil is ready. To set it up, follow \"Set up\" in the README from step 3:" "" \

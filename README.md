@@ -30,6 +30,8 @@ You need Node 24 or later with npm, git and Claude Code. The steps work on Linux
    cp -r ~/.local/share/zambil/packages/core/fixtures/sample-repo ~/notes
    ```
 
+   If the script installed zambil in another folder, use that folder in place of `~/.local/share/zambil`.
+
 4. Tell zambil where the repo is. Write its path to the user configuration file:
 
    ```sh

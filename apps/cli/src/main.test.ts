@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { describe, expect, test } from "vite-plus/test";
 import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -25,7 +25,7 @@ interface HelpRun {
 
 /** Copies the CLI into a clone in a temporary folder, runs `zambil help` there, and removes the folder. */
 function helpInClone(options: CloneOptions): HelpRun {
-  const clone = mkdtempSync(join(tmpdir(), "zambil-clone-"));
+  const clone = realpathSync(mkdtempSync(join(tmpdir(), "zambil-clone-")));
   cpSync(cliSource, join(clone, "apps/cli/src"), { recursive: true });
   if (options.dependencies === "core-only") {
     cpSync(join(coreSource, "src"), join(clone, "packages/core/src"), { recursive: true });
