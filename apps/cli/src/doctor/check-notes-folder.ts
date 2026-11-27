@@ -4,7 +4,8 @@ import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import { isNever } from "@zambil/core/is-never";
 import { locateRepo } from "@zambil/core/locate-repo";
 import { openRepo } from "../open-repo.ts";
-import type { RepoSource } from "@zambil/core/locate-repo";
+import { quoteArgument } from "@zambil/core/quote-argument";
+import type { RepoLocation } from "@zambil/core/locate-repo";
 
 /** The `--repo` flag that the user gave, if any. */
 export interface CheckNotesFolderOptions {
@@ -17,7 +18,8 @@ export interface NotesFolderCheck {
   repo: ConfigurationRepo | undefined;
 }
 
-function sourceFixes(source: RepoSource): string[] {
+function sourceFixes(location: RepoLocation): string[] {
+  const { source } = location;
   switch (source) {
     case "user-config":
       return [
@@ -26,8 +28,10 @@ function sourceFixes(source: RepoSource): string[] {
       ];
     case "environment":
       return ["unset ZAMBIL_REPO   # then zambil reads the user config file, or run zambil init"];
-    case "flag":
-      return [];
+    case "flag": {
+      const folder = quoteArgument(location.root);
+      return [`mkdir -p ${folder}   # or run zambil doctor --repo <the right folder>`];
+    }
     default:
       return isNever(source);
   }
@@ -57,6 +61,6 @@ export function checkNotesFolder(
     };
   }
   const [text = "", ...details] = opened.error.split("\n");
-  const fixes = sourceFixes(located.value.source);
+  const fixes = sourceFixes(located.value);
   return { result: { level: "fail", text, details, fixes }, repo: undefined };
 }

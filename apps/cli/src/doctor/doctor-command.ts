@@ -79,7 +79,9 @@ function countLevel(results: CheckResult[], options: CountOptions): number {
 function summary(results: CheckResult[]): string {
   const fails = countLevel(results, { level: "fail" });
   const warns = countLevel(results, { level: "warn" });
-  if (fails === 1) return "1 problem to fix. Run its Fix line, then run zambil doctor again.";
+  if (fails === 1) {
+    return "1 problem to fix. Follow the lines under it, then run zambil doctor again.";
+  }
   if (fails > 1) {
     return `${fails} problems to fix. Fix them from the top down, because a later problem can come from an earlier one. Then run zambil doctor again.`;
   }

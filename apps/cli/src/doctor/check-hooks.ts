@@ -49,7 +49,7 @@ function eventProblems(events: string[], options: EventProblemsOptions): string[
   }
   for (const hook of events) {
     if (expected.includes(hook)) continue;
-    problems.push(`zambil hook runs at ${hook}, but no note names it.`);
+    problems.push(`zambil hook runs at ${hook}, but zambil install no longer adds it there.`);
   }
   return problems;
 }
