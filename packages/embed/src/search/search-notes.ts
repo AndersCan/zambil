@@ -13,8 +13,8 @@ export interface SearchResult {
 
 /**
  * Finds the current notes whose description is similar to the text: at most `matchLimit` notes that
- * score at least `minimumScore`. Expired notes are left out. `openEmbedder(searchModel, ...)` gives the
- * embedder, and the caller can reuse it for many searches.
+ * score at least `minimumScore`. Expired notes are left out. The threshold fits `searchModel` only, so
+ * callers outside this package use `openNoteSearch`, which pairs the two.
  */
 export async function searchNotes(
   repo: ConfigurationRepo,

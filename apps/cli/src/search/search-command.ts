@@ -56,7 +56,8 @@ async function runSearch(options: CommandRunOptions): Promise<ExitCode> {
     return 1;
   }
   const { matches, unindexed } = result.value;
-  output.write(matches.length === 0 ? "No note matches.\n" : `${formatMatches(matches)}\n`);
+  const noMatch = `No note scores ${minimumScore} or more.\n`;
+  output.write(matches.length === 0 ? noMatch : `${formatMatches(matches)}\n`);
   if (unindexed > 0) {
     const hint = indexHint(flag);
     const count = unindexed === 1 ? "1 description is" : `${unindexed} descriptions are`;

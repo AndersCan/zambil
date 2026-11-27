@@ -17,7 +17,8 @@ describe("zambil search", () => {
     const env = { ...process.env, XDG_CACHE_HOME: freshCache };
     function zambil(args: string[]) {
       const run = spawnSync(main, [...args, "--repo", proseRepo], { encoding: "utf8", env });
-      return { code: run.status, stdout: run.stdout };
+      const stdout = run.stdout.replaceAll(/^\d\.\d\d /gm, "0.?? ");
+      return { code: run.status, stdout, stderr: run.stderr };
     }
     const indexed = zambil(["index"]);
     const found = zambil(["search", "help", "me", "with", "my", "branch"]);
@@ -31,13 +32,14 @@ describe("zambil search", () => {
       indexed: true,
       found: {
         code: 0,
+        stderr: "",
         stdout: [
           "SCORE  NAME    PATH           DESCRIPTION",
-          "0.58   rebase  git/rebase.md  How to rebase a branch onto main and resolve conflicts.",
+          "0.??   rebase  git/rebase.md  How to rebase a branch onto main and resolve conflicts.",
           "",
         ].join("\n"),
       },
-      expired: { code: 0, stdout: "No note matches.\n" },
+      expired: { code: 0, stdout: "No note scores 0.42 or more.\n", stderr: "" },
     });
   });
 

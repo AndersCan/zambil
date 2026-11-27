@@ -117,6 +117,23 @@ describe("runCli", () => {
     });
   });
 
+  test("reads help as the first word or a flag, and as search text after the command", async () => {
+    const afterRepo = await run(["--repo", "x", "help"]);
+    const inText = await run(["search", "help", "me", "rebase"]);
+    const afterDashes = await run(["search", "--", "--help"]);
+    const firstLines = [afterRepo, inText, afterDashes].map(
+      (result) => result.stdout.split("\n")[0],
+    );
+    const errors = [inText, afterDashes].map((result) => result.stderr.split("\n")[0]);
+    expect({ firstLines, errors }).toEqual({
+      firstLines: ["Usage: zambil <command> [--repo <path>]", "", ""],
+      errors: [
+        "zambil does not know where your configuration repo is. Do one of these:",
+        "zambil does not know where your configuration repo is. Do one of these:",
+      ],
+    });
+  });
+
   test("shows the configuration file that zambil really reads in the help", async () => {
     const help = await run(["--help"]);
     expect(help.stdout.split("\n").at(-3)).toBe(

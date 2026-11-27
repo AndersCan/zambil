@@ -2,7 +2,7 @@ import { basename, dirname, join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import type { EmbeddingModel, ModelFile } from "./embedding-model.ts";
 import { left, right, wrap } from "@zambil/core/either";
-import { mkdir, rename, writeFile } from "node:fs/promises";
+import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import type { Either } from "@zambil/core/either";
 import { statSync } from "node:fs";
 
@@ -74,29 +74,18 @@ async function download(
   const written = await wrap(
     mkdir(dirname(target), { recursive: true }).then(() => writeFile(partial, bytes)),
   );
-  if (!written.ok) return left(`cannot write ${partial}: ${describe(written.error)}`);
-  const moved = await wrap(rename(partial, target));
-  if (!moved.ok) return left(`cannot write ${target}: ${describe(moved.error)}`);
+  const moved = written.ok ? await wrap(rename(partial, target)) : written;
+  if (!moved.ok) {
+    await rm(partial, { force: true });
+    return left(`cannot write ${target}: ${describe(moved.error)}`);
+  }
   return right(target);
 }
 
-interface FetchFileOptions extends ModelFileOptions {
-  report: (message: string) => void;
-}
-
-function fetchFile(
-  model: EmbeddingModel,
-  options: FetchFileOptions,
-): Promise<Either<string, string>> {
-  const { file } = options;
-  const target = modelFilePath(model, options);
-  if (sizeOf(target) === file.bytes) return Promise.resolve(right(target));
-  const size =
-    file.bytes < 1_000_000
-      ? `${Math.ceil(file.bytes / 1000)} kB`
-      : `${Math.round(file.bytes / 1_000_000)} MB`;
-  options.report(`Downloading ${model.repository}/${file.path} (${size}) to ${target}`);
-  return download(model, { file, target });
+function formatSize(bytes: number): string {
+  if (bytes < 1_000_000) return `${Math.ceil(bytes / 1000)} kB`;
+  const megabytes = Math.round(bytes / 1_000_000);
+  return `${megabytes} MB`;
 }
 
 /**
@@ -108,11 +97,27 @@ export async function fetchModel(
   model: EmbeddingModel,
   options: FetchModelOptions,
 ): Promise<Either<string, ModelPaths>> {
-  const [weights, vocabulary] = await Promise.all([
-    fetchFile(model, { ...options, file: model.weights }),
-    fetchFile(model, { ...options, file: model.vocabulary }),
-  ]);
-  if (!weights.ok) return weights;
-  if (!vocabulary.ok) return vocabulary;
-  return right({ weights: weights.value, vocabulary: vocabulary.value });
+  const { cacheFolder } = options;
+  const files = [model.weights, model.vocabulary];
+  const missing = files.filter(
+    (file) => sizeOf(modelFilePath(model, { file, cacheFolder })) !== file.bytes,
+  );
+  if (missing.length > 0) {
+    let bytes = 0;
+    for (const file of missing) bytes += file.bytes;
+    const folder = dirname(modelFilePath(model, { file: model.weights, cacheFolder }));
+    options.report(`Downloading the model ${model.repository} (${formatSize(bytes)}) to ${folder}`);
+  }
+  const downloads = await Promise.all(
+    missing.map((file) =>
+      download(model, { file, target: modelFilePath(model, { file, cacheFolder }) }),
+    ),
+  );
+  for (const downloaded of downloads) {
+    if (!downloaded.ok) return downloaded;
+  }
+  return right({
+    weights: modelFilePath(model, { file: model.weights, cacheFolder }),
+    vocabulary: modelFilePath(model, { file: model.vocabulary, cacheFolder }),
+  });
 }

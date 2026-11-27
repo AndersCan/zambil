@@ -7,13 +7,19 @@ import { userConfigPath } from "@zambil/core/locate-repo";
 /** Everything a command gets except its arguments. A new field here reaches every command unchanged. */
 export type RunCliOptions = Omit<CommandRunOptions, "args">;
 
-const helpWords = new Set(["help", "--help", "-h"]);
 const helpFlags = new Set(["--help", "-h"]);
+
+function firstWord(args: string[]): string | undefined {
+  for (const [position, argument] of args.entries()) {
+    const isRepoValue = args[position - 1] === "--repo";
+    if (!isRepoValue && !argument.startsWith("-")) return argument;
+  }
+  return undefined;
+}
 
 /** `help` counts only as the first word, so that `zambil search help me rebase` searches. A flag after `--` is text. */
 function asksForHelp(args: string[]): boolean {
-  const [first] = args;
-  if (first === undefined || helpWords.has(first)) return true;
+  if (args.length === 0 || firstWord(args) === "help") return true;
   const end = args.indexOf("--");
   const flags = end === -1 ? args : args.slice(0, end);
   return flags.some((argument) => helpFlags.has(argument));

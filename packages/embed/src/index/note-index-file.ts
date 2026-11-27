@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
 import { formatNoteIndex, parseNoteIndex } from "./parse-note-index.ts";
 import { left, right, wrap } from "@zambil/core/either";
-import { mkdir, rename, writeFile } from "node:fs/promises";
+import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import type { Either } from "@zambil/core/either";
 import type { NoteIndex } from "./parse-note-index.ts";
 import { readFileSync } from "node:fs";
@@ -57,8 +57,10 @@ export async function writeNoteIndex(
       writeFile(partial, formatNoteIndex(index)),
     ),
   );
-  if (!written.ok) return left(`cannot write ${partial}: ${String(written.error)}`);
-  const moved = await wrap(rename(partial, path));
-  if (!moved.ok) return left(`cannot write ${path}: ${String(moved.error)}`);
+  const moved = written.ok ? await wrap(rename(partial, path)) : written;
+  if (!moved.ok) {
+    await rm(partial, { force: true });
+    return left(`cannot write ${path}: ${String(moved.error)}`);
+  }
   return right(path);
 }

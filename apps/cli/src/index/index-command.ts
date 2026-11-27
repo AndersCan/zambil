@@ -29,7 +29,8 @@ async function runIndex(options: CommandRunOptions): Promise<ExitCode> {
     return 1;
   }
   const { descriptions, embedded, path } = summary.value;
-  output.write(`Indexed ${descriptions} descriptions, ${embedded} of them new, in ${path}.\n`);
+  const count = descriptions === 1 ? "1 description" : `${descriptions} descriptions`;
+  output.write(`Indexed ${count}, ${embedded} of them new, in ${path}.\n`);
   return 0;
 }
 
