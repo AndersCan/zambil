@@ -339,8 +339,9 @@ describe("runCli", () => {
         code: 2,
         stdout: "",
         stderr: [
-          'This command has no option "--bogus". It takes --repo and --help.',
-          "Usage: zambil list [--repo <path>]",
+          'This command has no option "--bogus". It takes --repo, --all and --help.',
+          'If "--bogus" is not meant as an option, write -- before it, after the other options.',
+          "Usage: zambil list [<text>] [--all] [--repo <path>]",
           "",
         ].join("\n"),
       },

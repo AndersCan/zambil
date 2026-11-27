@@ -7,10 +7,10 @@ export interface ClaudeCodeWordingOptions {
   root: string;
 }
 
-/** The sentence that tells Claude how to see the name of every note. */
+/** The sentence that tells Claude how to find a note by its name, in a repo of any size. */
 export function listNotes(options: ClaudeCodeWordingOptions): string {
   const root = quoteArgument(options.root);
-  return `To see the name of every note, run \`zambil list --repo ${root}\`.`;
+  return `To find a note by a part of its name, run \`zambil list <part of the name> --repo ${root}\`.`;
 }
 
 /**

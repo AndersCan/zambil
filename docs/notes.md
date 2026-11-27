@@ -201,6 +201,7 @@ zambil refuses to save, and changes no file, in these cases:
 - The new note has a name that a filename or an Obsidian link cannot have, a name that starts with `.`, or the name `SKILL`.
 - The folder of a new note is outside the repo, starts with `.`, is in `node_modules`, is a symbolic link, or is in a skill folder. zambil does not read notes in these folders.
 - The new text gives the note an alias that another note uses.
+- A create gives a description that scores 0.8 or more against the description of a current note. zambil prints that note and its `--rewrite` command. `--allow-similar` saves the new note anyway. zambil checks this only when the model is in the cache.
 - The `expires` date is not a date, or it is not in the future. The `when-expired` note does not exist.
 - The frontmatter of the note does not parse. Or zambil cannot change it line by line without changes to other properties.
 - The saved note has an error that the old note did not have. Or the repo gets an error from `zambil check` that it did not have, for example a missing script file, or a `when-expired` name of another note that no longer resolves.

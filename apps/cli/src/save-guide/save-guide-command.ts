@@ -16,7 +16,14 @@ A note that makes claims goes out of date. The code changes, and then the note i
 
 Give each note a description in its frontmatter. Similarity search matches the prompt against it.
 
-To see if a note exists, run \`zambil list\`. Then save the when-expired note and the note:
+Before you save a new note, look for a note that covers it already. Search by meaning, and list by a word of the name or the description:
+
+  zambil search "<what the note is about>"
+  zambil list <word>
+
+If a note covers it, change that note with --rewrite. Do not save a second note. When the search model is in the cache, zambil save also refuses a new note whose description is very similar to that of a current note. If the new note is about something else, add --allow-similar.
+
+Then save the when-expired note and the note:
 
   zambil save check-deploy --no-expires <<'EOF'
   ---
