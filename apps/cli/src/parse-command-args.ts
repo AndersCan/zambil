@@ -5,11 +5,11 @@ import type { OptionHelp } from "./command.ts";
 import { parseArgs } from "node:util";
 import type { ParseArgsConfig } from "node:util";
 
-/** The option that every command takes: `-h, --help`. */
-export const helpOptions = { help: { type: "boolean", short: "h" } } as const;
-
-/** The options that each command that reads the repo takes: `--repo <path>` and `--help`. */
-export const sharedOptions = { repo: { type: "string" }, ...helpOptions } as const;
+/** The options that every command takes: `--repo <path>` and `--help`. */
+export const sharedOptions = {
+  repo: { type: "string" },
+  help: { type: "boolean", short: "h" },
+} as const;
 
 /** The help line of `--repo`, for each command that reads the repo. */
 export const repoOptionHelp: OptionHelp = {

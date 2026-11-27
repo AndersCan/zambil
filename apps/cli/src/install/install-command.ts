@@ -5,6 +5,7 @@ import { loadHookList } from "@zambil/claude-code/load-hook-list";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
 import { rememberRepo } from "../user-config/remember-repo.ts";
+import { repoOptionHelp } from "../parse-command-args.ts";
 import { reportProblems } from "./report-problems.ts";
 import { setUpClaudeCode } from "./set-up-claude-code.ts";
 import { sharedOptions } from "../parse-command-args.ts";
@@ -58,8 +59,8 @@ export const installCommand: Command = {
   ].join("\n"),
   options: [
     {
-      flag: "--repo <path>",
-      text: "The folder of your configuration repo. Without it, zambil reads ZAMBIL_REPO, then its configuration file. With it, zambil saves the folder in that file.",
+      ...repoOptionHelp,
+      text: `${repoOptionHelp.text} With it, zambil saves the folder in that file.`,
     },
     { flag: "--offline", text: "Skip the hook list and the model download." },
   ],

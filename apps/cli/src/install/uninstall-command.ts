@@ -3,9 +3,9 @@ import { rm, rmdir } from "node:fs/promises";
 import { saveSkillPath, settingsPath } from "./claude-paths.ts";
 import { changeSettings } from "./settings-file.ts";
 import { dirname } from "node:path";
-import { helpOptions } from "../parse-command-args.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
 import { readOptionalText } from "./text-file.ts";
+import { sharedOptions } from "../parse-command-args.ts";
 import { uninstallHooks } from "@zambil/claude-code/settings-hooks";
 import { wrap } from "@zambil/core/either";
 
@@ -25,7 +25,7 @@ async function removeSkill(options: CommandRunOptions): Promise<void> {
 
 async function runUninstall(options: CommandRunOptions): Promise<ExitCode> {
   const { output } = options;
-  const parsed = parseCommandArgs({ args: options.args, options: helpOptions });
+  const parsed = parseCommandArgs({ args: options.args, options: sharedOptions });
   if (!parsed.ok) {
     output.error(`${parsed.error}\n${uninstallCommand.usage}\n`);
     return 2;
@@ -52,8 +52,14 @@ async function runUninstall(options: CommandRunOptions): Promise<ExitCode> {
 /** `zambil uninstall`: removes what `zambil install` added to Claude Code, and nothing else. */
 export const uninstallCommand: Command = {
   summary: "Remove the zambil hooks and the zambil-save skill from Claude Code.",
-  usage: "Usage: zambil uninstall",
+  usage: "Usage: zambil uninstall [--repo <path>]",
   details:
     "It removes every hook that runs `zambil hook` and keeps every other setting and hook. It never changes a note.",
+  options: [
+    {
+      flag: "--repo <path>",
+      text: "Accepted, so that the same flags work for every command. It does not read the repo.",
+    },
+  ],
   run: runUninstall,
 };

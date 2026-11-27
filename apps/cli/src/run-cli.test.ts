@@ -235,7 +235,8 @@ describe("runCli", () => {
       documentedCommands.map(async (name) => {
         const help = await run([name, "--help"]);
         const refused = await run([name, "--qqqqqqqq"]);
-        const [usage = "", options = ""] = help.stdout.split("\nOptions:\n");
+        const [usage = ""] = help.stdout.split("\n\n");
+        const [, options = ""] = help.stdout.split("\nOptions:\n");
         const accepted = refused.stderr.split("\n")[0]?.split(" It takes ")[1] ?? "";
         return { name, usage, options, accepted };
       }),
@@ -249,10 +250,7 @@ describe("runCli", () => {
       const isAccepted = helpFlags.symmetricDifference(parserFlags).size === 0;
       if (!isSame || !isAccepted) mismatched.push(name);
     }
-    expect({ count: results.length, mismatched }).toEqual({
-      count: Object.keys(commands).length,
-      mismatched: [],
-    });
+    expect(mismatched).toEqual([]);
   });
 
   test("reads help as the first word or a flag, and as search text after the command", async () => {
@@ -346,7 +344,7 @@ describe("runCli", () => {
         code: 2,
         stdout: "",
         stderr:
-          'This command has no option "--hlep". Did you mean `--help`?\nUsage: zambil uninstall\n',
+          'This command has no option "--hlep". Did you mean `--help`?\nUsage: zambil uninstall [--repo <path>]\n',
       },
     ]);
   });

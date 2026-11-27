@@ -16,6 +16,9 @@ describe("argumentProblem", () => {
       ["-x"],
       ["--repo"],
       ["--repo", "--rewrite"],
+      ["--repo", "--notes"],
+      ["-xyz"],
+      ["--write"],
       ["--rewrite=yes"],
       ["note"],
     ];
@@ -25,7 +28,10 @@ describe("argumentProblem", () => {
       'This command has no option "--bogus". It takes --repo, --expires, --rewrite and --help.',
       'This command has no option "-x". It takes --repo, --expires, --rewrite and --help.',
       'The option "--repo" needs a value.',
-      'The option "--repo" needs a value, but "--rewrite" comes next. If the value starts with -, write --repo=--rewrite.',
+      'The option "--repo" needs a value.',
+      'The option "--repo" needs a value. If the value is "--notes", write --repo=--notes.',
+      'This command has no option "-xyz". It takes --repo, --expires, --rewrite and --help.',
+      'This command has no option "--write". It takes --repo, --expires, --rewrite and --help.',
       'The option "--rewrite" takes no value.',
       'This command takes no arguments, but it got "note".',
     ]);
@@ -33,7 +39,7 @@ describe("argumentProblem", () => {
 
   test("accepts valid arguments, and tells how to pass text that looks like an option", () => {
     const valid = argumentProblem({
-      args: ["note", "--repo=-notes", "-h", "--", "--bogus"],
+      args: ["note", "--repo", "-", "--expires=-1", "-h", "--", "--bogus"],
       options,
       allowPositionals: true,
     });
@@ -42,7 +48,7 @@ describe("argumentProblem", () => {
       valid: undefined,
       text: [
         'This command has no option "--bogus". It takes --repo, --expires, --rewrite and --help.',
-        'If "--bogus" is text and not an option, write -- before it.',
+        'If "--bogus" is not meant as an option, write -- before it.',
       ].join("\n"),
     });
   });
