@@ -72,7 +72,9 @@ async function indexNotes(repo: ConfigurationRepo, options: CommandRunOptions): 
     report: (message) => output.write(`${message}\n`),
     download: "allow",
   });
-  const summary = noteSearch.ok ? await noteSearch.value.index(repo) : noteSearch;
+  const summary = noteSearch.ok
+    ? await noteSearch.value.index(repo, { removedTexts: "drop" })
+    : noteSearch;
   if (!summary.ok) {
     output.error(
       `zambil cannot index the notes for similar notes: ${summary.error}\nRun \`zambil index\` when you are online.\n`,

@@ -9,11 +9,14 @@ import { setTimeout as sleep } from "node:timers/promises";
 const waitMs = 10_000;
 const retryMs = 25;
 
-/** A lock this old was left by a process that stopped. Reading and writing an index takes well under a second. */
-const staleMs = 30_000;
+/**
+ * A lock this old was left by a process that stopped. Reading and writing an index takes well under a
+ * second, and the wait is longer, so a waiting writer removes such a lock in time.
+ */
+const staleMs = 5000;
 
 /** `taken`: this process holds the lock. `busy`: another process holds it. `failed`: the lock file cannot be made. */
-type LockAttempt = "taken" | "busy" | "failed";
+type LockAttempt = { kind: "taken" } | { kind: "busy" } | { kind: "failed"; reason: string };
 
 /** The work to do while this process holds the lock. */
 export interface WithIndexLockOptions<Result> {
@@ -24,13 +27,18 @@ function errorCode(error: unknown): unknown {
   return error instanceof Error && "code" in error ? error.code : undefined;
 }
 
+function describe(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 async function takeLock(path: string): Promise<LockAttempt> {
   const handle = await wrap(open(path, "wx"));
   if (handle.ok) {
     await wrap(handle.value.close());
-    return "taken";
+    return { kind: "taken" };
   }
-  return errorCode(handle.error) === "EEXIST" ? "busy" : "failed";
+  const isBusy = errorCode(handle.error) === "EEXIST";
+  return isBusy ? { kind: "busy" } : { kind: "failed", reason: describe(handle.error) };
 }
 
 async function removeIfStale(path: string): Promise<void> {
@@ -42,7 +50,7 @@ async function removeIfStale(path: string): Promise<void> {
 /**
  * Runs the action while this process holds the lock file next to the index, so that two writers
  * never read and write the index at the same time. It waits up to 10 seconds for another writer, and
- * removes a lock that a stopped process left behind.
+ * removes a lock that a stopped process left behind. It releases the lock also when the action fails.
  */
 export async function withIndexLock<Result>(
   indexPath: string,
@@ -52,22 +60,24 @@ export async function withIndexLock<Result>(
   await wrap(mkdir(dirname(lockPath), { recursive: true }));
   const deadline = Date.now() + waitMs;
   let attempt = await takeLock(lockPath);
-  while (attempt === "busy" && Date.now() < deadline) {
+  while (attempt.kind === "busy" && Date.now() < deadline) {
     await removeIfStale(lockPath);
     await sleep(retryMs);
     attempt = await takeLock(lockPath);
   }
-  switch (attempt) {
+  switch (attempt.kind) {
     case "busy":
-      return left(`another zambil still writes the index and holds ${lockPath}`);
+      return left(
+        `another zambil holds ${lockPath}. If no other zambil runs, delete that file, then run the command again`,
+      );
     case "failed":
-      return left(`cannot create the lock file ${lockPath}`);
+      return left(`cannot create the lock file ${lockPath}: ${attempt.reason}`);
     case "taken":
       break;
     default:
       return isNever(attempt);
   }
-  const result = await options.action();
+  const result = await wrap(options.action());
   await wrap(rm(lockPath, { force: true }));
-  return result;
+  return result.ok ? result.value : left(describe(result.error));
 }

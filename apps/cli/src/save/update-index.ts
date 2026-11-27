@@ -30,7 +30,9 @@ export async function updateIndex(
     report: () => undefined,
     download: "never",
   });
-  const summary = noteSearch.ok ? await noteSearch.value.index(repo) : noteSearch;
+  const summary = noteSearch.ok
+    ? await noteSearch.value.index(repo, { removedTexts: "keep" })
+    : noteSearch;
   if (!summary.ok) return left(summary.error);
   return right("updated");
 }

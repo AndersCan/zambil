@@ -1,8 +1,8 @@
+import type { IndexSummary, RemovedTexts } from "../index/index-notes.ts";
 import { cacheFolder } from "../model/cache-folder.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import type { Either } from "@zambil/core/either";
 import { indexNotes } from "../index/index-notes.ts";
-import type { IndexSummary } from "../index/index-notes.ts";
 import type { ModelDownload } from "../model/fetch-model.ts";
 import { openEmbedder } from "../embed/open-embedder.ts";
 import { right } from "@zambil/core/either";
@@ -27,13 +27,21 @@ export interface NoteSearchOptions {
   unindexedLimit?: number;
 }
 
+/** What happens to the texts of notes that are not in the repo. */
+export interface NoteIndexOptions {
+  removedTexts: RemovedTexts;
+}
+
 /** Search and index with the search model, its threshold and the zambil cache folder. */
 export interface NoteSearch {
   search: (
     repo: ConfigurationRepo,
     options: NoteSearchOptions,
   ) => Promise<Either<string, SearchResult>>;
-  index: (repo: ConfigurationRepo) => Promise<Either<string, IndexSummary>>;
+  index: (
+    repo: ConfigurationRepo,
+    options: NoteIndexOptions,
+  ) => Promise<Either<string, IndexSummary>>;
 }
 
 /**
@@ -51,6 +59,6 @@ export async function openNoteSearch(
   const shared = { embedder: embedder.value, cacheFolder: folder };
   return right({
     search: (repo, searchOptions) => searchNotes(repo, { ...searchOptions, ...shared }),
-    index: (repo) => indexNotes(repo, shared),
+    index: (repo, indexOptions) => indexNotes(repo, { ...shared, ...indexOptions }),
   });
 }

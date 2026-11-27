@@ -1,15 +1,15 @@
 import { describe, expect, test } from "vite-plus/test";
+import { left, right } from "@zambil/core/either";
 import { mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { right } from "@zambil/core/either";
 import { tmpdir } from "node:os";
 import { withIndexLock } from "./index-lock.ts";
 
 const done = { action: () => Promise.resolve(right("done")) };
 
 describe("withIndexLock", () => {
-  test("waits for a lock that another writer holds, and removes one that a stopped process left", async () => {
+  test("waits for a lock that another writer holds, removes one that a stopped process left, and releases it after a failure", async () => {
     const folder = await mkdtemp(join(tmpdir(), "zambil-lock-"));
     const indexPath = join(folder, "repo.index");
     const lockPath = `${indexPath}.lock`;
@@ -22,15 +22,20 @@ describe("withIndexLock", () => {
     const minuteAgo = new Date(Date.now() - 60_000);
     await utimes(lockPath, minuteAgo, minuteAgo);
     const stale = await withIndexLock(indexPath, done);
+    const failed = await withIndexLock(indexPath, {
+      action: () => Promise.reject(new Error("disk full")),
+    });
     expect({
       waited,
       hasWaited: waitedMs >= 90,
       stale,
+      failed,
       isReleased: existsSync(lockPath),
     }).toEqual({
       waited: right("done"),
       hasWaited: true,
       stale: right("done"),
+      failed: left("disk full"),
       isReleased: false,
     });
   });

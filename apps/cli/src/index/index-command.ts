@@ -26,7 +26,7 @@ async function runIndex(options: CommandRunOptions): Promise<ExitCode> {
     output.error(`zambil cannot load its model: ${noteSearch.error}\n`);
     return 1;
   }
-  const summary = await noteSearch.value.index(repo.value);
+  const summary = await noteSearch.value.index(repo.value, { removedTexts: "drop" });
   if (!summary.ok) {
     output.error(`zambil cannot index the notes: ${summary.error}\n`);
     return 1;

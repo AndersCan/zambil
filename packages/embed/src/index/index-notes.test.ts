@@ -1,7 +1,8 @@
 import { describe, expect, test } from "vite-plus/test";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import type { Embedder } from "../embed/open-embedder.ts";
 import { indexNotes } from "./index-notes.ts";
+import type { RemovedTexts } from "./index-notes.ts";
 import { join } from "node:path";
 import { loadRepo } from "@zambil/core/load-repo";
 import { readNoteIndex } from "./note-index-file.ts";
@@ -35,7 +36,11 @@ describe("indexNotes", () => {
     async function index() {
       const repo = loadRepo(root);
       if (!repo.ok) throw new Error(repo.error.message);
-      const summary = await indexNotes(repo.value, { embedder: lengthEmbedder, cacheFolder });
+      const summary = await indexNotes(repo.value, {
+        embedder: lengthEmbedder,
+        cacheFolder,
+        removedTexts: "drop",
+      });
       return summary.ok ? [summary.value.texts, summary.value.embedded] : summary.error;
     }
     const first = await index();
@@ -76,7 +81,9 @@ describe("indexNotes", () => {
       notes: repo.value.notes.filter((note) => ["base", `note-${position}`].includes(note.name)),
     }));
     await Promise.all(
-      views.map((view) => indexNotes(view, { embedder: slowEmbedder, cacheFolder })),
+      views.map((view) =>
+        indexNotes(view, { embedder: slowEmbedder, cacheFolder, removedTexts: "keep" }),
+      ),
     );
     const vectors = readNoteIndex(root, { cacheFolder, modelKey: "length@1" }).vectors;
     expect([...vectors.keys()].toSorted()).toEqual([
@@ -90,5 +97,35 @@ describe("indexNotes", () => {
       "Note 6.",
       "Note 7.",
     ]);
+  });
+
+  test("keeps a text that a parallel save indexed after this run loaded the repo, unless it drops removed texts", async () => {
+    const root = await writeTestRepo({ "base.md": "---\ndescription: Base.\n---\n" });
+    const cacheFolder = await mkdtemp(join(tmpdir(), "zambil-cache-"));
+    async function index(removedTexts: RemovedTexts) {
+      const repo = loadRepo(root);
+      if (!repo.ok) throw new Error(repo.error.message);
+      await indexNotes(repo.value, { embedder: lengthEmbedder, cacheFolder, removedTexts });
+      return repo.value;
+    }
+    function indexed() {
+      const vectors = readNoteIndex(root, { cacheFolder, modelKey: "length@1" }).vectors;
+      return [...vectors.keys()].toSorted();
+    }
+    await index("drop");
+    await writeFile(join(root, "a.md"), "---\ndescription: Note A.\n---\n");
+    const viewA = loadRepo(root);
+    if (!viewA.ok) throw new Error(viewA.error.message);
+    await writeFile(join(root, "b.md"), "---\ndescription: Note B.\n---\n");
+    await index("keep");
+    const options = { embedder: lengthEmbedder, cacheFolder };
+    await indexNotes(viewA.value, { ...options, removedTexts: "keep" });
+    const kept = indexed();
+    await rm(join(root, "b.md"));
+    await index("drop");
+    expect({ kept, dropped: indexed() }).toEqual({
+      kept: ["Base.", "Note A.", "Note B."],
+      dropped: ["Base.", "Note A."],
+    });
   });
 });
