@@ -137,7 +137,7 @@ Give the folder for the tar file as the first argument.
 
 The path in `script` is relative to the folder of the note, and it must stay inside the repo. zambil stores it relative to the repo root, in `note.script.path`. The text of the note tells the agent what the script does and which arguments it takes.
 
-zambil never reads the script, and the source of the script never goes into the context. `zambil check` makes sure that a file is at the path, with `stat` only. A match adds the text of the note to the context. It never runs the script.
+zambil never reads the script, and the source of the script never goes into the context. A link or an embed resolves only to a note. zambil never reads a file that is not a note, so `![[backup.sh]]` does not add the script. `zambil check` makes sure that a file is at the path, with `stat` only. A match adds the text of the note to the context. It never runs the script.
 
 ## Expiry
 

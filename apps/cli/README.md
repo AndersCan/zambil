@@ -51,4 +51,6 @@ Commands read the environment only through `CliConfig`. `src/config.ts` reads `p
 
 A command that runs as an agent hook must exit with 0, also when it cannot find the repo. It reports the problem on standard error. Claude Code reads exit code 2 from a hook as a blocking error: it stops the prompt or the tool call.
 
+Do not change the notes in `packages/core/fixtures/sample-repo` for a new command, because the tests of `list` and `check` read every note in it. Write the repo for your test with `writeTestRepo` from `@zambil/core/write-test-repo`.
+
 `zambil help` imports every command file. If a command needs a slow module, for example an embedder, import that module inside `run`, not at the top of the file.
