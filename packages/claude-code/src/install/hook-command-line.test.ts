@@ -22,7 +22,7 @@ describe("hookCommandLine", () => {
       repoRoot: "/home/ada/my notes",
       compileCache: "/home/ada/.cache/zambil/node-compile-cache",
     };
-    const guard = `[ -x /home/ada/.local/bin/zambil ] || { echo '{"systemMessage":"zambil cannot start, so no note reaches this session. To install zambil again, run: ${installScriptCommand}"}'; exit 0; }; `;
+    const guard = `[ -x /home/ada/.local/bin/zambil ] || { printf '%s\n' '{"systemMessage":"zambil cannot start, so no note reaches this session. To install zambil again, run: ${installScriptCommand}"}'; exit 0; }; `;
     expect([
       hookCommandLine({
         ...paths,

@@ -27,7 +27,7 @@ function pathPrefix(nodeFolders: string[]): string {
 function missingProgramGuard(zambil: string): string {
   const systemMessage = `zambil cannot start, so no note reaches this session. To install zambil again, run: ${installScriptCommand}`;
   const warning = quoteArgument(JSON.stringify({ systemMessage }));
-  return `[ -x ${zambil} ] || { echo ${warning}; exit 0; }; `;
+  return `[ -x ${zambil} ] || { printf '%s\n' ${warning}; exit 0; }; `;
 }
 
 /**

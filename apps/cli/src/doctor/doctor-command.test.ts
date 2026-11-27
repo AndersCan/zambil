@@ -1,10 +1,11 @@
 import { describe, expect, test } from "vite-plus/test";
-import { dirname, join, resolve } from "node:path";
 import { mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from "node:fs/promises";
 import type { CliConfig } from "../config.ts";
 import { doctorCommand } from "./doctor-command.ts";
+import { fileURLToPath } from "node:url";
 import { installCommand } from "../install/install-command.ts";
 import { installScriptUrl } from "@zambil/claude-code/install-script-command";
+import { join } from "node:path";
 import { localBinPathLine } from "../install/link-hint.ts";
 import { mainPath } from "../install/link-hint.ts";
 import { runChecks } from "./doctor-command.ts";
@@ -86,7 +87,7 @@ describe("zambil doctor", () => {
     await symlink("/gone/zambil/apps/cli/src/main.ts", setup.link);
     const results = await runChecks(setup.config, { repoFlag: undefined, nodeVersion: "22.1.0" });
     const configPath = join(setup.home, ".config", "zambil", "config.json");
-    const cloneRoot = resolve(dirname(mainPath()), "..", "..", "..");
+    const cloneRoot = fileURLToPath(new URL("../../../..", import.meta.url)).replace(/\/$/u, "");
     expect(results.filter((result) => result.level !== "ok")).toEqual([
       {
         level: "fail",
