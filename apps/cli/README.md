@@ -24,6 +24,7 @@ Then `zambil list` works in every folder.
 
 The commands are:
 
+- `zambil hook` is the command that a Claude Code hook runs. It reads the hook JSON on standard input and prints the notes that apply. It always exits with 0. `packages/claude-code/README.md` tells you how to set up the hooks.
 - `zambil list` prints one line per note: the name, the kind, the path and the description.
 - `zambil check` prints each problem with its path. An error sets the exit code to 1.
 - `zambil save <name>` creates or rewrites a note from standard input, or records with `--verified` that its claims still hold. It is the one way to write a note. See "Write a note" in `docs/notes.md`.
@@ -40,6 +41,8 @@ The exit codes are:
 - 0: the command worked.
 - 1: `zambil check` found an error, `zambil save` refused to save the note, `zambil show` could not resolve the name, the heading or the block, or `zambil index` or `zambil search` cannot get the model.
 - 2: the usage is wrong, or zambil cannot find the repo.
+
+`zambil hook` is the exception: it exits with 0 in each of these cases.
 
 ## Add a command
 

@@ -1,6 +1,6 @@
 # zambil
 
-zambil has three packages: `packages/core` reads a configuration repo of notes, `packages/embed` is the similarity search, and `apps/cli` is the `zambil` command. `docs/notes.md` is the contract for the note format. This file tells you how to set up, test and change the repo. It is written for a task that has no other context.
+zambil has four packages: `packages/core` reads a configuration repo of notes, `packages/embed` is the similarity search, `packages/claude-code` connects zambil to Claude Code hooks, and `apps/cli` is the `zambil` command. `docs/notes.md` is the contract for the note format. This file tells you how to set up, test and change the repo. It is written for a task that has no other context.
 
 `vision.md` says what zambil is for and how to make trade-offs. Read it before you make a design decision. If a section of it is still empty, the maintainer did not decide that part yet.
 
