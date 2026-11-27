@@ -13,4 +13,5 @@ This is the first release. zambil adds the notes of your configuration repo to y
 - `zambil save` writes a note for the agent and checks names, links and expiry. If a current note has a very similar description, it refuses the new note.
 - `zambil list <text>` finds notes by name, alias or description, and prints at most 100 notes.
 - `zambil init`, `zambil install`, `zambil doctor` and `zambil uninstall` set up, check and remove the Claude Code hooks and the `zambil-save` skill.
+- `zambil update` updates zambil, prints what changed, and runs `zambil doctor`.
 - The install command installs the newest release. `zambil --version` prints the version. If zambil is not at a release, it also prints the commit.
