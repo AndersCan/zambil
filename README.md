@@ -28,7 +28,7 @@ You need Node 24 or later with npm, git and Claude Code. The steps work on Linux
    zambil init
    ```
 
-   On the first run, `zambil init` makes the notes folder `~/zambil-notes` with one starter note. It connects the folder to Claude Code. It also downloads a model of 23 MB that finds similar notes. To keep the notes in another folder, run `zambil init <folder>` in place of `zambil init`. The output lists the next steps. The first one is:
+   On the first run, `zambil init` makes the notes folder `~/zambil-notes` with one starter note. It connects the folder to Claude Code. It also downloads a model of 23 MB that finds similar notes. To keep the notes in another folder, run `zambil init <folder>` in place of `zambil init`. If you use Obsidian, read [Use an Obsidian vault that you have](#use-an-obsidian-vault-that-you-have) first. The output of zambil calls the notes folder the configuration repo. The output ends with a check and the next steps:
 
    ```text
    Checked 1 note: no problems.
@@ -55,7 +55,7 @@ To let the agent write a note, ask for it in a Claude Code prompt:
 Write a zambil note that we use pnpm, never npm.
 ```
 
-The agent chooses a name, for example `use-pnpm`, and a description. It saves the note with `zambil save`. Claude Code asks you to allow the `zambil` commands. Allow them. Apart from the starter note, zambil never writes a note on its own. The agent writes a note only on your request.
+The agent chooses a name, for example `use-pnpm`, and a description. It saves the note with `zambil save`. Claude Code asks you to allow the `zambil` commands. Allow them. Apart from the starter note, zambil never writes a note on its own. The agent writes a note only on your request. After the agent writes a note, run `zambil index`, as for a note that you write yourself.
 
 To write a note yourself, make a file in the notes folder, for example `~/zambil-notes/shell-style.md`:
 
@@ -73,7 +73,7 @@ A note reaches the agent in three ways:
 - The note names a hook in its `hooks` property. A hook is a moment in a session where Claude Code runs a command. With `hooks: [SessionStart]`, the note reaches the agent at the start of each session, like the starter note.
 - The description of the note is similar to your prompt.
 
-After you add or change notes, run `zambil index`. It keeps the search for similar notes fast. If a note names a hook that no note named before, run `zambil install` too. zambil connects only the hooks that your notes name. Then start a new Claude Code session.
+After you add or change notes, run `zambil index`. It keeps the search for similar notes fast. If a note names a hook that no note named before, run `zambil install` too. Apart from `SessionStart` and `UserPromptSubmit`, zambil connects only the hooks that your notes name. Then start a new Claude Code session.
 
 `zambil list` lists your notes, and `zambil show <name>` prints a note as the agent gets it. [`docs/notes.md`](docs/notes.md) describes every property, expiry, skills, scripts, links and embeds.
 
@@ -89,7 +89,7 @@ zambil init ~/vault/zambil
 
 Use the path of your vault in place of `~/vault`. zambil reads only the `zambil` folder, and writes the starter note there. Your other notes stay out of the sessions. In Obsidian, keep the vault open as before. The notes show in its `zambil` folder. The output of `zambil init` says to open the `zambil` folder in Obsidian. Skip that step.
 
-To use the whole vault, run `zambil init ~/vault`. zambil writes no starter note and changes no file in a folder that has files. So no line comes at the start of a session. To make sure that it works, type `z:<name>` with the name of one of your notes in a prompt. If the name has spaces, write it in brackets, for example `z:[[Meeting notes]]`. A note reaches the agent only in the three ways above. If a daily note has no `hooks` and no `description`, only `z:<name>` brings it to the agent.
+To use the whole vault, run `zambil init ~/vault`. zambil writes no starter note and changes no file in a folder that has files. So no line comes at the start of a session. To make sure that it works, type `z:<name>` with the name of one of your notes in a prompt. If the name has spaces, write it in brackets, for example `z:[[Meeting notes]]`. The agent then answers with what the note says. A note reaches the agent only in the three ways above. If a daily note has no `hooks` and no `description`, only `z:<name>` brings it to the agent.
 
 zambil needs a unique name for each note in the whole folder. Obsidian allows the same name in two folders, but zambil reports it as an error:
 
@@ -127,7 +127,7 @@ Run the install command again:
 curl -fsSL https://raw.githubusercontent.com/AndersCan/zambil/main/install.sh | sh
 ```
 
-It updates the clone of zambil in `~/.local/share/zambil` and installs the new dependencies. If you changed files in the clone, it stops and tells you how to keep your changes. After the update, run `zambil doctor`. If the new version writes other hooks, `zambil doctor` tells you to run `zambil install`.
+It updates the clone of zambil in `~/.local/share/zambil` and installs the new dependencies. If you changed files in the clone, it stops and tells you how to keep your changes. If you moved zambil, set the same `ZAMBIL_HOME` as in [Move zambil](#move-zambil). After the update, run `zambil doctor`. If the new version writes other hooks, `zambil doctor` tells you to run `zambil install`.
 
 ## Move the notes folder
 
@@ -153,7 +153,7 @@ To disconnect zambil from Claude Code, run:
 zambil uninstall
 ```
 
-It removes the zambil hooks from `~/.claude/settings.json` and the `zambil-save` skill from `~/.claude/skills/zambil-save`. The other settings and hooks stay as they are. If `zambil init` made `settings.json`, the file stays with `{}` in it. Start a new Claude Code session to stop the hooks.
+It removes the zambil hooks from `~/.claude/settings.json` and the `zambil-save` skill from `~/.claude/skills/zambil-save`. The rest of the file, your own hooks too, stays as it is. If `zambil init` made `settings.json`, the file stays with `{}` in it. Start a new Claude Code session to stop the hooks.
 
 `zambil uninstall` never changes your notes. It also leaves these files in place:
 
