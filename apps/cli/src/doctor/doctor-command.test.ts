@@ -59,6 +59,10 @@ async function doctor(config: CliConfig) {
   return { code, ...printed };
 }
 
+function hookLines(stdout: string): string[] {
+  return stdout.split("\n").filter((line) => line.includes("hook"));
+}
+
 /** The lines about similar notes, and the lines under a failed check. */
 function similarLines(stdout: string): string[] {
   return stdout.split("\n").filter((line) => line.includes("index") || line.startsWith("      "));
@@ -159,6 +163,29 @@ describe("zambil doctor", () => {
         "3 problems to fix. Fix them from the top down, because a later problem can come from an earlier one. Then run zambil doctor again.",
         "",
       ],
+    });
+  });
+
+  test("reports a matcher that a note changed since the install, and says ok after install runs again", async () => {
+    const setup = await installedSetup();
+    const shell = "---\nhooks: PreToolUse\ntools: Bash\n---\nQuote.\n";
+    await writeFile(join(setup.repo, "shell.md"), shell);
+    const args = ["--repo", setup.repo, "--offline"];
+    await installCommand.run({ args, config: setup.config, input, output: silent, now });
+    const style = "---\nhooks: PreToolUse\ntools: [Edit, Write]\n---\nStyle.\n";
+    await writeFile(join(setup.repo, "style.md"), style);
+    const stale = await doctor(setup.config);
+    await installCommand.run({ args, config: setup.config, input, output: silent, now });
+    const fixed = await doctor(setup.config);
+    expect({
+      stale: hookLines(stale.stdout).slice(0, 2),
+      fixed: hookLines(fixed.stdout)[0],
+    }).toEqual({
+      stale: [
+        `fail  The zambil hooks in ${setup.settings} do not match what zambil install writes now.`,
+        "      zambil hook runs at PreToolUse for Bash, but the notes need it for Bash, Edit, Write.",
+      ],
+      fixed: expect.stringMatching(/^ok {4}The zambil hooks in .* are up to date/),
     });
   });
 

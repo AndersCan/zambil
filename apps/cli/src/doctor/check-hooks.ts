@@ -1,3 +1,4 @@
+import { listZambilHooks, listZambilMatchers } from "@zambil/claude-code/settings-hooks";
 import type { CheckResult } from "./check-result.ts";
 import type { CliConfig } from "../config.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
@@ -6,11 +7,11 @@ import type { HookList } from "@zambil/claude-code/hook-list";
 import { hooksToInstall } from "@zambil/claude-code/hooks-to-install";
 import { installHookCommand } from "../install/install-hook-command.ts";
 import { isAbsolute } from "node:path";
-import { listZambilHooks } from "@zambil/claude-code/settings-hooks";
 import type { Note } from "@zambil/core/note";
 import { parseHookCommand } from "./parse-hook-command.ts";
 import { readSettings } from "../install/settings-file.ts";
 import { settingsPath } from "../install/claude-paths.ts";
+import { toolMatchers } from "@zambil/claude-code/tool-matchers";
 import { zambilCommand } from "./zambil-command.ts";
 
 /** What the hooks must match: the repo, `zambil` on the `PATH` and the hook list, when they are known. */
@@ -37,6 +38,12 @@ function whyInstalled(hook: string, options: WhyOptions): string {
 interface EventProblemsOptions {
   repo: ConfigurationRepo;
   hookList: HookList;
+  matchers: Record<string, string | undefined>;
+}
+
+/** The tools of a matcher, for a message. */
+function describeTools(matcher: string | undefined): string {
+  return matcher === undefined ? "every tool" : matcher.split("|").join(", ");
 }
 
 /** The hooks that install would add or remove now, for example after a note names a new hook. */
@@ -52,6 +59,14 @@ function eventProblems(events: string[], options: EventProblemsOptions): string[
   for (const hook of events) {
     if (expected.includes(hook)) continue;
     problems.push(`zambil hook runs at ${hook}, but zambil install no longer adds it there.`);
+  }
+  const needed = toolMatchers(repo.notes, { hookNames: expected });
+  for (const hook of events) {
+    const isStale = expected.includes(hook) && options.matchers[hook] !== needed[hook];
+    if (!isStale) continue;
+    const now = describeTools(options.matchers[hook]);
+    const tools = describeTools(needed[hook]);
+    problems.push(`zambil hook runs at ${hook} for ${now}, but the notes need it for ${tools}.`);
   }
   return problems;
 }
@@ -110,7 +125,11 @@ export async function checkHooks(options: CheckHooksOptions): Promise<CheckResul
     return { level: "fail", text, fixes: [install] };
   }
   const expected = await expectedCommand(options);
-  const problems = new Set(repo === undefined ? [] : eventProblems(events, { repo, hookList }));
+  const listed = settings.ok ? listZambilMatchers(settings.value) : settings;
+  const matchers = listed.ok ? listed.value : {};
+  const problems = new Set(
+    repo === undefined ? [] : eventProblems(events, { repo, hookList, matchers }),
+  );
   for (const command of new Set(Object.values(hooks.value).flat())) {
     for (const problem of commandProblems(command, { repo, expected })) problems.add(problem);
   }

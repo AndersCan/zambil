@@ -332,7 +332,7 @@ describe("saveCommand and zambil install", () => {
         code: 0,
         stdout: "Created shell.md.\n",
         stderr: [
-          `The note names PreToolUse, but the zambil hooks in ${settings} do not run there yet.`,
+          `The note names PreToolUse, but the zambil hooks in ${settings} do not run there yet for this note.`,
           `To connect it, the user runs: zambil install --repo ${root}`,
           "Then the note reaches the agent from the next Claude Code session on.",
           "",

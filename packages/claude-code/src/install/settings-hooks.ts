@@ -5,10 +5,14 @@ import type { Either } from "@zambil/core/either";
 /** Claude Code settings as parsed JSON. zambil reads and changes only `hooks`. */
 export type Settings = Record<string, unknown>;
 
-/** The command line that each zambil hook runs, and the hooks that run it. */
+/**
+ * The command line that each zambil hook runs, the hooks that run it, and the `matcher` of a tool hook
+ * that runs only for some tools. A hook without a matcher runs for every tool.
+ */
 export interface InstallHooksOptions {
   command: string;
   hookNames: string[];
+  matchers?: Record<string, string>;
 }
 
 /** The seconds that Claude Code waits for `zambil hook` before it goes on without it. */
@@ -53,23 +57,32 @@ function withoutZambil(groups: unknown[]): unknown[] {
 
 interface ReplaceOptions {
   handler: Record<string, unknown>;
+  matcher: string | undefined;
 }
 
-/** A group without a `matcher` runs for every tool. zambil filters by `tools` itself, so it needs one. */
-function matchesEveryTool(group: unknown): boolean {
+/** The `matcher` of a group. No matcher, an empty one and `*` all run for every tool, so they read as `undefined`. */
+function matcherOf(group: unknown): string | undefined {
   const matcher = asRecord(group)?.matcher;
-  return matcher === undefined || matcher === "" || matcher === "*";
+  if (typeof matcher !== "string") return undefined;
+  const isEveryTool = matcher === "" || matcher === "*";
+  return isEveryTool ? undefined : matcher;
+}
+
+function newGroup(options: ReplaceOptions): Record<string, unknown> {
+  const group: Record<string, unknown> = { hooks: [options.handler] };
+  if (options.matcher !== undefined) return { matcher: options.matcher, ...group };
+  return group;
 }
 
 /**
- * Puts the handler in place of the first zambil handler in a group for every tool, or in a new group
- * at the end. Each other zambil handler goes away, so the hook runs once.
+ * Puts the handler in place of the first zambil handler in a group with the matcher that zambil needs,
+ * or in a new group at the end. Each other zambil handler goes away, so the hook runs once.
  */
 function withHandler(groups: unknown[], options: ReplaceOptions): unknown[] {
   const position = groups.findIndex(
-    (group) => matchesEveryTool(group) && handlersOf(group).some(isZambilHandler),
+    (group) => matcherOf(group) === options.matcher && handlersOf(group).some(isZambilHandler),
   );
-  if (position === -1) return [...withoutZambil(groups), { hooks: [options.handler] }];
+  if (position === -1) return [...withoutZambil(groups), newGroup(options)];
   const group = asRecord(groups[position]);
   const handlers = handlersOf(group);
   const first = handlers.findIndex(isZambilHandler);
@@ -117,14 +130,17 @@ export function installHooks(
   const events = readHooks(settings);
   if (!events.ok) return events;
   const handler = { type: "command", command: options.command, timeout: hookTimeout };
+  const matchers = options.matchers ?? {};
   const changed: Record<string, unknown[]> = {};
   for (const [event, groups] of Object.entries(events.value)) {
+    const matcher = matchers[event];
     changed[event] = options.hookNames.includes(event)
-      ? withHandler(groups, { handler })
+      ? withHandler(groups, { handler, matcher })
       : withoutZambil(groups);
   }
   for (const event of options.hookNames) {
-    if (changed[event] === undefined) changed[event] = [{ hooks: [handler] }];
+    const matcher = matchers[event];
+    if (changed[event] === undefined) changed[event] = [newGroup({ handler, matcher })];
   }
   return right(withEvents(settings, { before: events.value, after: changed }));
 }
@@ -143,6 +159,23 @@ export function listZambilHooks(settings: Settings): Either<string, Record<strin
       }
     }
     if (commands.length > 0) found[event] = commands;
+  }
+  return right(found);
+}
+
+/**
+ * The `matcher` of the first zambil handler of each event that runs `zambil hook`. `undefined` means
+ * that it runs for every tool.
+ */
+export function listZambilMatchers(
+  settings: Settings,
+): Either<string, Record<string, string | undefined>> {
+  const events = readHooks(settings);
+  if (!events.ok) return events;
+  const found: Record<string, string | undefined> = {};
+  for (const [event, groups] of Object.entries(events.value)) {
+    const group = groups.find((candidate) => handlersOf(candidate).some(isZambilHandler));
+    if (group !== undefined) found[event] = matcherOf(group);
   }
   return right(found);
 }
