@@ -19,8 +19,8 @@ describe("withIndexLock", () => {
     const waited = await withIndexLock(indexPath, done);
     const waitedMs = performance.now() - started;
     await writeFile(lockPath, "");
-    const minuteAgo = new Date(Date.now() - 60_000);
-    await utimes(lockPath, minuteAgo, minuteAgo);
+    const pastStale = new Date(Date.now() - 6000);
+    await utimes(lockPath, pastStale, pastStale);
     const stale = await withIndexLock(indexPath, done);
     const failed = await withIndexLock(indexPath, {
       action: () => Promise.reject(new Error("disk full")),

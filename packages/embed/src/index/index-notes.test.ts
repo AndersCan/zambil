@@ -128,4 +128,30 @@ describe("indexNotes", () => {
       dropped: ["Base.", "Note A."],
     });
   });
+
+  test("keeps a text that a save adds while a run that drops removed texts embeds", async () => {
+    const root = await writeTestRepo({ "base.md": "---\ndescription: Base.\n---\n" });
+    const cacheFolder = await mkdtemp(join(tmpdir(), "zambil-cache-"));
+    const before = loadRepo(root);
+    if (!before.ok) throw new Error(before.error.message);
+    async function saveMeanwhile() {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 5);
+      });
+      await writeFile(join(root, "saved.md"), "---\ndescription: Saved meanwhile.\n---\n");
+      const after = loadRepo(root);
+      if (!after.ok) throw new Error(after.error.message);
+      await indexNotes(after.value, {
+        embedder: lengthEmbedder,
+        cacheFolder,
+        removedTexts: "keep",
+      });
+    }
+    await Promise.all([
+      indexNotes(before.value, { embedder: slowEmbedder, cacheFolder, removedTexts: "drop" }),
+      saveMeanwhile(),
+    ]);
+    const vectors = readNoteIndex(root, { cacheFolder, modelKey: "length@1" }).vectors;
+    expect([...vectors.keys()].toSorted()).toEqual(["Base.", "Saved meanwhile."]);
+  });
 });

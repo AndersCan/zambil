@@ -28,7 +28,7 @@ async function runIndex(options: CommandRunOptions): Promise<ExitCode> {
   }
   const summary = await noteSearch.value.index(repo.value, { removedTexts: "drop" });
   if (!summary.ok) {
-    output.error(`zambil cannot index the notes: ${summary.error}\n`);
+    output.error(`zambil cannot index the notes: ${summary.error}. Then run zambil index again.\n`);
     return 1;
   }
   const { texts, embedded, path } = summary.value;

@@ -10,7 +10,7 @@ const waitMs = 10_000;
 const retryMs = 25;
 
 /**
- * A lock this old was left by a process that stopped. Reading and writing an index takes well under a
+ * A lock this old, or this far in the future after a change of the clock, was left by a process that stopped. Reading and writing an index takes well under a
  * second, and the wait is longer, so a waiting writer removes such a lock in time.
  */
 const staleMs = 5000;
@@ -38,12 +38,15 @@ async function takeLock(path: string): Promise<LockAttempt> {
     return { kind: "taken" };
   }
   const isBusy = errorCode(handle.error) === "EEXIST";
-  return isBusy ? { kind: "busy" } : { kind: "failed", reason: describe(handle.error) };
+  const code = errorCode(handle.error);
+  const reason = typeof code === "string" ? code : describe(handle.error);
+  return isBusy ? { kind: "busy" } : { kind: "failed", reason };
 }
 
 async function removeIfStale(path: string): Promise<void> {
   const stats = await wrap(stat(path));
-  const isStale = stats.ok && Date.now() - stats.value.mtimeMs > staleMs;
+  const age = stats.ok ? Math.abs(Date.now() - stats.value.mtimeMs) : 0;
+  const isStale = age > staleMs;
   if (isStale) await wrap(rm(path, { force: true }));
 }
 
@@ -67,9 +70,7 @@ export async function withIndexLock<Result>(
   }
   switch (attempt.kind) {
     case "busy":
-      return left(
-        `another zambil holds ${lockPath}. If no other zambil runs, delete that file, then run the command again`,
-      );
+      return left(`another zambil holds ${lockPath}. If no other zambil runs, delete that file`);
     case "failed":
       return left(`cannot create the lock file ${lockPath}: ${attempt.reason}`);
     case "taken":
@@ -77,7 +78,7 @@ export async function withIndexLock<Result>(
     default:
       return isNever(attempt);
   }
-  const result = await wrap(options.action());
+  const result = await wrap(Promise.resolve().then(options.action));
   await wrap(rm(lockPath, { force: true }));
   return result.ok ? result.value : left(describe(result.error));
 }
