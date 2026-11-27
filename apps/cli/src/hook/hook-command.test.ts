@@ -105,7 +105,11 @@ describe("hookCommand", () => {
     const stdout = execFileSync(main, ["hook", "--repo", repo], {
       input: sessionStart,
       encoding: "utf8",
-      env: { ...process.env, CLAUDE_CONFIG_DIR: claude },
+      env: {
+        ...process.env,
+        CLAUDE_CONFIG_DIR: claude,
+        XDG_CACHE_HOME: await mkdtemp(join(tmpdir(), "zambil-cache-")),
+      },
     });
     expect(JSON.parse(stdout)).toEqual({
       hookSpecificOutput: {
@@ -208,11 +212,12 @@ describe("hookCommand", () => {
     });
   });
 
-  test("adds a note once in each context window, a z:<name> each time, and all notes again after a compact", async () => {
+  test("adds a note once in each context window, a z:<name> and a Stop note each time, and all notes again after a compact", async () => {
     const repo = await writeTestRepo({
       "a.md": "---\nhooks: [UserPromptSubmit, PreToolUse]\n---\nA.\n",
       "b.md": "B.\n",
       "s.md": "---\nhooks: SessionStart\n---\nS.\n",
+      "f.md": "---\nhooks: Stop\n---\nF.\n",
     });
     const cacheHome = await mkdtemp(join(tmpdir(), "zambil-cache-"));
     const claudeConfigFolder = await writeClaudeFolder(["SessionStart", "UserPromptSubmit"]);
@@ -223,6 +228,7 @@ describe("hookCommand", () => {
       tool_name: "Bash",
     });
     const compact = JSON.stringify({ ...ids, hook_event_name: "SessionStart", source: "compact" });
+    const stop = JSON.stringify({ ...ids, hook_event_name: "Stop", stop_hook_active: false });
     const payloads = [
       prompt("Hi"),
       prompt("Hi"),
@@ -230,6 +236,8 @@ describe("hookCommand", () => {
       prompt("Use z:b"),
       subagentTool,
       subagentTool,
+      stop,
+      stop,
       compact,
       prompt("Hi"),
     ];
@@ -243,6 +251,6 @@ describe("hookCommand", () => {
         ),
       );
     }
-    expect(names).toEqual([["a"], [], ["b"], ["b"], ["a"], [], ["s"], ["a"]]);
+    expect(names).toEqual([["a"], [], ["b"], ["b"], ["a"], [], ["f"], ["f"], ["s"], ["a"]]);
   });
 });

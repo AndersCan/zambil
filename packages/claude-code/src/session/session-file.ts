@@ -59,8 +59,9 @@ export async function writeShownNotes(
   const written = await wrap(writeFile(temporary, formatSessionFile(shown)));
   if (!written.ok) return left(describe(written.error));
   const renamed = await wrap(rename(temporary, path));
-  if (!renamed.ok) return left(describe(renamed.error));
-  return right(undefined);
+  if (renamed.ok) return right(undefined);
+  await wrap(rm(temporary, { force: true }));
+  return left(describe(renamed.error));
 }
 
 /** Removes the file of a context window that starts again empty. A missing file is fine. */

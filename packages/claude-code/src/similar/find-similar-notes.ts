@@ -1,14 +1,21 @@
 import { left, right, wrap } from "@zambil/core/either";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import type { Either } from "@zambil/core/either";
+import { nameKey } from "@zambil/core/index-names";
+import type { Note } from "@zambil/core/note";
 import type { NoteScore } from "@zambil/embed/score-notes";
+import type { ShownNotes } from "../session/shown-notes.ts";
 import type { UserEnvironment } from "@zambil/core/locate-repo";
 
-/** The prompt as typed, the clock that decides which notes are expired, and where the cache folder is. */
+/**
+ * The prompt as typed, the clock that decides which notes are expired, where the cache folder is, and
+ * the notes that the context already holds, by name key.
+ */
 export interface FindSimilarNotesOptions {
   prompt: string;
   now: Date;
   environment: UserEnvironment;
+  inContext?: ShownNotes;
 }
 
 /** The notes that match the prompt, best first, and how many notes were left out because they are not in the index. */
@@ -48,6 +55,23 @@ export function readPrompt(prompt: string): PromptKind {
   return letter.test(trimmed) ? "text" : "no-text";
 }
 
+/** The notes that the context already holds, by name key. */
+export interface SearchableNotesOptions {
+  inContext: ShownNotes;
+}
+
+/**
+ * The notes that a prompt can match. A `SessionStart` note and a note in `inContext` are in the context
+ * already, so they take no match, and a lower note can take the place.
+ */
+export function searchableNotes(notes: Note[], options: SearchableNotesOptions): Note[] {
+  return notes.filter((note) => {
+    const isInContext =
+      note.hooks.includes("SessionStart") || nameKey(note.name) in options.inContext;
+    return !isInContext;
+  });
+}
+
 function describe(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
 }
@@ -60,8 +84,7 @@ function failed(message: string): Either<SimilarNotesError, never> {
  * Finds the current notes whose description is similar to the prompt. It never downloads the model,
  * so a missing model is an error. Every failure, a thrown one too, is an error value, so that the hook
  * still adds its other notes. It writes nothing. It loads the embedder only for a prompt with text, in
- * a repo with at least one description. A `SessionStart` note is in the context already, so it is not
- * searched and takes no match.
+ * a repo with at least one description. It searches only the `searchableNotes`.
  */
 export async function findSimilarNotes(
   repo: ConfigurationRepo,
@@ -80,7 +103,7 @@ export async function findSimilarNotes(
   const noteSearch = opened.value;
   if (!noteSearch.ok) return left({ kind: "no-model", message: noteSearch.error });
   const { prompt, now } = options;
-  const notes = repo.notes.filter((note) => !note.hooks.includes("SessionStart"));
+  const notes = searchableNotes(repo.notes, { inContext: options.inContext ?? {} });
   const searchOptions = { text: prompt, now, unindexedLimit };
   const searched = await wrap(noteSearch.value.search({ ...repo, notes }, searchOptions));
   if (!searched.ok) return failed(`the search failed: ${describe(searched.error)}`);

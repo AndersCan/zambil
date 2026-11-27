@@ -70,7 +70,7 @@ An expired note is left out at a hook. For an expired note that you name with `z
 
 ## How much text one hook adds
 
-Claude Code saves a hook text over 10,000 characters to a file and gives the agent only a preview. So zambil keeps each text under 9,500 characters. Full notes use up to 8,000 characters, in order: first the notes that the prompt names, then the notes of the hook, then the similar notes. Each note that does not fit is one line at the end that tells the agent how to read it with `zambil show`. When no note applies, the hook prints nothing and adds nothing.
+Claude Code saves a hook text over 10,000 characters to a file and gives the agent only a preview. So zambil keeps each text under 9,500 characters. Full notes use up to 8,000 characters, in order: first the notes that the prompt names, then the notes of the hook, then the similar notes. Each note that does not fit is one line at the end that tells the agent how to read it with `zambil show`. When no note applies, or the context already holds each note that applies, the hook prints nothing and adds nothing.
 
 ## A note comes once in a context
 
@@ -80,10 +80,12 @@ zambil keeps one small file for each context in `$XDG_CACHE_HOME/zambil/sessions
 
 - A note that you change gets a new hash, so it comes again.
 - A note that you name with `z:<name>` always comes, because you asked for it.
+- A note at `Stop` or `SubagentStop` comes at each stop, because it makes the agent continue so that it acts on the note. `stop_hook_active` still stops a loop.
 - A note that did not fit, and became one line in the list at the end, is not in the file. It can come in full at a later hook.
 - `SessionStart` starts the list again, for each `source`: `startup`, `resume`, `clear` and `compact`. After `clear` or `compact`, the context lost the notes. After `resume`, zambil adds them again, because a repeat costs less than a lost note. `SubagentStart` starts the list of its subagent.
 - `SessionStart` also removes the files that no hook changed for 7 days.
-- A hook input without `session_id` gets no file, so the hook adds every note that applies.
+- A hook input without `session_id` gets no file, so the hook adds every note that applies. So does an id with a character other than a letter, a digit, `_` or `-`.
+- A rewind (`/rewind`, or Esc twice) sends no hook. A note that a prompt after the rewind point added is not in the context any more, but the file still lists it. It stays out until a clear, a compact or a new session. To get it back now, name it with `z:<name>`.
 
 If zambil cannot write the file, it prints why on standard error. The next hook can then add the notes again.
 

@@ -1,6 +1,6 @@
 import { chmod, mkdir, mkdtemp } from "node:fs/promises";
 import { describe, expect, test } from "vite-plus/test";
-import { findSimilarNotes, readPrompt } from "./find-similar-notes.ts";
+import { findSimilarNotes, readPrompt, searchableNotes } from "./find-similar-notes.ts";
 import { join } from "node:path";
 import { loadRepo } from "@zambil/core/load-repo";
 import { searchModel } from "@zambil/embed/search-model";
@@ -54,5 +54,19 @@ describe("findSimilarNotes", () => {
       noText: { ok: true, value: { matches: [], skipped: 0 } },
       text: "failed",
     });
+  });
+});
+
+describe("searchableNotes", () => {
+  test("leaves out a SessionStart note and a note that the context holds, in any version", async () => {
+    const root = await writeTestRepo({
+      "Deploy.md": "---\ndescription: How to deploy.\n---\nRun make deploy.\n",
+      "rebase.md": "---\ndescription: How to rebase.\n---\nRun git rebase.\n",
+      "welcome.md": "---\ndescription: Welcome.\nhooks: SessionStart\n---\nHi.\n",
+    });
+    const repo = loadRepo(root);
+    if (!repo.ok) throw new Error(repo.error.message);
+    const notes = searchableNotes(repo.value.notes, { inContext: { deploy: "an older version" } });
+    expect(notes.map((note) => note.name)).toEqual(["rebase"]);
   });
 });

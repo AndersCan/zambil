@@ -60,6 +60,18 @@ function promptSections(repo: HookRepo, options: PromptSectionOptions): ContextS
   return [recallSection(repo, options), hook, similar];
 }
 
+/**
+ * A note at `Stop` or `SubagentStop` makes the agent continue so that it acts on the note, at each stop.
+ * At every other hook, a note that the context holds is left out.
+ */
+const everyTimeHooks = new Set(["Stop", "SubagentStop"]);
+
+function hookNotes(repo: HookRepo, options: SectionOptions): ContextSection {
+  const section = hookSection(repo, options);
+  if (everyTimeHooks.has(options.input.hookEventName)) return section;
+  return withoutShown(section, options);
+}
+
 function contextSections(repo: HookRepo, options: SectionOptions): ContextSection[] {
   const { input } = options;
   switch (input.kind) {
@@ -67,7 +79,7 @@ function contextSections(repo: HookRepo, options: SectionOptions): ContextSectio
       return promptSections(repo, { ...options, prompt: input.prompt });
     case "plain":
     case "tool":
-      return [withoutShown(hookSection(repo, options), options)];
+      return [hookNotes(repo, options)];
     default:
       return isNever(input);
   }

@@ -18,7 +18,7 @@ function request(hookEventName: string, options: RequestOptions): HookAnswerRequ
 }
 
 describe("session notes", () => {
-  test("reads a broken file as no notes, keeps no file for an unsafe id, and removes old files at SessionStart", async () => {
+  test("reads a broken file as no notes, keeps no file for an unsafe id, and starts again at SessionStart", async () => {
     const cacheHome = await mkdtemp(join(tmpdir(), "zambil-sessions-"));
     const options = { environment: { home: "/home/ada", workingFolder: "/", cacheHome }, now };
     const folder = join(cacheHome, "zambil", "sessions");
@@ -30,25 +30,31 @@ describe("session notes", () => {
     const unsafe = request("Stop", { sessionId: "../escape" });
     const kept = await keepSessionNotes(unsafe, { ...options, before: {}, added: { a: "v1" } });
     const broken = await readSessionNotes(request("Stop", { sessionId: "broken" }), options);
-    const started = await keepSessionNotes(request("SessionStart", { sessionId: "new" }), {
+    const written = await keepSessionNotes(request("Stop", { sessionId: "s1" }), {
       ...options,
-      before: {},
-      added: { s: "v2" },
+      before: { a: "v1" },
+      added: { b: "v2" },
     });
+    const beforeStart = await readSessionNotes(request("Stop", { sessionId: "s1" }), options);
+    const started = await readSessionNotes(request("SessionStart", { sessionId: "s1" }), options);
     expect({
       kept,
       broken,
+      written,
+      beforeStart,
       started,
       unsafe: await readSessionNotes(unsafe, options),
-      files: (await readdir(folder)).toSorted(),
-      fresh: await readSessionNotes(request("Stop", { sessionId: "new" }), options),
+      files: await readdir(folder),
+      afterStart: await readSessionNotes(request("Stop", { sessionId: "s1" }), options),
     }).toEqual({
       kept: { ok: true, value: undefined },
-      broken: {},
-      started: { ok: true, value: undefined },
-      unsafe: {},
-      files: ["broken.json", "new.json"],
-      fresh: { s: "v2" },
+      broken: { ok: true, value: {} },
+      written: { ok: true, value: undefined },
+      beforeStart: { ok: true, value: { a: "v1", b: "v2" } },
+      started: { ok: true, value: {} },
+      unsafe: { ok: true, value: {} },
+      files: ["broken.json"],
+      afterStart: { ok: true, value: {} },
     });
   });
 });
