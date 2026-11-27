@@ -28,7 +28,7 @@ export function saveSkillText(options: SaveSkillOptions): string {
     "",
     "Do not change the files of the repo with other tools. `zambil save` checks the names, the links and the expiry before it writes.",
     "",
-    "zambil installs a Claude Code hook only for the hooks that the notes name. If the new note names a hook in `hooks` that no other note names, tell the user to run `zambil install` again.",
+    "If the new note names a hook in `hooks` that the zambil hooks do not run at yet, `zambil save` prints the `zambil install` command that connects it. Pass that command on to the user. Do not tell the user to run `zambil install` for any other note. For other problems with the setup, `zambil doctor` gives the fix.",
     "",
   ].join("\n");
 }

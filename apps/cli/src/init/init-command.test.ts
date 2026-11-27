@@ -168,6 +168,34 @@ describe("zambil init", () => {
     });
   });
 
+  test("points at the Obsidian vault that holds the notes folder, not at the folder", async () => {
+    const machine = await testMachine();
+    const vault = join(machine.home, "vault");
+    await mkdir(join(vault, ".obsidian"), { recursive: true });
+    const inVault = await run({
+      config: machine.config,
+      args: [join(vault, "zambil"), "--offline"],
+    });
+    const atVault = await run({ config: machine.config, args: [vault, "--offline"] });
+    const plain = await run({ config: machine.config, args: ["notes", "--offline"] });
+    const starter = await readFile(join(vault, "zambil", "zambil-welcome.md"), "utf8");
+    function obsidianStep(result: RunResult): string | undefined {
+      return result.stdout.split("\n").find((line) => line.startsWith("  3. "));
+    }
+    expect({
+      inVault: obsidianStep(inVault),
+      atVault: obsidianStep(atVault),
+      plain: obsidianStep(plain),
+      starterObsidianLine: starter.split("\n").find((line) => line.includes("Obsidian")),
+    }).toEqual({
+      inVault: `  3. Open the Obsidian vault ${vault} to read and edit the notes. They are in its folder zambil.`,
+      atVault: `  3. Open ${vault} in Obsidian to read and edit the notes.`,
+      plain: `  3. Open ${join(machine.home, "notes")} in Obsidian to read and edit the notes.`,
+      starterObsidianLine:
+        "- The notes folder opens in Obsidian, as a vault or as a folder in a vault.",
+    });
+  });
+
   test("changes nothing when the user config is not JSON, the folder is a file or cannot be made", async () => {
     const machine = await testMachine();
     await mkdir(join(machine.home, ".config", "zambil"), { recursive: true });

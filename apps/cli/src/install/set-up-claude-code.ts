@@ -78,7 +78,8 @@ async function indexNotes(repo: ConfigurationRepo, options: CommandRunOptions): 
     return;
   }
   const { descriptions, path } = summary.value;
-  output.write(`Indexed ${descriptions} descriptions for similar notes in ${path}.\n`);
+  const count = descriptions === 1 ? "1 description" : `${descriptions} descriptions`;
+  output.write(`Indexed ${count} for similar notes in ${path}.\n`);
 }
 
 /** The message for a file that changed, and for a file that already held the change. */

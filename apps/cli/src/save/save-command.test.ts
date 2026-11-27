@@ -1,12 +1,22 @@
 import { describe, expect, test } from "vite-plus/test";
+import { homedir, tmpdir } from "node:os";
+import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import { checkSimilar } from "../doctor/check-similar.ts";
+import type { CliConfig } from "../config.ts";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { readFile } from "node:fs/promises";
+import { loadRepo } from "@zambil/core/load-repo";
+import { openNoteSearch } from "@zambil/embed/open-note-search";
 import { saveCommand } from "./save-command.ts";
 import { writeTestRepo } from "@zambil/core/write-test-repo";
+import { writeTestSearchFiles } from "@zambil/embed/write-test-search-files";
 
 interface RunOptions {
   input?: string;
+  config?: CliConfig;
 }
+
+const defaultConfig = { environment: { home: "/home/ada", workingFolder: "/" } };
 
 async function run(args: string[], options: RunOptions = {}) {
   const printed = { stdout: "", stderr: "" };
@@ -23,7 +33,7 @@ async function run(args: string[], options: RunOptions = {}) {
     readAll: () =>
       text === undefined ? Promise.reject(new Error("read standard input")) : Promise.resolve(text),
   };
-  const config = { environment: { home: "/home/ada", workingFolder: "/" } };
+  const config = options.config ?? defaultConfig;
   const code = await saveCommand.run({ args, config, input, output, now: new Date(2026, 10, 27) });
   return { code, ...printed };
 }
@@ -127,5 +137,125 @@ describe("saveCommand", () => {
       },
       { code: 0, stdout: "Created it-is.md.\n", stderr: "" },
     ]);
+  });
+});
+
+const welcome = "---\ndescription: Shows that zambil works.\nhooks: [SessionStart]\n---\nHello.\n";
+
+/** A machine with its own home and cache folder, and the config that reads them. */
+async function testMachine(): Promise<CliConfig> {
+  const home = await mkdtemp(join(tmpdir(), "zambil-home-"));
+  const environment = { home, workingFolder: home, cacheHome: join(home, "cache") };
+  return { environment, claudeConfigFolder: join(home, "claude") };
+}
+
+/** The config of the machine that the check reads. */
+interface SimilarCheckOptions {
+  config: CliConfig;
+}
+
+/** The doctor line for similar notes, for the repo as it is on disk now. */
+function similarCheck(root: string, options: SimilarCheckOptions) {
+  const repo = loadRepo(root);
+  if (!repo.ok) throw new Error(repo.error.message);
+  return checkSimilar(repo.value, { environment: options.config.environment, repoFlag: root });
+}
+
+describe("saveCommand and the index for similar notes", () => {
+  test(
+    "adds the new note to the index when the model is in the cache, so doctor finds nothing to fix",
+    { timeout: 120_000 },
+    async () => {
+      const shared = { home: homedir(), workingFolder: "/" };
+      const loaded = await openNoteSearch(shared, { report: () => undefined, download: "allow" });
+      if (!loaded.ok) throw new Error(loaded.error);
+      const config = await testMachine();
+      const cache = join(config.environment.cacheHome ?? "", "zambil");
+      await mkdir(cache, { recursive: true });
+      await symlink(join(homedir(), ".cache", "zambil", "models"), join(cache, "models"));
+      const root = await writeTestRepo({ "zambil-welcome.md": welcome });
+      const result = await run(["deploy", "--repo", root, "--no-expires"], { input: note, config });
+      expect({ result, check: await similarCheck(root, { config }) }).toEqual({
+        result: { code: 0, stdout: "Created deploy.md.\n", stderr: "" },
+        check: {
+          level: "ok",
+          text: "The model and the index for similar notes are ready: 2 descriptions.",
+        },
+      });
+    },
+  );
+
+  test("saves the note when the model does not load, and says how to index", async () => {
+    const config = await testMachine();
+    const root = await writeTestRepo({});
+    const written = await writeTestSearchFiles(config.environment, { root, descriptions: [] });
+    if (!written.ok) throw new Error(written.error);
+    const result = await run(["deploy", "--repo", root, "--no-expires"], { input: note, config });
+    expect({ result, isSaved: existsSync(join(root, "deploy.md")) }).toEqual({
+      result: {
+        code: 0,
+        stdout: "Created deploy.md.\n",
+        stderr: expect.stringMatching(
+          /^deploy\.md: warning: zambil cannot add the note to the index for similar notes: .+\. Run zambil index --repo .+\.\n$/s,
+        ),
+      },
+      isSaved: true,
+    });
+  });
+
+  test("never downloads a model that is not in the cache", async () => {
+    const config = await testMachine();
+    const root = await writeTestRepo({});
+    const result = await run(["deploy", "--repo", root, "--no-expires"], { input: note, config });
+    const models = join(config.environment.cacheHome ?? "", "zambil", "models");
+    expect({ result, hasModels: existsSync(models) }).toEqual({
+      result: { code: 0, stdout: "Created deploy.md.\n", stderr: "" },
+      hasModels: false,
+    });
+  });
+});
+
+describe("saveCommand and zambil install", () => {
+  test("says to run zambil install only for a hook of this repo that has no zambil hook yet", async () => {
+    const config = await testMachine();
+    const claude = config.claudeConfigFolder ?? "";
+    const settings = join(claude, "settings.json");
+    const root = await writeTestRepo({});
+    const otherRoot = await writeTestRepo({});
+    const handler = { type: "command", command: `zambil hook --repo ${root}` };
+    const hooks = {
+      SessionStart: [{ hooks: [handler] }],
+      UserPromptSubmit: [{ hooks: [handler] }],
+    };
+    await mkdir(claude, { recursive: true });
+    await writeFile(settings, JSON.stringify({ hooks }));
+    const startNote = "---\ndescription: Greet.\nhooks: [SessionStart]\n---\nHello.\n";
+    const toolNote = "---\ndescription: Shell.\nhooks: [PreToolUse]\n---\nUse bash.\n";
+    const atStart = await run(["greet", "--repo", root, "--no-expires"], {
+      input: startNote,
+      config,
+    });
+    const atTool = await run(["shell", "--repo", root, "--no-expires"], {
+      input: toolNote,
+      config,
+    });
+    const inOtherRepo = await run(["shell", "--repo", otherRoot, "--no-expires"], {
+      input: toolNote,
+      config,
+    });
+    expect({ atStart, atTool, inOtherRepo }).toEqual({
+      atStart: { code: 0, stdout: "Created greet.md.\n", stderr: "" },
+      atTool: {
+        code: 0,
+        stdout: "Created shell.md.\n",
+        stderr: [
+          `The note names PreToolUse, but the zambil hooks in ${settings} do not run there yet.`,
+          `To connect it, the user runs: zambil install --repo ${root}`,
+          "Then the note reaches the agent from the next Claude Code session on.",
+          "",
+        ].join("\n"),
+      },
+      inOtherRepo: { code: 0, stdout: "Created shell.md.\n", stderr: "" },
+    });
   });
 });

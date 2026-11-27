@@ -1,12 +1,13 @@
 import { checkRepoCanBeSaved, rememberRepo } from "../user-config/remember-repo.ts";
 import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
 import { createNotesFolder, folderState } from "./notes-folder.ts";
+import { join, relative } from "node:path";
 import type { CliConfig } from "../config.ts";
 import type { Either } from "@zambil/core/either";
+import { findObsidianVault } from "./obsidian-vault.ts";
 import { findOnPath } from "../install/find-on-path.ts";
 import type { FolderState } from "./notes-folder.ts";
 import { isNever } from "@zambil/core/is-never";
-import { join } from "node:path";
 import { left } from "@zambil/core/either";
 import { linkHint } from "../install/link-hint.ts";
 import { loadHookList } from "@zambil/claude-code/load-hook-list";
@@ -87,6 +88,18 @@ interface NextStepsOptions {
   outcome: StarterOutcome;
   folder: NotesFolder;
   level: ProblemLevel;
+  vault: string | undefined;
+}
+
+/** A notes folder inside a vault opens with that vault. Opened alone, it would be a second vault. */
+function obsidianStep(options: NextStepsOptions): string {
+  const { root } = options.folder;
+  const { vault } = options;
+  if (vault === undefined || vault === root) {
+    return `Open ${root} in Obsidian to read and edit the notes.`;
+  }
+  const folder = relative(vault, root);
+  return `Open the Obsidian vault ${vault} to read and edit the notes. They are in its folder ${folder}.`;
 }
 
 function sessionStep(options: NextStepsOptions): string {
@@ -99,12 +112,13 @@ function sessionStep(options: NextStepsOptions): string {
 function nextSteps(options: NextStepsOptions): string {
   const { folder } = options;
   const session = sessionStep(options);
+  const obsidian = obsidianStep(options);
   const lines = [
     "",
     "Next:",
     `  1. ${session}`,
     '  2. Ask the agent for a note, for example: "Write a zambil note that we use pnpm, never npm."',
-    `  3. Open ${folder.root} in Obsidian to read and edit the notes.`,
+    `  3. ${obsidian}`,
   ];
   if (options.level === "errors") {
     lines.push("  4. Fix the errors above, then run zambil init again.");
@@ -197,7 +211,8 @@ async function runInit(options: CommandRunOptions): Promise<ExitCode> {
   }
   const { list } = loadHookList(config.environment);
   const level = reportProblems(repo.value, { hookList: list, output });
-  output.write(nextSteps({ outcome, folder: folder.value, level }));
+  const vault = await findObsidianVault(root);
+  output.write(nextSteps({ outcome, folder: folder.value, level, vault }));
   return level === "errors" ? 1 : 0;
 }
 

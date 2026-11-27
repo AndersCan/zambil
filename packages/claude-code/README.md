@@ -46,7 +46,7 @@ If no note has the name, or more than one note has it, the agent gets a warning.
 
 At `UserPromptSubmit`, the hook finds the notes whose `description` is similar to the prompt, with the model of `packages/embed`. It adds at most 3 notes that score 0.38 or more, best first. A question about iterating finds a note about for loops. `packages/embed/README.md` says how the model and the threshold were chosen.
 
-Run `zambil install` or `zambil index` once before you use the hook. Each downloads the model, about 23 MB, and embeds the descriptions ahead of time. Run it again after you change many descriptions.
+Run `zambil install` or `zambil index` once before you use the hook. Each downloads the model, about 23 MB, and embeds the descriptions ahead of time. `zambil save` adds the description of each note that it writes to the index. Run `zambil index` again after you change descriptions in your editor.
 
 The similar notes come after the notes that the prompt names and the notes of the hook. A note comes only once. A note that the prompt names with `z:<name>`, also in part, is not added again as a similar note. Neither is a note that the hook already added. A note that names `SessionStart` is not added either, because it is in the context for the whole session.
 
@@ -95,7 +95,7 @@ Run `zambil install`. The root `README.md` tells you how to put `zambil` on your
 
 1. It refreshes the hook list. See [The hook list](#the-hook-list).
 2. It adds one hook handler to the Claude Code settings for `UserPromptSubmit`, for `SessionStart`, and for each other context hook that a note names. `SessionStart` is always there, for the warning in [The hook never blocks a session](#the-hook-never-blocks-a-session). The file is `$CLAUDE_CONFIG_DIR/settings.json`, or `~/.claude/settings.json`. A handler that is already there keeps its place, its other fields such as `timeout`, and gets the new command. A zambil handler at a hook that no note names any more goes away. The other keys and handlers stay as they are.
-3. It writes the `zambil-save` skill, `skills/zambil-save/SKILL.md` in the same folder. If the user asks for a note, the skill tells the agent to run `zambil save-guide` and `zambil save`.
+3. It writes the `zambil-save` skill, `skills/zambil-save/SKILL.md` in the same folder. If the user asks for a note, the skill tells the agent to run `zambil save-guide` and `zambil save`. It tells the agent to pass on a `zambil install` command only when `zambil save` prints one.
 4. It indexes the descriptions with `@zambil/embed`, the same as `zambil index`. The first run downloads the model.
 
 `--offline` skips steps 1 and 4. If step 1 or 4 fails, `zambil install` prints why and does the other steps. If the settings file is not valid JSON, or its `hooks` value has the wrong shape, it changes nothing and exits with 1. If `zambil` is not on the `PATH`, it prints the command that links it and exits with 2. With `--repo`, it also saves the repo in the user configuration file. At the end, it prints the problems that `zambil check` finds, and it exits with 1 if one is an error.
