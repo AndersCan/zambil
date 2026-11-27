@@ -43,7 +43,6 @@ interface ColdStart {
 interface ModelMeasurement {
   model: EmbeddingModel;
   results: CaseResult[];
-  coldStart: ColdStart;
   longQuery: number;
   indexRepo: number;
 }
@@ -79,22 +78,13 @@ function runColdStart(model: EmbeddingModel, options: FolderOptions): Either<str
   return right({ ...times, wall });
 }
 
-function measureColdStart(
-  model: EmbeddingModel,
-  options: FolderOptions,
-): Either<string, ColdStart> {
-  const runs: ColdStart[] = [];
-  for (let run = 0; run < timedRuns; run += 1) {
-    const measured = runColdStart(model, options);
-    if (!measured.ok) return measured;
-    runs.push(measured.value);
-  }
-  return right({
+function fastestColdStart(runs: ColdStart[]): ColdStart {
+  return {
     wall: fastest(runs.map((run) => run.wall)),
     importCode: fastest(runs.map((run) => run.importCode)),
     loadModel: fastest(runs.map((run) => run.loadModel)),
     embedQuery: fastest(runs.map((run) => run.embedQuery)),
-  });
+  };
 }
 
 async function timeFastest(work: () => Promise<unknown>): Promise<number> {
@@ -132,14 +122,11 @@ async function measureModel(
     cacheFolder: emptyIndexFolder,
   });
   if (!evaluated.ok) return evaluated;
-  const coldStart = measureColdStart(model, options);
-  if (!coldStart.ok) return coldStart;
   const descriptions: string[] = [];
   for (const note of repo.value.notes) descriptions.push(note.description ?? "");
   return right({
     model,
     results: evaluated.value,
-    coldStart: coldStart.value,
     longQuery: await timeFastest(() => embedder.value.embed([longQuery], { role: "query" })),
     indexRepo: await timeFastest(() => embedder.value.embed(descriptions, { role: "document" })),
   });
@@ -172,7 +159,7 @@ function tableRow(cells: string[]): string {
   return `| ${joined} |`;
 }
 
-function formatSummary(measurements: ModelMeasurement[]): string[] {
+function formatSummary(measurements: ModelMeasurement[], timings: Timings): string[] {
   const header = [
     "Model",
     "Size",
@@ -187,7 +174,13 @@ function formatSummary(measurements: ModelMeasurement[]): string[] {
   ];
   const lines = [tableRow(header), tableRow(header.map(() => "---"))];
   for (const measurement of measurements) {
-    const { model, results, coldStart } = measurement;
+    const { model, results } = measurement;
+    const coldStart = timings.coldStarts.get(model.id) ?? {
+      wall: 0,
+      importCode: 0,
+      loadModel: 0,
+      embedQuery: 0,
+    };
     const matches = results.filter((result) => result.expected.length > 0);
     const rightTop = matches.filter((result) => result.expected.includes(result.top)).length;
     const threshold = zeroFalseThreshold(results);
@@ -253,24 +246,37 @@ function runCli(args: string[], options: FolderOptions): Either<string, number> 
   return right(wall);
 }
 
-/** Times the whole `zambil search` command after `zambil index`, the cost that each prompt pays. */
-function measureCliSearch(options: FolderOptions): Either<string, number> {
-  const indexed = runCli(["index"], options);
-  if (!indexed.ok) return indexed;
-  const times: number[] = [];
-  for (let run = 0; run < timedRuns; run += 1) {
-    const wall = runCli(["search", "my branch is behind main"], options);
-    if (!wall.ok) return wall;
-    times.push(wall.value);
-  }
-  return right(fastest(times));
-}
-
-interface ReportOptions {
+/** The cold start of each model, and of the whole `zambil search` command after `zambil index`. */
+interface Timings {
+  coldStarts: Map<string, ColdStart>;
   cliSearch: number;
 }
 
-function formatReport(measurements: ModelMeasurement[], options: ReportOptions): string {
+/**
+ * Times the cold starts in rounds: each round starts each model once and runs `zambil search` once.
+ * So a busy moment on the machine slows every model, not only the one that runs at that moment.
+ */
+function measureTimings(models: EmbeddingModel[], options: FolderOptions): Either<string, Timings> {
+  const indexed = runCli(["index"], options);
+  if (!indexed.ok) return indexed;
+  const runs = new Map<string, ColdStart[]>();
+  const cliRuns: number[] = [];
+  for (let round = 0; round < timedRuns; round += 1) {
+    for (const model of models) {
+      const measured = runColdStart(model, options);
+      if (!measured.ok) return measured;
+      runs.set(model.id, [...(runs.get(model.id) ?? []), measured.value]);
+    }
+    const wall = runCli(["search", "my branch is behind main"], options);
+    if (!wall.ok) return wall;
+    cliRuns.push(wall.value);
+  }
+  const coldStarts = new Map<string, ColdStart>();
+  for (const [id, modelRuns] of runs) coldStarts.set(id, fastestColdStart(modelRuns));
+  return right({ coldStarts, cliSearch: fastest(cliRuns) });
+}
+
+function formatReport(measurements: ModelMeasurement[], timings: Timings): string {
   const caseCounts = `${matchCases.length} texts that must find one note, and ${noMatchCases.length} texts that must find none`;
   const lines = [
     "# Embedder measurements",
@@ -286,15 +292,15 @@ function formatReport(measurements: ModelMeasurement[], options: ReportOptions):
     "- Top note right: for how many match cases the best note is the expected note.",
     "- No false match at: the lowest score, in steps of 0.01, above the score of every note that must not match, in all cases.",
     "- Found at that score: for how many match cases the best note is the expected note and scores at least that much.",
-    `- Cold start: a new Node process loads the code and the model and embeds one query. The fastest of ${timedRuns} runs.`,
+    `- Cold start: a new Node process loads the code and the model and embeds one query. The fastest of ${timedRuns} runs. The runs go in rounds, one run of each model per round, so that a busy moment slows each model.`,
     "- Load model, One query: the parts of the cold start that the process measured itself.",
     `- 300-word query, 20 descriptions: the time to embed with a loaded model, the fastest of ${timedRuns} runs.`,
     "",
     "## Summary",
     "",
-    ...formatSummary(measurements),
+    ...formatSummary(measurements, timings),
     "",
-    `The whole \`zambil search\` command, with ${searchModel.id}, the index in the cache and the 20 notes of the prose repo, takes ${milliseconds(options.cliSearch)} from the start of the process to its exit. The fastest of ${timedRuns} runs.`,
+    `The whole \`zambil search\` command, with ${searchModel.id}, the index in the cache and the 20 notes of the prose repo, takes ${milliseconds(timings.cliSearch)} from the start of the process to its exit. The fastest of ${timedRuns} runs.`,
     "",
     "## Scores per case",
     "",
@@ -314,9 +320,10 @@ async function main(): Promise<void> {
     if (!measured.ok) throw new Error(measured.error);
     measurements.push(measured.value);
   }
-  const cliSearch = measureCliSearch({ folder });
-  if (!cliSearch.ok) throw new Error(cliSearch.error);
-  writeFileSync(reportPath, formatReport(measurements, { cliSearch: cliSearch.value }));
+  process.stderr.write("Timing the cold starts\n");
+  const timings = measureTimings(candidateModels, { folder });
+  if (!timings.ok) throw new Error(timings.error);
+  writeFileSync(reportPath, formatReport(measurements, timings.value));
   process.stderr.write(`Wrote ${reportPath}\n`);
 }
 

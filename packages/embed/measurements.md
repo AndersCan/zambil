@@ -2,7 +2,7 @@
 
 `node packages/embed/src/measure/measure-embedders.ts` writes this file. Do not edit it by hand. `README.md` in this folder says which model zambil uses and why.
 
-Machine: unknown (10 cores), 7.2.12-orbstack-00394-gbecdd6130068 arm64, Node v24.22.3, load average 17.2 at the start.
+Machine: unknown (10 cores), 7.2.12-orbstack-00394-gbecdd6130068 arm64, Node v24.22.3, load average 11.7 at the start.
 
 The prose cases are in `src/measure/prose-cases.ts`: 21 texts that must find one note, and 12 texts that must find none. The notes are in `fixtures/prose-repo`.
 
@@ -11,7 +11,7 @@ The columns:
 - Top note right: for how many match cases the best note is the expected note.
 - No false match at: the lowest score, in steps of 0.01, above the score of every note that must not match, in all cases.
 - Found at that score: for how many match cases the best note is the expected note and scores at least that much.
-- Cold start: a new Node process loads the code and the model and embeds one query. The fastest of 10 runs.
+- Cold start: a new Node process loads the code and the model and embeds one query. The fastest of 10 runs. The runs go in rounds, one run of each model per round, so that a busy moment slows each model.
 - Load model, One query: the parts of the cold start that the process measured itself.
 - 300-word query, 20 descriptions: the time to embed with a loaded model, the fastest of 10 runs.
 
@@ -19,15 +19,15 @@ The columns:
 
 | Model                     | Size  | Top note right | No false match at | Found at that score | Cold start | Load model | One query | 300-word query | 20 descriptions |
 | ------------------------- | ----- | -------------- | ----------------- | ------------------- | ---------- | ---------- | --------- | -------------- | --------------- |
-| all-minilm-l6-v2          | 23 MB | 20/21          | 0.42              | 9/21                | 124 ms     | 50 ms      | 2 ms      | 20 ms          | 32 ms           |
-| all-minilm-l6-v2-fp32     | 90 MB | 20/21          | 0.42              | 9/21                | 173 ms     | 75 ms      | 4 ms      | 50 ms          | 91 ms           |
-| paraphrase-minilm-l3-v2   | 17 MB | 13/21          | 0.55              | 2/21                | 154 ms     | 54 ms      | 2 ms      | 6 ms           | 18 ms           |
-| bge-small-en-v1.5         | 34 MB | 20/21          | 0.66              | 13/21               | 189 ms     | 90 ms      | 6 ms      | 84 ms          | 120 ms          |
-| gte-small                 | 34 MB | 19/21          | 0.83              | 11/21               | 435 ms     | 238 ms     | 11 ms     | 297 ms         | 226 ms          |
-| e5-small-v2               | 34 MB | 17/21          | 0.86              | 1/21                | 434 ms     | 224 ms     | 11 ms     | 223 ms         | 187 ms          |
-| snowflake-arctic-embed-xs | 23 MB | 19/21          | 0.67              | 1/21                | 276 ms     | 92 ms      | 6 ms      | 112 ms         | 60 ms           |
+| all-minilm-l6-v2          | 23 MB | 20/21          | 0.42              | 9/21                | 138 ms     | 52 ms      | 2 ms      | 64 ms          | 39 ms           |
+| all-minilm-l6-v2-fp32     | 90 MB | 20/21          | 0.42              | 9/21                | 154 ms     | 68 ms      | 3 ms      | 72 ms          | 90 ms           |
+| paraphrase-minilm-l3-v2   | 17 MB | 13/21          | 0.55              | 2/21                | 116 ms     | 37 ms      | 2 ms      | 12 ms          | 19 ms           |
+| bge-small-en-v1.5         | 34 MB | 20/21          | 0.66              | 13/21               | 170 ms     | 81 ms      | 4 ms      | 78 ms          | 68 ms           |
+| gte-small                 | 34 MB | 19/21          | 0.83              | 11/21               | 167 ms     | 81 ms      | 3 ms      | 79 ms          | 73 ms           |
+| e5-small-v2               | 34 MB | 17/21          | 0.86              | 1/21                | 164 ms     | 79 ms      | 3 ms      | 112 ms         | 93 ms           |
+| snowflake-arctic-embed-xs | 23 MB | 19/21          | 0.67              | 1/21                | 129 ms     | 49 ms      | 3 ms      | 40 ms          | 36 ms           |
 
-The whole `zambil search` command, with all-minilm-l6-v2, the index in the cache and the 20 notes of the prose repo, takes 365 ms from the start of the process to its exit. The fastest of 10 runs.
+The whole `zambil search` command, with all-minilm-l6-v2, the index in the cache and the 20 notes of the prose repo, takes 144 ms from the start of the process to its exit. The fastest of 10 runs.
 
 ## Scores per case
 
