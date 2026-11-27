@@ -1,16 +1,8 @@
 # zambil
 
-zambil gives an AI agent the right notes at the right time. You keep your notes, skills and scripts in your own folder of Markdown files, the configuration repo. zambil reads that folder and adds the notes that apply to the context of the agent. It works with Claude Code first.
+zambil gives an AI agent the right notes at the right time. You keep the notes in a folder of Markdown files that you own. zambil adds the notes that apply to each Claude Code session. The same folder opens in Obsidian, so you can read and edit the notes there.
 
-A note reaches the agent in three ways:
-
-1. At a Claude Code hook that the note names, for example at the start of each session. A hook is a moment in a session where Claude Code runs a command.
-2. When you type `z:<name>` in a prompt, for example `Ship it the way z:deploy says`.
-3. As a note with a description that is similar to a text. `zambil search <text>` lists these notes.
-
-zambil never writes a note on its own. You write a note, or you ask the agent to write it. The configuration repo opens in Obsidian, so you can read and edit the notes there. `vision.md` describes the goals.
-
-## Set up
+## Quick start
 
 You need Node 24 or later with npm, git and Claude Code. The steps work on Linux and macOS.
 
@@ -20,117 +12,178 @@ You need Node 24 or later with npm, git and Claude Code. The steps work on Linux
    curl -fsSL https://raw.githubusercontent.com/AndersCan/zambil/main/install.sh | sh
    ```
 
-   The script clones zambil into `~/.local/share/zambil`, or into `$XDG_DATA_HOME/zambil` if you set that variable. It installs the dependencies that it needs to run. It links `zambil` into `~/.local/bin`. If that folder is not on your `PATH`, the script prints the line to add to the profile of your shell. To update zambil, run the same command again. The script stops and changes nothing if the clone has local changes. Set `ZAMBIL_HOME` or `ZAMBIL_BIN_DIR` to use other folders.
+   The first install downloads about 120 MB. The output ends with these lines:
 
-2. Run `zambil help` in another folder to make sure that `zambil` is on your `PATH`.
+   ```text
+   zambil is ready. To set it up, run:
 
-3. Make a configuration repo. This is a folder of notes that you own. To start with an example, copy the sample repo of the clone:
-
-   ```sh
-   cp -r ~/.local/share/zambil/packages/core/fixtures/sample-repo ~/notes
+     zambil init
    ```
 
-   If the script installed zambil in another folder, use that folder in place of `~/.local/share/zambil`.
+   If the output says that `~/.local/bin` is not on your `PATH`, add the line that it prints to the profile of your shell. Then open a new terminal.
 
-4. Tell zambil where the repo is. Write its path to the user configuration file:
-
-   ```sh
-   mkdir -p ~/.config/zambil && echo '{ "repo": "~/notes" }' > ~/.config/zambil/config.json
-   ```
-
-   Each command also takes `--repo <path>`, and the `ZAMBIL_REPO` environment variable works too.
-
-5. Make sure that zambil reads the notes. `zambil check` must say `no problems`, or list the problems to fix:
+2. Set up zambil:
 
    ```sh
-   zambil check
+   zambil init
    ```
 
-6. Install the hooks in Claude Code:
+   `zambil init` makes the notes folder `~/zambil-notes` with one starter note. It connects the folder to Claude Code. It also downloads a model of 23 MB that finds similar notes. To keep the notes in another folder, run `zambil init <folder>` in place of `zambil init`. The output ends with the next steps:
 
-   ```sh
-   zambil install
+   ```text
+   Checked 1 note: no problems.
+
+   Next:
+     1. Start a new Claude Code session. Its first reply says that the zambil-welcome note reached it.
    ```
 
-7. Start a new Claude Code session. Claude Code reads the hooks at the start of a session. In the sample repo, the note `welcome` names the `SessionStart` hook, so the agent gets it at the start of each session.
+3. Start a new Claude Code session in any project, and send a prompt, for example `hello`. The first reply starts with this line:
 
-### What `zambil install` does
+   ```text
+   zambil works: the zambil-welcome note reached me. To stop this line, remove `hooks: [SessionStart]` from zambil-welcome.md in your notes folder, or delete the note.
+   ```
 
-- It adds a hook that runs `zambil hook` to `~/.claude/settings.json`. If you set `CLAUDE_CONFIG_DIR`, the file is `$CLAUDE_CONFIG_DIR/settings.json`. The hook runs at `UserPromptSubmit` and at each other hook that a note names. The rest of the file, your own hooks too, stays as it is.
-- It writes the `zambil-save` skill to `skills/zambil-save/SKILL.md` in the same folder as `settings.json`. A skill is a set of instructions for the agent. Claude Code shows only its description in each session, and loads the rest on demand. When you ask the agent to write a note, the skill tells it to run `zambil save-guide` and `zambil save`.
-- It reads the current list of Claude Code hooks from the [hooks reference](https://code.claude.com/docs/en/hooks), and keeps it in `~/.cache/zambil`.
-- It indexes the descriptions of the notes for similar notes. The first run downloads the model, 23 MB, to `~/.cache/zambil`.
+   A session that started before `zambil init` has no zambil hooks. If you do not see the line in a new session, run `zambil doctor`. See [When something is wrong](#when-something-is-wrong).
 
-Each hook gets the full path of `zambil` and of the repo, so it works from every project folder. It also sets `NODE_COMPILE_CACHE`, which makes each run about twice as fast. `zambil install` never changes a note, and a second run leaves the file as it is.
+## Write your first note
 
-Run `zambil install` again in these cases:
+A note is a Markdown file in the notes folder. The filename without `.md` is the name of the note.
 
-- A note names a hook that no note named before. zambil installs only the hooks that your notes name, because each hook starts a process on every event.
-- You move the configuration repo. First write the new path to `~/.config/zambil/config.json`.
-- You move the clone. First link `apps/cli/src/main.ts` of the moved clone to `~/.local/bin/zambil` again. The hooks then work again, because they run the link.
+To let the agent write a note, ask for it in a Claude Code prompt:
 
-Without a network connection, run `zambil install --offline`. It skips the hook list and the model. Run `zambil index` later to download the model.
+```text
+Write a zambil note that we use pnpm, never npm.
+```
 
-To remove everything that `zambil install` added, run `zambil uninstall`. It removes the zambil hooks and the `zambil-save` skill. It keeps your notes and the rest of the file.
+The agent chooses a name, for example `use-pnpm`, and a description. It saves the note with `zambil save`. zambil never writes a note on its own. The agent writes a note only on your request.
 
-## Use it
-
-A note is a Markdown file with properties in its frontmatter. The filename is the name of the note, and names are unique in the whole repo. This note goes to the agent before each `Bash` tool call:
+To write a note yourself, make a file in the notes folder, for example `~/zambil-notes/shell-style.md`:
 
 ```markdown
 ---
 description: How to write shell commands in my projects.
-hooks: [PreToolUse]
-tools: [Bash]
 ---
 
 Quote every path. Use `set -euo pipefail` in scripts.
 ```
 
-`docs/notes.md` describes every property, expiry, skills, scripts, links and embeds.
+A note reaches the agent in three ways:
 
-These commands help you work with the notes:
+- You type `z:<name>` in a prompt, for example `Fix the backup script the way z:shell-style says`.
+- The note names a hook in its `hooks` property. A hook is a moment in a session where Claude Code runs a command. With `hooks: [SessionStart]`, the note reaches the agent at the start of each session, like the starter note.
+- The description of the note is similar to your prompt.
 
-| Command                | What it does                                                           |
-| ---------------------- | ---------------------------------------------------------------------- |
-| `zambil list`          | Lists every note with its kind, path and description.                  |
-| `zambil check`         | Reports invalid notes and hook names that zambil never answers.        |
-| `zambil doctor`        | Checks the whole setup and prints the command that fixes each problem. |
-| `zambil show <name>`   | Prints a note as the agent gets it.                                    |
-| `zambil search <text>` | Lists the notes with a description that is similar to the text.        |
-| `zambil index`         | Indexes the descriptions again, so that the search is fast.            |
-| `zambil save <name>`   | Writes a note from standard input. The agent uses it.                  |
-| `zambil install`       | Installs the hooks and the skill in Claude Code.                       |
-| `zambil uninstall`     | Removes them.                                                          |
+After you add or change notes, run `zambil index`. It keeps the search for similar notes fast. If a note names a hook that no note named before, run `zambil install` too. zambil connects only the hooks that your notes name. Then start a new Claude Code session.
 
-To write a note with the agent, ask for it in a prompt, for example `Write a note that we use pnpm, never npm`. The agent uses the `zambil-save` skill. It chooses a name, an expiry and a description, and saves the note with `zambil save`. It writes a note only on your request.
+`zambil list` lists your notes, and `zambil show <name>` prints a note as the agent gets it. [`docs/notes.md`](docs/notes.md) describes every property, expiry, skills, scripts, links and embeds.
 
-`zambil check` warns about a hook name that zambil never answers. An example is a hook that cannot add context, such as `Notification`. Another example is a name that is not a Claude Code hook, such as `sessionstart` in place of `SessionStart`.
+## Use an Obsidian vault that you have
 
-`apps/cli/README.md` describes every command. `packages/claude-code/README.md` describes what the hooks add.
+zambil reads the same properties, tags, links and embeds as Obsidian. It skips `.obsidian` and the other folders that start with `.`. You can connect a vault in two ways.
 
-## Open the repo in Obsidian
+To keep the zambil notes in one folder of the vault, run:
 
-Obsidian is a Markdown editor that works on a folder of notes, a vault. Open the configuration repo as a vault. zambil uses the same properties, tags, aliases, links and embeds as Obsidian. It skips the folders that start with `.`, such as `.obsidian` and `.trash`.
+```sh
+zambil init ~/vault/zambil
+```
 
-To find every note on a hook, search for the `hooks` property in the search of Obsidian:
+Use the path of your vault in place of `~/vault`. zambil reads only the `zambil` folder, and writes the starter note there. Your other notes stay out of the sessions. In Obsidian, keep the vault open as before. The notes show in its `zambil` folder.
 
-| Search                   | Finds                                                            |
-| ------------------------ | ---------------------------------------------------------------- |
-| `[hooks:SessionStart]`   | Each note whose `hooks` holds `SessionStart`.                    |
-| `[hooks:/^PreToolUse$/]` | Each note whose `hooks` holds exactly `PreToolUse`.              |
-| `[hooks]`                | Each note that names a hook.                                     |
-| `[tools:Bash]`           | Each note for the `Bash` tool.                                   |
-| `tag:#ops`               | Each note with the tag `ops`, in the frontmatter or in the text. |
+To use the whole vault, run `zambil init ~/vault`. zambil writes no starter note and changes no file in a folder that has files. So no line comes at the start of a session. To make sure that it works, type `z:<name>` with the name of one of your notes in a prompt. A note reaches the agent only in the three ways above. If a daily note has no `hooks` and no `description`, only `z:<name>` brings it to the agent.
 
-Obsidian ignores case in a search, and it also finds part of a name. So `[hooks:PostToolUse]` also finds `PostToolUseFailure`. The exact search with `/^PreToolUse$/` works only for a list, so write `hooks: [PreToolUse]`, not `hooks: PreToolUse`. Obsidian shows a list as a list property. It shows the short form as text.
+zambil needs a unique name for each note in the whole folder. Obsidian allows the same name in two folders, but zambil reports it as an error:
 
-`[[deploy]]` links to the note `deploy` in any folder. To link with an alias, write `[[deploy|ship]]`. zambil also reads `[[ship]]`, but Obsidian cannot follow that link. `z:ship` in a prompt works with the alias.
+```text
+Daily/launch.md: error: the name "launch" is used by 2 notes: Daily/launch.md, Projects/launch.md
+```
 
-These results come from Obsidian 1.15.1 with the sample repo.
+`zambil init` still connects the hooks, and it lists each error. Rename one of the two notes, and then run `zambil init ~/vault` again. [`docs/obsidian.md`](docs/obsidian.md) tells you how to find the notes for a hook in the search of Obsidian.
+
+## When something is wrong
+
+Run `zambil doctor`. It checks the whole setup and changes nothing. For each problem, it prints a `Fix:` line with the command that fixes it:
+
+```text
+fail  The zambil hooks in /home/ada/.claude/settings.json do not match what zambil install writes now.
+      PreToolUse has no zambil hook, but the note shell-style.md names it.
+      Fix: zambil install
+```
+
+Fix the problems from the top down, because a later problem can come from an earlier one. Then run `zambil doctor` again. When the setup is good, it says `Nothing to fix.`
+
+Claude Code also shows a warning at the start of a session when the setup is broken. An example is a notes folder that you moved:
+
+```text
+SessionStart:startup says: zambil: The configuration repo /home/ada/zambil-notes does not exist. No note reaches this session. Run zambil doctor to see the fix.
+```
+
+`zambil help` lists the commands, and `zambil <command> --help` explains one command.
+
+## Update zambil
+
+Run the install command again:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/AndersCan/zambil/main/install.sh | sh
+```
+
+It updates the clone of zambil in `~/.local/share/zambil` and installs the new dependencies. If you changed files in the clone, it stops and tells you how to keep your changes. After the update, run `zambil doctor`. If the new version writes other hooks, `zambil doctor` tells you to run `zambil install`.
+
+## Move the notes folder
+
+1. Move the folder, for example `mv ~/zambil-notes ~/notes`.
+2. Run `zambil init ~/notes`. It saves the new path, and points the hooks at it. It writes no starter note, because the folder has files.
+3. Start a new Claude Code session.
+
+## Move zambil
+
+The install command puts zambil in `~/.local/share/zambil`. To put zambil in another folder, set `ZAMBIL_HOME` for the install command:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/AndersCan/zambil/main/install.sh | ZAMBIL_HOME=~/apps/zambil sh
+```
+
+It installs zambil in the new folder and points `~/.local/bin/zambil` at it. The hooks run `~/.local/bin/zambil`, so they keep working. Then delete the old folder with `rm -rf ~/.local/share/zambil`. Set the same `ZAMBIL_HOME` each time that you update. To link `zambil` into a folder other than `~/.local/bin`, set `ZAMBIL_BIN_DIR`.
+
+## Uninstall
+
+To disconnect zambil from Claude Code, run:
+
+```sh
+zambil uninstall
+```
+
+It removes the zambil hooks from `~/.claude/settings.json` and the `zambil-save` skill from `~/.claude/skills/zambil-save`. The other settings and hooks stay as they are. Start a new Claude Code session to stop the hooks.
+
+`zambil uninstall` never changes your notes. It also leaves these files in place:
+
+| What                                          | Where                                               | Size         |
+| --------------------------------------------- | --------------------------------------------------- | ------------ |
+| zambil and its dependencies                   | `~/.local/share/zambil`                             | About 300 MB |
+| The `zambil` command, a link                  | `~/.local/bin/zambil`                               | One link     |
+| The path of the notes folder                  | `~/.config/zambil/config.json`                      | One file     |
+| The model, the index and the hook list        | `~/.cache/zambil`                                   | About 23 MB  |
+| The download caches of npm and pnpm, on Linux | `~/.npm`, `~/.cache/pnpm` and `~/.local/share/pnpm` | About 330 MB |
+
+To remove zambil completely, run these commands after `zambil uninstall`. They keep your notes:
+
+```sh
+rm -rf ~/.local/share/zambil ~/.cache/zambil ~/.config/zambil
+rm ~/.local/bin/zambil
+```
+
+The download caches of npm and pnpm are for all programs that use npm or pnpm, so these commands keep them. The table gives the default paths. If you set `ZAMBIL_HOME`, `ZAMBIL_BIN_DIR`, `CLAUDE_CONFIG_DIR`, `XDG_DATA_HOME`, `XDG_CONFIG_HOME` or `XDG_CACHE_HOME`, the files are in those folders.
+
+## Learn more
+
+- [`docs/notes.md`](docs/notes.md) describes the note format: every property, expiry, skills, scripts, links and embeds.
+- [`apps/cli/README.md`](apps/cli/README.md) describes every command and its exit codes.
+- [`packages/claude-code/README.md`](packages/claude-code/README.md) describes what the hooks add, and what `zambil install` writes.
+- [`docs/obsidian.md`](docs/obsidian.md) tells you how to search the notes in Obsidian.
+- [`vision.md`](vision.md) describes the goals of zambil.
 
 ## Work on zambil
 
-The repo has four packages. `packages/core` reads a configuration repo, `packages/embed` finds notes with a similar description, `packages/claude-code` connects zambil to Claude Code, and `apps/cli` is the `zambil` command. `docs/notes.md` is the contract for the note format.
+The repo is a pnpm workspace with four packages. `packages/core` reads the notes folder, `packages/embed` finds notes with a similar description, `packages/claude-code` connects zambil to Claude Code, and `apps/cli` is the `zambil` command.
 
-Run `pnpm test` to run the tests, and `pnpm run ready` before you push. `AGENTS.md` tells you how to work in the repo.
+Run `pnpm install` and then `pnpm test` in the root of the repo. Run `pnpm run ready` before you push. [`AGENTS.md`](AGENTS.md) tells you how to set up, test and change the repo.

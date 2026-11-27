@@ -14,13 +14,13 @@ node apps/cli/src/main.ts index --repo packages/embed/fixtures/prose-repo
 node apps/cli/src/main.ts search "my branch is behind main" --repo packages/embed/fixtures/prose-repo
 ```
 
-To put `zambil` on your `PATH`, link `apps/cli/src/main.ts` into a folder on your `PATH`. Run this command from the root of the repo:
+To install `zambil` for daily use, follow the quick start in the root `README.md`. The install command links `zambil` to its own clone. To run the code of your working tree as `zambil` in place of that clone, link `apps/cli/src/main.ts` again. Run this command from the root of the repo:
 
 ```sh
 mkdir -p ~/.local/bin && ln -sf "$PWD/apps/cli/src/main.ts" ~/.local/bin/zambil
 ```
 
-Then `zambil list` works in every folder. If it does not, add `~/.local/bin` to your `PATH`. The root `README.md` describes the full setup with Claude Code.
+The hooks run the link, so they use your working tree from the next event on. To go back, run the install command of the root `README.md` again.
 
 The commands are:
 
