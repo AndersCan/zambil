@@ -1,4 +1,4 @@
-import { InferenceSession, Tensor } from "onnxruntime-node";
+import { env, InferenceSession, Tensor } from "onnxruntime-node";
 import { left, right, wrap } from "@zambil/core/either";
 import { parseVocabulary, tokenize } from "../tokenize/word-piece.ts";
 import type { Either } from "@zambil/core/either";
@@ -113,7 +113,8 @@ async function embedAll(
 
 /**
  * Loads a model with ONNX Runtime, after `fetchModel` puts its files in the cache. Loading takes most
- * of the time of a search, so a caller loads it once and embeds many texts with it.
+ * of the time of a search, so a caller loads it once and embeds many texts with it. ONNX Runtime logs
+ * only errors, because on some machines it warns about hardware on every start.
  */
 export async function openEmbedder(
   model: EmbeddingModel,
@@ -125,6 +126,7 @@ export async function openEmbedder(
   if (!vocabularyText.ok) return vocabularyText;
   const vocabulary = parseVocabulary(vocabularyText.value);
   if (!vocabulary.ok) return left(`${paths.value.vocabulary}: ${vocabulary.error}`);
+  env.logLevel = "error";
   const session = await wrap(InferenceSession.create(paths.value.weights));
   if (!session.ok) return left(`cannot load ${paths.value.weights}: ${describe(session.error)}`);
   const loaded = { model, session: session.value, vocabulary: vocabulary.value };
