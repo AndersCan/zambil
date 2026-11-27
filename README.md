@@ -55,7 +55,7 @@ To let the agent write a note, ask for it in a Claude Code prompt:
 Write a zambil note that we use pnpm, never npm.
 ```
 
-The agent chooses a name, for example `use-pnpm`, and a description. It saves the note with `zambil save`. Claude Code asks you to allow the `zambil` commands. Allow them. Apart from the starter note, zambil never writes a note on its own. The agent writes a note only on your request. After the agent writes a note, run `zambil index`, as for a note that you write yourself.
+The agent chooses a name, for example `use-pnpm`, and a description. It saves the note with `zambil save`. Claude Code asks you to allow the `zambil` commands. Allow them. Apart from the starter note, zambil never writes a note on its own. The agent writes a note only on your request. `zambil save` also adds the note to the search for similar notes. If the note names a hook that zambil does not connect yet, the agent tells you to run `zambil install`.
 
 To write a note yourself, make a file in the notes folder, for example `~/zambil-notes/shell-style.md`:
 
@@ -73,7 +73,7 @@ A note reaches the agent in three ways:
 - The note names a hook in its `hooks` property. A hook is a moment in a session where Claude Code runs a command. With `hooks: [SessionStart]`, the note reaches the agent at the start of each session, like the starter note.
 - The description of the note is similar to your prompt.
 
-After you add or change notes, run `zambil index`. It keeps the search for similar notes fast. If a note names a hook that no note named before, run `zambil install` too. Apart from `SessionStart` and `UserPromptSubmit`, zambil connects only the hooks that your notes name. Then start a new Claude Code session.
+After you add or change notes in your editor, run `zambil index`. It keeps the search for similar notes fast. If a note names a hook that no note named before, run `zambil install` too. Apart from `SessionStart` and `UserPromptSubmit`, zambil connects only the hooks that your notes name. Then start a new Claude Code session.
 
 `zambil list` lists your notes, and `zambil show <name>` prints a note as the agent gets it. [`docs/notes.md`](docs/notes.md) describes every property, expiry, skills, scripts, links and embeds.
 
@@ -87,7 +87,7 @@ To keep the zambil notes in one folder of the vault, run:
 zambil init ~/vault/zambil
 ```
 
-Use the path of your vault in place of `~/vault`. zambil reads only the `zambil` folder, and writes the starter note there. Your other notes stay out of the sessions. In Obsidian, keep the vault open as before. The notes show in its `zambil` folder. The output of `zambil init` says to open the `zambil` folder in Obsidian. Skip that step.
+Use the path of your vault in place of `~/vault`. zambil reads only the `zambil` folder, and writes the starter note there. Your other notes stay out of the sessions. In Obsidian, keep the vault open as before. The notes show in its `zambil` folder.
 
 To use the whole vault, run `zambil init ~/vault`. zambil writes no starter note and changes no file in a folder that has files. So no line comes at the start of a session. To make sure that it works, type `z:<name>` with the name of one of your notes in a prompt. If the name has spaces, write it in brackets, for example `z:[[Meeting notes]]`. The agent then answers with what the note says. A note reaches the agent only in the three ways above. If a daily note has no `hooks` and no `description`, only `z:<name>` brings it to the agent.
 

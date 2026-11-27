@@ -207,6 +207,8 @@ zambil refuses to save, and changes no file, in these cases:
 
 A refusal exits with 1. A wrong usage, such as no choice about expiry, exits with 2.
 
+After a save, zambil adds the descriptions that are new to the index for similar notes. It does this only when the model is in the cache, so a save never downloads the model. If the index update fails, zambil prints a warning with the `zambil index` command, and the save still exits with 0. If the note names a hook that has no zambil hook in the Claude Code settings, zambil prints the `zambil install` command that connects it.
+
 ## Problems
 
 zambil reports two kinds of problem. An error makes `zambil check` exit with 1. A warning does not change the exit code.
