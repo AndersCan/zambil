@@ -1,4 +1,5 @@
-const lowestNodeMajor = 24;
+/** The oldest major version of Node that zambil runs on. */
+export const lowestNodeMajor = 24;
 
 /** The folder of the zambil clone, so that a message can name it. */
 export interface StartupProblemOptions {
