@@ -103,12 +103,9 @@ async function formatHelp(config: CliConfig): Promise<string> {
 function formatUsage(command: Command): string {
   const lines = [command.usage, "", command.summary];
   if (command.details !== undefined) lines.push(command.details);
-  if (command.options !== undefined) {
-    const options = [...command.options, helpOption];
-    const rows = options.map((option) => ({ name: option.flag, text: option.text }));
-    lines.push("", "Options:", ...formatRows(rows));
-  }
-  lines.push("");
+  const options = [...(command.options ?? []), helpOption];
+  const rows = options.map((option) => ({ name: option.flag, text: option.text }));
+  lines.push("", "Options:", ...formatRows(rows), "");
   return lines.join("\n");
 }
 

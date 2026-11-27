@@ -68,7 +68,7 @@ describe("hookCommand", () => {
       ],
       [0, "", "zambil hook: zambil does not know where your configuration repo is."],
       [0, "", "zambil hook: The configuration repo /no/such/repo does not exist."],
-      [0, "", "zambil hook: Unknown option '--bogus'"],
+      [0, "", 'zambil hook: This command has no option "--bogus". It takes --repo and --help.'],
       [0, "", ""],
     ]);
   });

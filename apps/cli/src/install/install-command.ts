@@ -5,6 +5,7 @@ import { loadHookList } from "@zambil/claude-code/load-hook-list";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
 import { rememberRepo } from "../user-config/remember-repo.ts";
+import { repoOptionHelp } from "../parse-command-args.ts";
 import { reportProblems } from "./report-problems.ts";
 import { setUpClaudeCode } from "./set-up-claude-code.ts";
 import { sharedOptions } from "../parse-command-args.ts";
@@ -53,8 +54,15 @@ export const installCommand: Command = {
   details: [
     "It adds `zambil hook` at UserPromptSubmit and at each other hook that a note names, and keeps every other setting and hook.",
     "It reads the hook list from the Claude Code docs and indexes the notes, which downloads the model the first time.",
-    "--offline skips both. --repo also saves the repo in the user config file. It reports the problems that `zambil check` finds, and exits with 1 for an error.",
+    "It reports the problems that `zambil check` finds, and exits with 1 for an error.",
     "It never changes a note. Run it again after a note names a new hook. `zambil uninstall` removes it.",
   ].join("\n"),
+  options: [
+    {
+      ...repoOptionHelp,
+      text: `${repoOptionHelp.text} With it, zambil saves the folder in that file.`,
+    },
+    { flag: "--offline", text: "Skip the hook list and the model download." },
+  ],
   run: runInstall,
 };

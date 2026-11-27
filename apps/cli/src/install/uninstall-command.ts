@@ -52,8 +52,14 @@ async function runUninstall(options: CommandRunOptions): Promise<ExitCode> {
 /** `zambil uninstall`: removes what `zambil install` added to Claude Code, and nothing else. */
 export const uninstallCommand: Command = {
   summary: "Remove the zambil hooks and the zambil-save skill from Claude Code.",
-  usage: "Usage: zambil uninstall",
+  usage: "Usage: zambil uninstall [--repo <path>]",
   details:
     "It removes every hook that runs `zambil hook` and keeps every other setting and hook. It never changes a note.",
+  options: [
+    {
+      flag: "--repo <path>",
+      text: "Accepted, so that the same --repo works for every command. It does not read the repo.",
+    },
+  ],
   run: runUninstall,
 };

@@ -1,4 +1,5 @@
 import { left, right } from "@zambil/core/either";
+import { argumentProblem } from "./argument-problem.ts";
 import type { Either } from "@zambil/core/either";
 import type { OptionHelp } from "./command.ts";
 import { parseArgs } from "node:util";
@@ -22,13 +23,14 @@ function unsafeParseArgs<Config extends ParseArgsConfig>(config: Config): Parsed
   return parseArgs(config);
 }
 
-/** Parses a command's arguments strictly. An unknown option or a missing value is a usage message. */
+/** Parses a command's arguments strictly. An unknown option or a missing value is a usage message in plain words. */
 export function parseCommandArgs<Config extends ParseArgsConfig>(
   config: Config,
 ): Either<string, ParsedArgs<Config>> {
   try {
     return right(unsafeParseArgs(config));
   } catch (error: unknown) {
-    return left(error instanceof Error ? error.message : String(error));
+    const message = error instanceof Error ? error.message : String(error);
+    return left(argumentProblem(config) ?? message);
   }
 }
