@@ -7,8 +7,9 @@
 # ZAMBIL_GIT_URL   the repo to clone, default https://github.com/AndersCan/zambil.git
 # ZAMBIL_GIT_REF   the release tag or the branch to install, default the newest release, or main without one
 #
-# A fresh install takes the newest release: the highest tag of the form vX.Y.Z. A clone on a branch keeps
-# following that branch, and a clone at a release moves to the newest release.
+# An install takes the newest release: the highest tag of the form vX.Y.Z. A clone on main moves to it once
+# the release is at or after the commit of the clone. A branch that ZAMBIL_GIT_REF names is followed from
+# then on, and a release tag that it names is installed once.
 #
 # Everything is in functions, so that sh reads the whole script before it runs a command.
 
@@ -97,26 +98,52 @@ newest_release() {
   ' "$tags"
 }
 
-# Sets target to ZAMBIL_GIT_REF, or to the newest release, or to main when the repo has no release.
-pick_release() {
+# Sets target and kind for ZAMBIL_GIT_REF: a release tag or a branch of the repo at the URL.
+resolve_ref() {
+  if ! refs=$(git ls-remote --refs "$1" "refs/tags/$git_ref" "refs/heads/$git_ref" < /dev/null); then
+    fail "zambil cannot read the releases and branches of $1. git printed the reason above. Run the install command again."
+  fi
   target=$git_ref
-  if [ -n "$target" ]; then return; fi
+  case $refs in
+    *refs/tags/*) kind=release ;;
+    *refs/heads/*) kind=branch ;;
+    *) fail "$1 has no release or branch named $git_ref. Fix ZAMBIL_GIT_REF, or leave it out to install the newest release." ;;
+  esac
+}
+
+# Sets target to the newest release of the repo at the URL, and kind to release. Without a release: main.
+pick_release() {
   if ! target=$(newest_release "$1"); then
     fail "zambil cannot read the releases of $1. git printed the reason above. Run the install command again."
   fi
+  kind=release
   if [ -z "$target" ]; then
     target=main
-    say "zambil has no release yet, so this installs the newest commit of the branch main."
+    kind=branch
+  fi
+}
+
+# A clone follows a branch other than releases only when ZAMBIL_GIT_REF named that branch.
+remember_choice() {
+  if [ -z "$git_ref" ]; then return; fi
+  if [ "$kind" = branch ]; then
+    git -C "$install_dir" config zambil.follow branch
+  else
+    git -C "$install_dir" config --unset zambil.follow || true
   fi
 }
 
 clone() {
-  pick_release "$git_url"
+  if [ -n "$git_ref" ]; then resolve_ref "$git_url"; else pick_release "$git_url"; fi
+  if [ -z "$git_ref" ] && [ "$kind" = branch ]; then
+    say "zambil has no release yet, so this installs the newest commit of the branch main."
+  fi
   say "Downloading zambil $target into $(tilde "$install_dir")."
   mkdir -p "$(dirname "$install_dir")"
   if ! git -c advice.detachedHead=false clone --quiet --branch "$target" "$git_url" "$install_dir" < /dev/null; then
     fail "zambil did not install. git printed the reason above. Run the install command again."
   fi
+  remember_choice
   fresh=yes
 }
 
@@ -156,24 +183,40 @@ update() {
     source_url=$origin_url
   fi
   branch=$(git -C "$install_dir" symbolic-ref --quiet --short HEAD || true)
-  if [ -z "$git_ref" ] && [ -n "$branch" ]; then
+  follow=$(git -C "$install_dir" config --get zambil.follow || true)
+  if [ -n "$git_ref" ]; then
+    resolve_ref "$source_url"
+  elif [ -n "$branch" ] && [ "$follow" = branch ]; then
     target=$branch
-    update_branch
-    release_hint
+    kind=branch
+  else
+    pick_release "$source_url"
+  fi
+  if [ "$kind" = release ]; then fetch_release; fi
+  if [ -z "$git_ref" ] && [ "$kind" = release ] && [ -n "$branch" ]; then
+    leave_branch_for_release
+  fi
+  if [ "$kind" = release ]; then update_to_release; else update_branch; fi
+  remember_choice
+}
+
+# Without ZAMBIL_GIT_REF, a clone on main moves to the newest release, unless it is ahead of that release.
+leave_branch_for_release() {
+  if [ "$branch" != main ]; then
+    target=main
+    kind=branch
     return
   fi
-  pick_release "$source_url"
-  if [ -n "$(git ls-remote --tags --refs "$source_url" "refs/tags/$target" < /dev/null)" ]; then
-    update_to_release
-  else
-    update_branch
-  fi
+  if git -C "$install_dir" merge-base --is-ancestor HEAD "$release"; then return; fi
+  say "The clone is ahead of the newest release $target, so it follows the branch main until a newer release."
+  target=main
+  kind=branch
 }
 
 # Moves the clone forward to the newest commit of the branch $target on its origin.
 update_branch() {
   if [ "$branch" != "$target" ]; then
-    fail "zambil did not update, because the clone in $install_dir is not on the branch $target. To go back to it, run:" "" \
+    fail "zambil did not update, because the clone in $install_dir is not on the branch $target. To switch to it, run:" "" \
       "  git -C \"$install_dir\" switch $target" "" \
       "Then run the install command again."
   fi
@@ -200,14 +243,18 @@ update_branch() {
   fi
 }
 
-# Moves the clone to the release $target. Commits that only the clone has stop it, so that none is lost.
-update_to_release() {
-  say "Updating zambil in $(tilde "$install_dir") from $source_url."
+# Fetches the tag of the release $target, and sets release to its commit.
+fetch_release() {
   if ! git -C "$install_dir" fetch --quiet --no-tags "$source" "+refs/tags/$target:refs/tags/$target" < /dev/null; then
     fail "zambil did not update. git printed the reason above, and the clone is as it was. Run the install command again."
   fi
-  before=$(git -C "$install_dir" rev-parse HEAD)
   release=$(git -C "$install_dir" rev-parse "refs/tags/$target^{commit}")
+}
+
+# Moves the clone to the release $target. Commits that only the clone has stop it, so that none is lost.
+update_to_release() {
+  say "Updating zambil in $(tilde "$install_dir") from $source_url."
+  before=$(git -C "$install_dir" rev-parse HEAD)
   is_kept=no
   if [ -n "$branch" ] || [ -n "$(git -C "$install_dir" tag --points-at HEAD)" ]; then is_kept=yes; fi
   if git -C "$install_dir" merge-base --is-ancestor HEAD "$release"; then is_kept=yes; fi
@@ -226,15 +273,6 @@ update_to_release() {
     fail "zambil did not update, because git cannot switch the clone to $target. git printed the reason above."
   fi
   say "Updated zambil to $target."
-}
-
-# A clone that follows main gets every commit. When a release exists, says how to follow releases.
-release_hint() {
-  if [ "$branch" != main ]; then return; fi
-  newest=$(newest_release "$source_url" || true)
-  if [ -z "$newest" ]; then return; fi
-  say "" "This clone follows the branch main, so it gets each new commit. To install the release $newest and follow releases from then on, run:" "" \
-    "  curl -fsSL https://raw.githubusercontent.com/AndersCan/zambil/main/install.sh | ZAMBIL_GIT_REF=$newest sh"
 }
 
 # pnpm comes from npm, so it need not be installed. npm runs outside the clone, because the clone pins pnpm.

@@ -140,6 +140,9 @@ function checkFreshInstall(machine: Machine): void {
       status: result.status,
       pathHint: result.stdout.includes('  export PATH="$HOME/.local/bin:$PATH"'),
       nextStep: result.stdout.endsWith("\n  zambil init\n"),
+      noRelease: result.stdout.startsWith(
+        "zambil has no release yet, so this installs the newest commit of the branch main.\n",
+      ),
       help: help.status,
       link: readlinkSync(link),
       check: checked.stdout,
@@ -150,6 +153,7 @@ function checkFreshInstall(machine: Machine): void {
       status: 0,
       pathHint: true,
       nextStep: true,
+      noRelease: true,
       help: 0,
       link: join(clone, "apps/cli/src/main.ts"),
       check: "6 notes, no problems.\n",
@@ -302,22 +306,23 @@ function position(clone: string): string {
   return `${commit} ${where}`;
 }
 
-function checkReleases(machine: Machine): void {
+/** The runs that move clones between main and releases, and where each clone is after its run. */
+function runReleases(machine: Machine) {
   const mainClone = join(machine.home, ".local/share/zambil");
   const releaseClone = join(machine.home, ".local/share/zambil-release");
-  const first = tagRelease({ upstream: machine.upstream, tag: "v0.1.0" });
-  const onMain = runInstall(machine);
-  const [, onMainBranch] = position(mainClone).split(" ");
   const releaseMachine = {
     ...machine,
     variables: { ZAMBIL_HOME: releaseClone, ZAMBIL_BIN_DIR: join(machine.home, "release-bin") },
   };
+  const first = tagRelease({ upstream: machine.upstream, tag: "v0.1.0" });
+  const onMain = runInstall(machine);
+  const onMainAt = position(mainClone);
   const fresh = runInstall(releaseMachine);
   const freshAt = position(releaseClone);
   commitFile("smoke-release-10.txt", machine);
   const tenth = tagRelease({ upstream: machine.upstream, tag: "v0.10.0" });
   commitFile("smoke-release-9.txt", machine);
-  tagRelease({ upstream: machine.upstream, tag: "v0.9.0" });
+  const head = tagRelease({ upstream: machine.upstream, tag: "v0.9.0" });
   const newer = runInstall(releaseMachine);
   const newerAt = position(releaseClone);
   const again = runInstall(releaseMachine);
@@ -329,17 +334,20 @@ function checkReleases(machine: Machine): void {
   const refused = runInstall(releaseMachine);
   runPrinted(refused.stderr);
   const afterAdvice = runInstall(releaseMachine);
+  const afterAdviceAt = position(releaseClone);
   const kept = git(["-C", releaseClone, "log", "-1", "--format=%s", "my-zambil-changes"]);
-  const switchVariables = { ZAMBIL_GIT_REF: "v0.10.0" };
-  const switched = runInstall({ ...machine, variables: switchVariables });
-  const followsReleases = runInstall(machine);
-  deepEqual(
-    {
-      onMain: {
-        status: onMain.status,
-        at: onMainBranch,
-        hint: onMain.stdout.includes("| ZAMBIL_GIT_REF=v0.1.0 sh\n"),
-      },
+  const mainMachine = { ...machine, variables: { ZAMBIL_GIT_REF: "main" } };
+  const toMain = runInstall(mainMachine);
+  runPrinted(toMain.stderr);
+  const onMainAgain = runInstall(mainMachine);
+  const followsMain = runInstall(machine);
+  const followsMainAt = position(mainClone);
+  git(["-C", mainClone, "config", "--unset", "zambil.follow"]);
+  const ahead = runInstall(machine);
+  const typo = runInstall({ ...machine, variables: { ZAMBIL_GIT_REF: "v9.9.9" } });
+  return {
+    actual: {
+      onMain: { status: onMain.status, at: onMainAt },
       fresh: { status: fresh.status, at: freshAt },
       newer: {
         status: newer.status,
@@ -349,23 +357,43 @@ function checkReleases(machine: Machine): void {
       again: again.stdout.includes("zambil is up to date: v0.10.0."),
       pinned: { status: pinned.status, at: pinnedAt },
       refused: { status: refused.status, commands: printedCommands(refused.stderr).length },
-      afterAdvice: { status: afterAdvice.status, at: position(releaseClone), kept },
-      switched: { status: switched.status, at: position(mainClone) },
-      followsReleases: followsReleases.stdout.includes("zambil is up to date: v0.10.0."),
+      afterAdvice: { status: afterAdvice.status, at: afterAdviceAt, kept },
+      toMain: {
+        refused: toMain.status,
+        commands: printedCommands(toMain.stderr).length,
+        afterAdvice: onMainAgain.status,
+      },
+      followsMain: { status: followsMain.status, at: followsMainAt },
+      ahead: {
+        status: ahead.status,
+        at: position(mainClone),
+        said: ahead.stdout.includes("is ahead of the newest release v0.10.0"),
+      },
+      typo: { status: typo.status, firstLine: typo.stderr.split("\n")[0] },
     },
-    {
-      onMain: { status: 0, at: "main", hint: true },
+    expected: {
+      onMain: { status: 0, at: `${first} detached` },
       fresh: { status: 0, at: `${first} detached` },
       newer: { status: 0, at: `${tenth} detached`, said: true },
       again: true,
       pinned: { status: 0, at: `${first} detached` },
       refused: { status: 1, commands: 1 },
       afterAdvice: { status: 0, at: `${tenth} detached`, kept: "my release commit\n" },
-      switched: { status: 0, at: `${tenth} detached` },
-      followsReleases: true,
+      toMain: { refused: 1, commands: 1, afterAdvice: 0 },
+      followsMain: { status: 0, at: `${head} main` },
+      ahead: { status: 0, at: `${head} main`, said: true },
+      typo: {
+        status: 1,
+        firstLine: `${machine.upstream} has no release or branch named v9.9.9. Fix ZAMBIL_GIT_REF, or leave it out to install the newest release.`,
+      },
     },
-    `${refused.stderr}${afterAdvice.stderr}${switched.stderr}`,
-  );
+    output: `${refused.stderr}${afterAdvice.stderr}${toMain.stderr}${onMainAgain.stderr}`,
+  };
+}
+
+function checkReleases(machine: Machine): void {
+  const { actual, expected, output } = runReleases(machine);
+  deepEqual(actual, expected, output);
 }
 
 function main(): void {
@@ -394,7 +422,7 @@ function main(): void {
       run: () => checkLocalCommit(machine),
     },
     {
-      name: "a fresh install takes the newest release, and a clone on main stays on main",
+      name: "installs take the newest release, a pin, or the branch that the user names",
       run: () => checkReleases(machine),
     },
   ];

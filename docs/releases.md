@@ -26,8 +26,14 @@ The tag is enough for the install command. The GitHub release gives users a page
 
 ## After the release
 
-1. In a new terminal, run the install command with an empty home folder: `HOME=$(mktemp -d) sh -c 'curl -fsSL https://raw.githubusercontent.com/AndersCan/zambil/main/install.sh | sh'`.
-2. Make sure that it prints `Downloading zambil v0.1.0`.
-3. Run `zambil --version` from that install. It prints `zambil 0.1.0` with no commit.
+Install the release in an empty home folder, and run the `zambil` of that install:
 
-A clone that follows `main` stays on `main`. From the next update on, the install command prints the command that moves it to the newest release.
+```sh
+home=$(mktemp -d)
+HOME=$home sh -c 'curl -fsSL https://raw.githubusercontent.com/AndersCan/zambil/main/install.sh | sh'
+HOME=$home "$home/.local/bin/zambil" --version
+```
+
+Make sure that the install prints `Downloading zambil v0.1.0`, and that the last command prints `zambil 0.1.0` with no commit.
+
+The next time that a user runs the install command, a clone on `main` moves to the release. A clone that the user put on `main` with `ZAMBIL_GIT_REF=main` stays on `main`.
