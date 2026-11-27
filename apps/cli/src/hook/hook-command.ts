@@ -1,5 +1,6 @@
 import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
 import { answerHook } from "@zambil/claude-code/answer-hook";
+import { loadHookList } from "@zambil/claude-code/load-hook-list";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
 import { parseHookInput } from "@zambil/claude-code/parse-hook-input";
@@ -16,7 +17,8 @@ async function runHook(options: CommandRunOptions): Promise<ExitCode> {
     output.error(`zambil hook: ${parsed.error}\n${hookCommand.usage}\n`);
     return 0;
   }
-  const request = parseHookInput(await options.input.readAll());
+  const { contextHooks } = loadHookList(options.config.environment).list;
+  const request = parseHookInput(await options.input.readAll(), { contextHooks });
   if (!request.ok) {
     output.error(`zambil hook: ${request.error}\n`);
     return 0;
@@ -38,7 +40,7 @@ export const hookCommand: Command = {
   details: [
     "It reads the JSON that Claude Code sends to a hook on standard input, and prints the notes that apply.",
     "It prints nothing when no note applies, and it always exits with 0, so that it never blocks a session.",
-    "The file packages/claude-code/README.md in the zambil repo tells you how to set up the hooks.",
+    "Run `zambil install` to set up the hooks. The file packages/claude-code/README.md in the zambil repo describes them.",
   ].join("\n"),
   run: runHook,
 };

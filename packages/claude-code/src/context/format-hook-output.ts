@@ -1,8 +1,6 @@
-import type { ContextHookName } from "../hook-input/context-hooks.ts";
-
 /** The hook that runs. Claude Code requires its name in `hookEventName`. */
 export interface FormatHookOutputOptions {
-  hookEventName: ContextHookName;
+  hookEventName: string;
 }
 
 /** The one JSON object on standard output that every context hook in the Claude Code hooks reference reads. */

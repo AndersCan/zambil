@@ -35,6 +35,8 @@ The `aliases` property gives a note more names. A `[[link]]` or a `z:<name>` can
 
 Names are unique in the whole repo. No two notes can share a name, an alias, or a name and an alias, in any folder. Obsidian allows the same name in two folders, but zambil does not. zambil compares names without regard to case, because Obsidian resolves links that way. `Deploy` and `deploy` are the same name.
 
+A `[[link]]` with an alias works in zambil, but Obsidian cannot follow it. In a note that you open in Obsidian, write `[[deploy|ship]]`, not `[[ship]]`.
+
 A duplicate name is an error. The message names every file that uses the name, for example:
 
 ```text
@@ -88,7 +90,7 @@ zambil accepts the same short forms as Obsidian:
 
 A property with the wrong shape, for example a list in `description`, gets an error. zambil then ignores that property and reads the others.
 
-zambil does not check the hook names against Claude Code. The Claude Code adapter does that, because the core does not depend on one agent tool.
+The core does not check the hook names against Claude Code, because it does not depend on one agent tool. The Claude Code adapter checks them, and `zambil check` shows its warnings. See [Problems](#problems).
 
 ## Note kinds
 
@@ -224,6 +226,7 @@ zambil reports two kinds of problem. An error makes `zambil check` exit with 1. 
 | `when-expired` without `expires`, or `run-with` without `script`. | warning |
 | Obsidian cannot link to a name or an alias.                       | warning |
 | A folder cannot be read.                                          | warning |
+| `hooks` names a hook that cannot add context, or no such hook.    | warning |
 
 ## Rendering
 
@@ -260,7 +263,7 @@ The core names no agent tool. The caller passes a `RenderWording` with three fun
 
 ## Claude Code
 
-`packages/claude-code` is the adapter for Claude Code, and `zambil hook` runs it. At each hook, it adds the current notes whose `hooks` name that hook, filtered by `tools` at a tool hook. At `UserPromptSubmit`, it also adds each note that the prompt names with `z:<name>`. Its README describes the rules, the `z:<name>` syntax and the hook configuration.
+`packages/claude-code` is the adapter for Claude Code, and `zambil hook` runs it. At each hook, it adds the current notes whose `hooks` name that hook, filtered by `tools` at a tool hook. At `UserPromptSubmit`, it also adds each note that the prompt names with `z:<name>`. Its README describes the rules, the `z:<name>` syntax, the hook list and `zambil install`. The hook warnings of `zambil check` come from the adapter, with the hook list from the Claude Code hooks reference.
 
 ## The core library
 

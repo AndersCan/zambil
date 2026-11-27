@@ -15,7 +15,7 @@ It adds two kinds of note:
 1. Each current note whose `hooks` property names the hook that runs. At a tool hook, a note with a `tools` property applies only to those tools. A note without `tools` applies to every tool. Names compare exactly, so write `PreToolUse` and `Bash` as Claude Code writes them.
 2. At `UserPromptSubmit`, each note that the user names with `z:<name>` in the prompt. See [Name a note in a prompt](#name-a-note-in-a-prompt).
 
-Only these hooks can add context. The list comes from the hooks reference, read on 2026-11-27, and lives in `src/hook-input/context-hooks.ts`:
+Only some hooks can add context. zambil reads which ones from the hooks reference. See [The hook list](#the-hook-list). On 2026-11-27, the list was:
 
 | Hook                                                     | What zambil reads                                                                                       |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -25,7 +25,7 @@ Only these hooks can add context. The list comes from the hooks reference, read 
 | `PreToolUse`, `PostToolUse`, `PostToolUseFailure`        | The hook name and `tool_name`.                                                                          |
 | `PostToolBatch`                                          | The hook name and each `tool_name` in `tool_calls`. If one tool in the batch matches, the note applies. |
 
-At every other hook, `zambil hook` prints nothing.
+At every other hook, `zambil hook` prints nothing. A new context hook in the hook list gets the notes that name it, the same as `SessionStart`.
 
 A note at `Stop` or `SubagentStop` makes Claude continue the turn once, so that it can act on the note. When `stop_hook_active` is true, an earlier stop hook already made Claude continue. Then zambil prints nothing, so a note on `Stop` never makes a loop.
 
@@ -53,69 +53,57 @@ An expired note is left out at a hook. For an expired note that you name with `z
 
 Claude Code saves a hook text over 10,000 characters to a file and gives the agent only a preview. So zambil keeps each text under 9,500 characters. Full notes use up to 8,000 characters, in order: first the notes that the prompt names, then the notes of the hook. Each note that does not fit is one line at the end that tells the agent how to read it with `zambil show`. When no note applies, the hook prints nothing and adds nothing.
 
-## Configure the hooks by hand
+## The hook list
 
-A later version of zambil installs the hooks for you. Until then, do these steps:
+The hook list names every Claude Code hook, and the hooks that can add context. zambil reads it from the Markdown form of the hooks reference at https://code.claude.com/docs/en/hooks.md. It reads two parts of the page:
 
-1. Put `zambil` on your `PATH`, as `apps/cli/README.md` tells you. The agent also runs `zambil show` to open a linked note.
-2. Tell zambil where your configuration repo is, with `ZAMBIL_REPO` or `~/.config/zambil/config.json`. See `docs/notes.md`. You can also write `zambil hook --repo <path>`. Put `--repo` after `hook`, because `zambil --repo <path> hook` is a usage error that exits with 2, and Claude Code then blocks the event.
-3. Add a `hooks` entry to `~/.claude/settings.json` for each hook that your notes name:
+- The table of hook events at the top of the page. Each row is a hook.
+- The section of each hook. If a sentence in it names `additionalContext` and does not say that the hook ignores it, the hook can add context. `Setup` and `PreModelSwitch` name it only to say that they ignore it.
 
-   ```json
-   {
-     "hooks": {
-       "SessionStart": [
-         {
-           "hooks": [
-             {
-               "type": "command",
-               "command": "NODE_COMPILE_CACHE=\"$HOME/.cache/zambil/node-compile-cache\" zambil hook",
-               "timeout": 10
-             }
-           ]
-         }
-       ],
-       "UserPromptSubmit": [
-         {
-           "hooks": [
-             {
-               "type": "command",
-               "command": "NODE_COMPILE_CACHE=\"$HOME/.cache/zambil/node-compile-cache\" zambil hook",
-               "timeout": 10
-             }
-           ]
-         }
-       ],
-       "PreToolUse": [
-         {
-           "hooks": [
-             {
-               "type": "command",
-               "command": "NODE_COMPILE_CACHE=\"$HOME/.cache/zambil/node-compile-cache\" zambil hook",
-               "timeout": 10
-             }
-           ]
-         }
-       ]
-     }
-   }
-   ```
+`zambil install` reads the page and keeps the list in `$XDG_CACHE_HOME/zambil/claude-code-hooks.json`, or in `~/.cache/zambil/claude-code-hooks.json`. `zambil hook` and `zambil check` read that file. If the file is missing or invalid, they use the list that ships with zambil, `src/hook-list/bundled-hook-list.json`. A hook never uses the network.
 
-4. Make sure that the hook finds your notes. Run this command in a terminal. It must print a JSON object with your `SessionStart` notes, or nothing if no note names `SessionStart`:
+If the page does not have the shape that zambil knows, the refresh fails and keeps the old list. The page must have the table of hook events, and it must say that `UserPromptSubmit` can add context.
 
-   ```sh
-   echo '{"hook_event_name":"SessionStart","source":"startup"}' | zambil hook
-   ```
+To update the bundled list, run `zambil install` and copy the file:
 
-   If it prints a message that starts with `zambil hook:`, fix that problem first.
+```sh
+cp ~/.cache/zambil/claude-code-hooks.json packages/claude-code/src/hook-list/bundled-hook-list.json
+```
 
-5. Start a new Claude Code session. Claude Code reads the hooks at the start of a session.
+`zambil check` gives a warning for each hook name in `hooks` that zambil never answers: a hook that cannot add context, or a name that is not in the list. Names compare exactly, so for `sessionstart` the warning says to write `SessionStart`.
 
-`NODE_COMPILE_CACHE` lets Node keep the compiled code between runs. It must be set before Node starts. Leave out `matcher`: zambil filters by the `tools` of each note. A hook that you add costs one run of `zambil hook` per event, so add only the hooks that your notes name.
+## Install the hooks
+
+Run `zambil install`. The root `README.md` tells you how to put `zambil` on your `PATH` first. `zambil install` does these steps:
+
+1. It refreshes the hook list. See [The hook list](#the-hook-list).
+2. It adds one hook handler to the Claude Code settings for `UserPromptSubmit` and for each other context hook that a note names. The file is `$CLAUDE_CONFIG_DIR/settings.json`, or `~/.claude/settings.json`. A handler that is already there keeps its place, its other fields such as `timeout`, and gets the new command. A zambil handler at a hook that no note names any more goes away. The other keys and handlers stay as they are.
+3. It writes the `zambil-save` skill, `skills/zambil-save/SKILL.md` in the same folder. If the user asks for a note, the skill tells the agent to run `zambil save-guide` and `zambil save`.
+4. It indexes the descriptions with `@zambil/embed`, the same as `zambil index`. The first run downloads the model.
+
+`--offline` skips steps 1 and 4. If step 1 or 4 fails, `zambil install` prints why and does the other steps. If the settings file is not valid JSON, or its `hooks` value has the wrong shape, it changes nothing and exits with 1. If `zambil` is not on the `PATH`, it prints the command that links it and exits with 2.
+
+Each handler runs this command, with full paths:
+
+```sh
+NODE_COMPILE_CACHE=/home/ada/.cache/zambil/node-compile-cache /home/ada/.local/bin/zambil hook --repo /home/ada/notes
+```
+
+`NODE_COMPILE_CACHE` lets Node keep the compiled code between runs. It must be set before Node starts. With the full path of `zambil`, the hook does not depend on the `PATH` of Claude Code to find `zambil`. It still needs `node` on that `PATH`, because `zambil` starts with `#!/usr/bin/env node`. The full path of the repo makes it work from every project folder. `--repo` comes after `hook`, because `zambil --repo <path> hook` is a usage error that exits with 2, and Claude Code then blocks the event. The handler has no `matcher`, because zambil filters by the `tools` of each note. Its `timeout` is 10 seconds.
+
+zambil knows its handlers by the words `zambil hook` in the command. `zambil uninstall` removes each such handler and the `zambil-save` skill. If zambil emptied an event or the `hooks` object, it removes that too. It keeps an event that was empty before.
+
+To make sure that the hook finds your notes, run the command of a handler with a `SessionStart` payload. It must print a JSON object with your `SessionStart` notes. If no note names `SessionStart`, it prints nothing:
+
+```sh
+echo '{"hook_event_name":"SessionStart","source":"startup"}' | zambil hook --repo ~/notes
+```
+
+If it prints a message that starts with `zambil hook:`, fix that problem first.
 
 ## The hook never blocks a session
 
-Claude Code reads exit code 2 from a hook as a blocking error. `zambil hook` always exits with 0. Bad input, a wrong option, or a repo that zambil cannot find or read prints a message on standard error and adds nothing. Claude Code does not show that message in the session. To see it, start Claude Code with `claude --debug=hooks`, or run the command in step 4. A note with a problem still loads, and the other notes still apply. If Node itself fails, it exits with 1, and Claude Code reads that as an error that does not block.
+Claude Code reads exit code 2 from a hook as a blocking error. `zambil hook` always exits with 0. Bad input, a wrong option, or a repo that zambil cannot find or read prints a message on standard error and adds nothing. Claude Code does not show that message in the session. To see it, start Claude Code with `claude --debug=hooks`, or run the command in [Install the hooks](#install-the-hooks). A note with a problem still loads, and the other notes still apply. If Node itself fails, it exits with 1, and Claude Code reads that as an error that does not block.
 
 ## Speed
 
@@ -131,7 +119,9 @@ Each event starts a new Node process that loads the whole repo. Measured in the 
 ## Code
 
 - `src/answer-hook.ts`: `answerHook` turns a parsed hook input and a loaded repo into the standard output. `promptSections` lists the parts of the `UserPromptSubmit` text. Similar notes from the embedder will be one more part after the hook notes.
-- `src/hook-input/`: the hook names, and `parseHookInput`, which reads the JSON from Claude Code.
+- `src/hook-input/`: the tool hook names, and `parseHookInput`, which reads the JSON from Claude Code.
+- `src/hook-list/`: the hook list. `parseHooksReference` reads the page, `refreshHookList` keeps the list in the cache, `loadHookList` reads it, and `checkHookNames` gives the warnings of `zambil check`.
+- `src/install/`: the changes to the Claude Code settings, the hook command and the `zambil-save` skill, for `zambil install` and `zambil uninstall`.
 - `src/hook-notes/`: the notes that name the hook that runs.
 - `src/recall/`: `z:<name>` in a prompt.
 - `src/context/`: the wording for Claude Code, the size budget and the JSON output.
