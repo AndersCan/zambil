@@ -6,10 +6,14 @@
   "exports": {
     "./answer-hook": "./src/answer-hook.ts",
     "./check-hook-names": "./src/hook-list/check-hook-names.ts",
+    "./hook-command-line": "./src/install/hook-command-line.ts",
     "./hook-list": "./src/hook-list/hook-list.ts",
+    "./hooks-to-install": "./src/install/hooks-to-install.ts",
     "./load-hook-list": "./src/hook-list/load-hook-list.ts",
     "./parse-hook-input": "./src/hook-input/parse-hook-input.ts",
-    "./refresh-hook-list": "./src/hook-list/refresh-hook-list.ts"
+    "./refresh-hook-list": "./src/hook-list/refresh-hook-list.ts",
+    "./save-skill": "./src/install/save-skill.ts",
+    "./settings-hooks": "./src/install/settings-hooks.ts"
   },
   "dependencies": {
     "@zambil/core": "workspace:*"
