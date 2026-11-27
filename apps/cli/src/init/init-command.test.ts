@@ -1,4 +1,4 @@
-import { chmod, mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { describe, expect, test } from "vite-plus/test";
 import type { CliConfig } from "../config.ts";
 import { existsSync } from "node:fs";
@@ -64,6 +64,8 @@ describe("zambil init", () => {
     const notes = join(machine.home, "zambil-notes");
     const first = await run({ config, args: ["--offline"] });
     const settings = await readFile(machine.settings, "utf8");
+    const files = await readdir(notes);
+    const note = await readFile(join(notes, "zambil-welcome.md"), "utf8");
     const second = await run({ config, args: ["--offline"] });
     const list = await listCommand.run({
       args: [],
@@ -72,15 +74,20 @@ describe("zambil init", () => {
       output: { write: () => undefined, error: () => undefined },
       now: new Date(2026, 10, 27, 9, 0),
     });
+    const isSameSettings = (await readFile(machine.settings, "utf8")) === settings;
+    await rm(join(notes, "zambil-welcome.md"));
+    const afterDelete = await run({ config, args: ["--offline"] });
     expect({
       first: { ...first, stdout: first.stdout.split("\n") },
-      files: await readdir(notes),
-      note: await readFile(join(notes, "zambil-welcome.md"), "utf8"),
+      files,
+      note,
       userConfig: await readJson(machine.userConfig),
       hooks: Object.keys(JSON.parse(settings).hooks),
       second: { ...second, stdout: second.stdout.split("\n") },
-      isSameSettings: (await readFile(machine.settings, "utf8")) === settings,
+      isSameSettings,
       list,
+      afterDelete: { code: afterDelete.code, firstLine: afterDelete.stdout.split("\n")[0] },
+      filesAfterDelete: await readdir(notes),
     }).toEqual({
       first: {
         code: 0,
@@ -98,6 +105,7 @@ describe("zambil init", () => {
           '  2. Ask the agent for a note, for example: "Write a zambil note that we use pnpm, never npm."',
           `  3. Open ${notes} in Obsidian to read and edit the notes.`,
           "",
+          "Run zambil init again after you change the version of Node.",
           "To keep the notes in another folder, run zambil init <folder>.",
           "",
         ],
@@ -117,6 +125,11 @@ describe("zambil init", () => {
       },
       isSameSettings: true,
       list: 0,
+      afterDelete: {
+        code: 0,
+        firstLine: `Kept ${notes} as it is. It is already your notes folder, so zambil wrote no starter note.`,
+      },
+      filesAfterDelete: [],
     });
   });
 
@@ -130,6 +143,9 @@ describe("zambil init", () => {
     await mkdir(join(machine.home, ".config", "zambil"), { recursive: true });
     await writeFile(machine.userConfig, '{ "repo": "~/old-notes", "theme": "dark" }\n');
     const result = await run({ config: machine.config, args: ["vault", "--offline"] });
+    const newVault = join(machine.home, "new-vault");
+    await mkdir(join(newVault, ".obsidian"), { recursive: true });
+    const fresh = await run({ config: machine.config, args: ["--repo", newVault, "--offline"] });
     expect({
       code: result.code,
       stdout: result.stdout.split("\n").slice(0, 2),
@@ -137,6 +153,7 @@ describe("zambil init", () => {
       files: await readdir(vault),
       deploy: await readFile(join(vault, "deploy.md"), "utf8"),
       userConfig: await readJson(machine.userConfig),
+      fresh: { code: fresh.code, files: await readdir(newVault) },
     }).toEqual({
       code: 0,
       stdout: [
@@ -146,7 +163,8 @@ describe("zambil init", () => {
       hasNextFolderHint: false,
       files: [".obsidian", "deploy.md"],
       deploy,
-      userConfig: { repo: vault, theme: "dark" },
+      userConfig: { repo: newVault, theme: "dark" },
+      fresh: { code: 0, files: [".obsidian", "zambil-welcome.md"] },
     });
   });
 

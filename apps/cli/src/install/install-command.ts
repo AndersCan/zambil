@@ -35,16 +35,15 @@ async function runInstall(options: CommandRunOptions): Promise<ExitCode> {
     output.error(`${setUp.error}\n`);
     return 1;
   }
-  if (flag !== undefined) {
-    const remembered = await rememberRepo(repo.value.root, { config, output });
-    if (remembered === "failed") return 1;
-  }
+  const remembered =
+    flag === undefined ? "unchanged" : await rememberRepo(repo.value.root, { config, output });
   const { list } = loadHookList(config.environment);
   const level = reportProblems(repo.value, { hookList: list, output });
   output.write(
     "Start a new Claude Code session to load the hooks. Run zambil install again after a note names a new hook, or after you change the version of Node.\n",
   );
-  return level === "errors" ? 1 : 0;
+  const hasFailed = level === "errors" || remembered === "failed";
+  return hasFailed ? 1 : 0;
 }
 
 /** `zambil install`: adds the zambil hooks and the zambil-save skill to the Claude Code settings. */

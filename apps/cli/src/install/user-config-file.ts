@@ -12,7 +12,8 @@ export interface SaveRepoPathOptions {
 /** `unchanged` when the file already named the repo. `before` is the repo that it named before, if any. */
 export type SavedRepoPath = { kind: "unchanged" } | { kind: "changed"; before: string | undefined };
 
-function repoInFile(environment: UserEnvironment): string | undefined {
+/** The repo that the user config file names, as a full path. `ZAMBIL_REPO` does not count. */
+export function savedRepoPath(environment: UserEnvironment): string | undefined {
   const fileOnly = { ...environment };
   delete fileOnly.repo;
   const located = locateRepo({ environment: fileOnly });
@@ -27,7 +28,7 @@ export async function saveRepoPath(
   repoRoot: string,
   options: SaveRepoPathOptions,
 ): Promise<Either<string, SavedRepoPath>> {
-  const before = repoInFile(options.environment);
+  const before = savedRepoPath(options.environment);
   if (before === repoRoot) return right({ kind: "unchanged" });
   const path = userConfigPath(options.environment);
   const saved = await changeSettings(path, {

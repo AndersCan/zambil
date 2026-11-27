@@ -9,8 +9,11 @@ export interface RememberRepoOptions {
   output: CommandOutput;
 }
 
-/** `failed` when the user config file cannot be read or written. The message is already printed. */
-export type RememberResult = "saved" | "failed";
+/**
+ * `unchanged` when the file already named the repo. `failed` when the file cannot be read or written.
+ * The message is already printed.
+ */
+export type RememberResult = "saved" | "unchanged" | "failed";
 
 /** Saves the repo in the user config file, so that `zambil list` finds it without `--repo`. */
 export async function rememberRepo(
@@ -21,7 +24,9 @@ export async function rememberRepo(
   const path = userConfigPath(config.environment);
   const saved = await saveRepoPath(repoRoot, { environment: config.environment });
   if (!saved.ok) {
-    output.error(`zambil cannot save the repo in ${path}: ${saved.error}\n`);
+    output.error(
+      `zambil cannot save the repo in ${path}: ${saved.error}\nFix the file or delete it, then run the command again.\n`,
+    );
     return "failed";
   }
   if (saved.value.kind === "changed") {
@@ -36,5 +41,5 @@ export async function rememberRepo(
       `ZAMBIL_REPO names ${active.value.root}, and it wins over ${path}. Unset it to use the saved repo.\n`,
     );
   }
-  return "saved";
+  return saved.value.kind === "changed" ? "saved" : "unchanged";
 }

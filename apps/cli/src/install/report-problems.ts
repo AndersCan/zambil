@@ -30,7 +30,8 @@ export function reportProblems(
   options: ReportProblemsOptions,
 ): ProblemLevel {
   const { output } = options;
-  const problems = [...checkRepo(repo), ...checkHookNames(repo.notes, options)];
+  const found = [...checkRepo(repo), ...checkHookNames(repo.notes, options)];
+  const problems = found.toSorted((first, second) => first.path.localeCompare(second.path));
   const notes = count(repo.notes.length, { noun: "note" });
   if (problems.length === 0) {
     output.write(`Checked ${notes}: no problems.\n`);

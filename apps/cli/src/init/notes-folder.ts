@@ -4,7 +4,10 @@ import { starterNoteName, starterNoteText } from "./starter-note.ts";
 import type { Either } from "@zambil/core/either";
 import { join } from "node:path";
 
-/** `has-files` covers any entry, hidden ones too, such as the `.obsidian` folder of a vault. */
+/**
+ * `has-files` means a file or folder whose name does not start with `.`. A folder with only hidden
+ * entries, such as a new vault with only `.obsidian` or a new `.git`, counts as `empty`.
+ */
 export type FolderState = "missing" | "empty" | "has-files" | "not-a-folder";
 
 function describe(reason: unknown): string {
@@ -25,31 +28,28 @@ export async function folderState(folder: string): Promise<Either<string, Folder
   if (!status.value.isDirectory()) return right("not-a-folder");
   const entries = await wrap(readdir(folder));
   if (!entries.ok) return left(`zambil cannot read ${folder}: ${describe(entries.error)}`);
-  return right(entries.value.length === 0 ? "empty" : "has-files");
+  const hasFiles = entries.value.some((name) => !name.startsWith("."));
+  return right(hasFiles ? "has-files" : "empty");
 }
 
-/** `written` when the folder got the starter note, `kept` when it already had files and stayed as it was. */
-export type PrepareResult = "written" | "kept";
+/** `write` adds the starter note, which is created and never replaced. `skip` only creates the folder. */
+export type StarterMode = "write" | "skip";
 
-/** What `folderState` found. */
-export interface PrepareNotesFolderOptions {
-  state: FolderState;
+/** Whether to write the starter note. */
+export interface CreateNotesFolderOptions {
+  starter: StarterMode;
 }
 
-/**
- * Creates the notes folder if it is missing, and writes the starter note into a folder that has no
- * files. A folder with files stays as it is. The note is created, never replaced.
- */
-export async function prepareNotesFolder(
+/** Creates the notes folder if it is missing, and the starter note if asked. */
+export async function createNotesFolder(
   folder: string,
-  options: PrepareNotesFolderOptions,
-): Promise<Either<string, PrepareResult>> {
-  const { state } = options;
-  if (state === "has-files" || state === "not-a-folder") return right("kept");
+  options: CreateNotesFolderOptions,
+): Promise<Either<string, undefined>> {
   const created = await wrap(mkdir(folder, { recursive: true }));
   if (!created.ok) return left(`zambil cannot create ${folder}: ${describe(created.error)}`);
+  if (options.starter === "skip") return right(undefined);
   const path = join(folder, `${starterNoteName}.md`);
   const written = await wrap(writeFile(path, starterNoteText, { flag: "wx" }));
   if (!written.ok) return left(`zambil cannot write ${path}: ${describe(written.error)}`);
-  return right("written");
+  return right(undefined);
 }
