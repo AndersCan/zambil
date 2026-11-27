@@ -40,6 +40,7 @@ interface Machine {
 
 const repoRoot = resolve(import.meta.dirname, "..");
 const script = readFileSync(join(repoRoot, "install.sh"), "utf8");
+const readmeSetUp = "https://github.com/AndersCan/zambil#set-up";
 const gitIdentity = {
   GIT_AUTHOR_NAME: "smoke",
   GIT_AUTHOR_EMAIL: "smoke@example.com",
@@ -96,7 +97,7 @@ function checkOldNode(setup: Setup): void {
     { status: result.status, firstLine: result.stderr.split("\n")[0], changed: existsSync(home) },
     {
       status: 1,
-      firstLine: "zambil needs Node 24 or later, and this is Node v22.1.0.",
+      firstLine: "zambil needs Node 24 or later, and this is Node 22.1.0.",
       changed: false,
     },
   );
@@ -128,12 +129,18 @@ function checkFreshInstall(machine: Machine): void {
     encoding: "utf8",
     env: { HOME: machine.home, PATH: machine.path },
   });
+  const help = spawnSync(link, ["help"], {
+    encoding: "utf8",
+    env: { HOME: machine.home, PATH: machine.path },
+  });
+  const nextStep = help.stdout.includes("\n  init ") ? "  zambil init" : `  ${readmeSetUp}`;
   const hooksPath = spawnSync("git", ["-C", clone, "config", "core.hooksPath"]).status;
   deepEqual(
     {
       status: result.status,
       pathHint: result.stdout.includes('  export PATH="$HOME/.local/bin:$PATH"'),
-      nextCommand: result.stdout.endsWith("zambil is ready. To set it up, run:\n\n  zambil init\n"),
+      nextStep: result.stdout.endsWith(`${nextStep}\n`),
+      help: help.status,
       link: readlinkSync(link),
       check: checked.stdout,
       devDependencies: existsSync(join(clone, "node_modules/vite-plus")),
@@ -142,7 +149,8 @@ function checkFreshInstall(machine: Machine): void {
     {
       status: 0,
       pathHint: true,
-      nextCommand: true,
+      nextStep: true,
+      help: 0,
       link: join(clone, "apps/cli/src/main.ts"),
       check: "6 notes, no problems.\n",
       devDependencies: false,
@@ -172,25 +180,69 @@ function checkUpdate(machine: Machine): void {
   );
 }
 
+/** The commands that the script told the user to run: its lines that start with `  git -C`. */
+function printedCommands(text: string): string[] {
+  const commands: string[] = [];
+  for (const line of text.split("\n")) {
+    if (line.startsWith("  git -C ")) commands.push(line.trim());
+  }
+  return commands;
+}
+
+function runPrinted(text: string): void {
+  for (const command of printedCommands(text)) {
+    execFileSync("sh", ["-c", command], { env: { ...process.env, ...gitIdentity } });
+  }
+}
+
 function checkLocalChange(machine: Machine): void {
   const clone = join(machine.home, ".local/share/zambil");
   const readme = join(clone, "README.md");
   writeFileSync(readme, "my own text\n");
   commitFile("smoke-second.txt", machine);
-  const result = runInstall(machine);
+  const refused = runInstall(machine);
+  const kept = readFileSync(readme, "utf8");
+  runPrinted(refused.stderr);
+  const afterAdvice = runInstall(machine);
   deepEqual(
     {
-      status: result.status,
-      firstLine: result.stderr.split("\n")[0],
-      readme: readFileSync(readme, "utf8"),
+      status: refused.status,
+      firstLine: refused.stderr.split("\n")[0],
+      kept,
+      commands: printedCommands(refused.stderr).length,
+      statusAfterAdvice: afterAdvice.status,
       updated: existsSync(join(clone, "smoke-second.txt")),
     },
     {
       status: 1,
-      firstLine: `zambil did not update, because the clone in ${clone} has local changes.`,
-      readme: "my own text\n",
-      updated: false,
+      firstLine: `zambil did not update, because the clone in ${clone} has local changes. To put them aside, run:`,
+      kept: "my own text\n",
+      commands: 1,
+      statusAfterAdvice: 0,
+      updated: true,
     },
+    afterAdvice.stderr,
+  );
+}
+
+function checkLocalCommit(machine: Machine): void {
+  const clone = join(machine.home, ".local/share/zambil");
+  writeFileSync(join(clone, "README.md"), "my own commit\n");
+  git(["-C", clone, "commit", "--quiet", "--all", "-m", "my own commit"]);
+  commitFile("smoke-third.txt", machine);
+  const refused = runInstall(machine);
+  runPrinted(refused.stderr);
+  const afterAdvice = runInstall(machine);
+  deepEqual(
+    {
+      status: refused.status,
+      commands: printedCommands(refused.stderr).length,
+      statusAfterAdvice: afterAdvice.status,
+      updated: existsSync(join(clone, "smoke-third.txt")),
+      keptCommit: git(["-C", clone, "log", "-1", "--format=%s", "my-zambil-changes"]),
+    },
+    { status: 1, commands: 2, statusAfterAdvice: 0, updated: true, keptCommit: "my own commit\n" },
+    afterAdvice.stderr,
   );
 }
 
@@ -208,7 +260,14 @@ function main(): void {
     },
     { name: "a fresh install works", run: () => checkFreshInstall(machine) },
     { name: "a second run updates and keeps other files", run: () => checkUpdate(machine) },
-    { name: "a local change stops the update", run: () => checkLocalChange(machine) },
+    {
+      name: "the advice for a local change leads to an update",
+      run: () => checkLocalChange(machine),
+    },
+    {
+      name: "the advice for a local commit leads to an update",
+      run: () => checkLocalCommit(machine),
+    },
   ];
   for (const check of checks) {
     check.run();

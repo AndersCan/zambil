@@ -12,7 +12,7 @@ zambil never writes a note on its own. You write a note, or you ask the agent to
 
 ## Set up
 
-You need Node 24 or later, git and Claude Code. The steps work on Linux and macOS.
+You need Node 24 or later with npm, git and Claude Code. The steps work on Linux and macOS.
 
 1. Install zambil:
 
@@ -20,7 +20,7 @@ You need Node 24 or later, git and Claude Code. The steps work on Linux and macO
    curl -fsSL https://raw.githubusercontent.com/AndersCan/zambil/main/install.sh | sh
    ```
 
-   The script clones zambil into `~/.local/share/zambil` and installs the dependencies that it needs to run. It links `zambil` into `~/.local/bin`. If that folder is not on your `PATH`, the script prints the line to add to the profile of your shell. To update zambil, run the same command again. The script stops and changes nothing if the clone has local changes. Set `ZAMBIL_HOME` or `ZAMBIL_BIN_DIR` to use other folders.
+   The script clones zambil into `~/.local/share/zambil`, or into `$XDG_DATA_HOME/zambil` if you set that variable. It installs the dependencies that it needs to run. It links `zambil` into `~/.local/bin`. If that folder is not on your `PATH`, the script prints the line to add to the profile of your shell. To update zambil, run the same command again. The script stops and changes nothing if the clone has local changes. Set `ZAMBIL_HOME` or `ZAMBIL_BIN_DIR` to use other folders.
 
 2. Run `zambil help` in another folder to make sure that `zambil` is on your `PATH`.
 
