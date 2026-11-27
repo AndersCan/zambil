@@ -12,6 +12,7 @@ import { hooksToInstall } from "@zambil/claude-code/hooks-to-install";
 import { installHooks } from "@zambil/claude-code/settings-hooks";
 import { join } from "node:path";
 import { loadHookList } from "@zambil/claude-code/load-hook-list";
+import type { Note } from "@zambil/core/note";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
 import { quoteArgument } from "@zambil/core/quote-argument";
@@ -92,6 +93,21 @@ function describeSave(result: SaveResult, options: DescribeSaveOptions): string 
   return result === "changed" ? options.changed : options.unchanged;
 }
 
+interface SkippedHooksOptions {
+  hookNames: string[];
+}
+
+/** The hook names in the notes that install leaves out, because zambil never answers them. */
+function skippedHooks(notes: Note[], options: SkippedHooksOptions): string[] {
+  const skipped = new Set<string>();
+  for (const note of notes) {
+    for (const hook of note.hooks) {
+      if (!options.hookNames.includes(hook)) skipped.add(hook);
+    }
+  }
+  return [...skipped];
+}
+
 async function runInstall(options: CommandRunOptions): Promise<ExitCode> {
   const { output, config } = options;
   const parsed = parseCommandArgs({ args: options.args, options: installOptions });
@@ -135,6 +151,11 @@ async function runInstall(options: CommandRunOptions): Promise<ExitCode> {
   });
   output.write(`${hooksMessage}\n`);
   output.write(`The hooks read the configuration repo ${repoRoot}.\n`);
+  const skipped = skippedHooks(repo.value.notes, { hookNames });
+  if (skipped.length > 0) {
+    const names = skipped.join(", ");
+    output.write(`Skipped ${names}, because zambil never answers there. Run zambil check.\n`);
+  }
 
   const skillPath = saveSkillPath(config);
   const skill = await saveSkill(skillPath, { repoRoot });

@@ -61,7 +61,7 @@ function runCheck(options: CommandRunOptions): ExitCode {
  * never answers. Exits with 1 when one is an error.
  */
 export const checkCommand: Command = {
-  summary: "Report duplicate names and other invalid notes.",
+  summary: "Report invalid notes and hook names that zambil never answers.",
   details:
     "It also warns about a hook name that zambil never answers. An error sets the exit code to 1. A warning does not.",
   usage: "Usage: zambil check [--repo <path>]",

@@ -79,7 +79,7 @@ export interface ParseHookInputOptions {
  */
 export function parseHookInput(
   text: string,
-  options: ParseHookInputOptions = bundledHookList,
+  options: ParseHookInputOptions = { contextHooks: bundledHookList.contextHooks },
 ): Either<string, HookRequest> {
   const parsed = parseJson(text);
   if (!parsed.ok) return parsed;

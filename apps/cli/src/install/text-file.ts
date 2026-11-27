@@ -51,7 +51,7 @@ async function findTarget(path: string): Promise<Either<string, Target>> {
 async function writeThenRename(target: Target, options: ReplaceTextOptions): Promise<void> {
   const { partial } = target;
   await mkdir(dirname(target.path), { recursive: true });
-  await writeFile(partial, options.text);
+  await writeFile(partial, options.text, { mode: target.mode ?? 0o666 });
   if (target.mode !== undefined) await chmod(partial, target.mode);
   await rename(partial, target.path);
 }

@@ -70,7 +70,7 @@ Each hook gets the full path of `zambil` and of the repo, so it works from every
 Run `zambil install` again in these cases:
 
 - A note names a hook that no note named before. zambil installs only the hooks that your notes name, because each hook starts a process on every event.
-- You move the configuration repo.
+- You move the configuration repo. First write the new path to `~/.config/zambil/config.json`.
 - You move the clone. First run the `ln -sf` command of step 2 again in the root of the moved clone. The hooks then work again, because they run the link.
 
 Without a network connection, run `zambil install --offline`. It skips the hook list and the model. Run `zambil index` later to download the model.

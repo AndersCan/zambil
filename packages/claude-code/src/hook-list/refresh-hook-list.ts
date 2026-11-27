@@ -1,6 +1,6 @@
 import { bundledHookList, hookListPath } from "./load-hook-list.ts";
 import { left, right, wrap } from "@zambil/core/either";
-import { mkdir, rename, writeFile } from "node:fs/promises";
+import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { Either } from "@zambil/core/either";
 import type { HookList } from "./hook-list.ts";
@@ -34,11 +34,9 @@ export async function downloadText(url: string): Promise<Either<string, string>>
   return right(text.value);
 }
 
-/** The hooks that the bundled list says can add context, that are still hooks, but no longer add context. */
+/** The hooks that the bundled list says can add context, and that the new list leaves out. */
 function droppedContextHooks(list: HookList): string[] {
-  return bundledHookList.contextHooks.filter(
-    (hook) => list.hooks.includes(hook) && !list.contextHooks.includes(hook),
-  );
+  return bundledHookList.contextHooks.filter((hook) => !list.contextHooks.includes(hook));
 }
 
 /**
@@ -69,6 +67,9 @@ export async function refreshHookList(
       .then(() => writeFile(partial, text))
       .then(() => rename(partial, path)),
   );
-  if (!written.ok) return left(`cannot write ${path}: ${describe(written.error)}`);
+  if (!written.ok) {
+    await wrap(rm(partial, { force: true }));
+    return left(`cannot write ${path}: ${describe(written.error)}`);
+  }
   return list;
 }

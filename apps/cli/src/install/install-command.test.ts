@@ -119,6 +119,7 @@ describe("zambil install and zambil uninstall", () => {
         stdout: [
           `Installed the zambil hooks (SessionStart, UserPromptSubmit, PreToolUse) in ${settings}.`,
           `The hooks read the configuration repo ${repo}.`,
+          "Skipped Notification, because zambil never answers there. Run zambil check.",
           `Installed the zambil-save skill in ${machine.skill}.`,
           "Skipped the hook list and the model, because of --offline.",
           "Start a new Claude Code session to load the hooks. Run zambil install again after a note names a new hook.",

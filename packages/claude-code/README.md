@@ -77,7 +77,7 @@ cp ~/.cache/zambil/claude-code-hooks.json packages/claude-code/src/hook-list/bun
 Run `zambil install`. The root `README.md` tells you how to put `zambil` on your `PATH` first. `zambil install` does these steps:
 
 1. It refreshes the hook list. See [The hook list](#the-hook-list).
-2. It adds one hook handler to the Claude Code settings for `UserPromptSubmit` and for each other context hook that a note names. The file is `$CLAUDE_CONFIG_DIR/settings.json`, or `~/.claude/settings.json`. A handler that is already there keeps its place and gets the new command. A zambil handler at a hook that no note names any more goes away. The other keys and handlers stay as they are.
+2. It adds one hook handler to the Claude Code settings for `UserPromptSubmit` and for each other context hook that a note names. The file is `$CLAUDE_CONFIG_DIR/settings.json`, or `~/.claude/settings.json`. A handler that is already there keeps its place, its other fields such as `timeout`, and gets the new command. A zambil handler at a hook that no note names any more goes away. The other keys and handlers stay as they are.
 3. It writes the `zambil-save` skill, `skills/zambil-save/SKILL.md` in the same folder. If the user asks for a note, the skill tells the agent to run `zambil save-guide` and `zambil save`.
 4. It indexes the descriptions with `@zambil/embed`, the same as `zambil index`. The first run downloads the model.
 

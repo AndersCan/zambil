@@ -35,7 +35,7 @@ async function run(args: string[], options: RunOptions = {}) {
 const checkUsage = [
   "Usage: zambil check [--repo <path>]",
   "",
-  "Report duplicate names and other invalid notes.",
+  "Report invalid notes and hook names that zambil never answers.",
   "It also warns about a hook name that zambil never answers. An error sets the exit code to 1. A warning does not.",
 ].join("\n");
 
@@ -110,7 +110,7 @@ describe("runCli", () => {
     expect({ header: help.stdout.split("\n").slice(0, 3), rows, printed }).toEqual({
       header: ["Usage: zambil <command> [--repo <path>]", "", "Commands:"],
       rows: [
-        ["check", "Report duplicate names and other invalid notes."],
+        ["check", "Report invalid notes and hook names that zambil never answers."],
         ["list", "List every note with its kind, path and description."],
       ],
       printed: usages.map(() => `${checkUsage}\n`),

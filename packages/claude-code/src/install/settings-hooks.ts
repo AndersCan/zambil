@@ -74,8 +74,10 @@ function withHandler(groups: unknown[], options: ReplaceOptions): unknown[] {
   const handlers = handlersOf(group);
   const first = handlers.findIndex(isZambilHandler);
   const replaced: unknown[] = [];
+  const { command } = options.handler;
   for (const [index, handler] of handlers.entries()) {
-    if (index === first) replaced.push(options.handler);
+    const updated = { ...options.handler, ...asRecord(handler), command };
+    if (index === first) replaced.push(updated);
     else if (!isZambilHandler(handler)) replaced.push(handler);
   }
   const before = withoutZambil(groups.slice(0, position));

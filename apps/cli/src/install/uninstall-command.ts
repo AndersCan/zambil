@@ -34,6 +34,7 @@ async function runUninstall(options: CommandRunOptions): Promise<ExitCode> {
   const saved = await changeSettings(path, { change: uninstallHooks });
   if (!saved.ok) {
     output.error(`zambil changed nothing in ${path}: ${saved.error}\n`);
+    await removeSkill(options);
     return 1;
   }
   const message =
