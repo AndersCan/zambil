@@ -1,0 +1,23 @@
+packages:
+  - apps/*
+  - packages/*
+
+allowBuilds:
+  esbuild: true
+
+catalogMode: prefer
+
+# Every dependency version lives here. A package.json refers to it as "catalog:".
+catalog:
+  "@types/node": ^24
+  vite: npm:@voidzero-dev/vite-plus-core@8.3.8001
+  vite-plus: 1.8.0
+
+overrides:
+  vite: "catalog:"
+
+peerDependencyRules:
+  allowAny:
+    - vite
+  allowedVersions:
+    vite: "*"
