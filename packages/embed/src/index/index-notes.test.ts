@@ -15,6 +15,15 @@ const lengthEmbedder: Embedder = {
   embed: (texts) => Promise.resolve(right(texts.map((text) => Float32Array.of(text.length, 1)))),
 };
 
+/** Like `lengthEmbedder`, but it takes a moment, so that runs at the same time overlap. */
+const slowEmbedder: Embedder = {
+  modelKey: "length@1",
+  embed: (texts) =>
+    new Promise((resolve) => {
+      setTimeout(() => resolve(right(texts.map((text) => Float32Array.of(text.length, 1)))), 20);
+    }),
+};
+
 describe("indexNotes", () => {
   test("embeds only new descriptions and writes to the cache, never to the repo", async () => {
     const deploy = "---\ndescription: How to deploy.\n---\n";
@@ -45,11 +54,41 @@ describe("indexNotes", () => {
       first: [2, 2],
       second: [2, 1],
       indexed: [
-        ["How to use git.", [15, 1]],
         ["How to deploy.", [14, 1]],
+        ["How to use git.", [15, 1]],
       ],
       other: 0,
       deploy,
     });
+  });
+
+  test("keeps the texts of each run when runs that each saw one new note write at the same time", async () => {
+    const files: Record<string, string> = { "base.md": "---\ndescription: Base.\n---\n" };
+    for (let position = 0; position < 8; position += 1) {
+      files[`note-${position}.md`] = `---\ndescription: Note ${position}.\n---\n`;
+    }
+    const root = await writeTestRepo(files);
+    const cacheFolder = await mkdtemp(join(tmpdir(), "zambil-cache-"));
+    const repo = loadRepo(root);
+    if (!repo.ok) throw new Error(repo.error.message);
+    const views = Array.from({ length: 8 }, (_, position) => ({
+      ...repo.value,
+      notes: repo.value.notes.filter((note) => ["base", `note-${position}`].includes(note.name)),
+    }));
+    await Promise.all(
+      views.map((view) => indexNotes(view, { embedder: slowEmbedder, cacheFolder })),
+    );
+    const vectors = readNoteIndex(root, { cacheFolder, modelKey: "length@1" }).vectors;
+    expect([...vectors.keys()].toSorted()).toEqual([
+      "Base.",
+      "Note 0.",
+      "Note 1.",
+      "Note 2.",
+      "Note 3.",
+      "Note 4.",
+      "Note 5.",
+      "Note 6.",
+      "Note 7.",
+    ]);
   });
 });
