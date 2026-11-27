@@ -19,6 +19,14 @@ describe("splitFrontmatter", () => {
     ]);
   });
 
+  test("splits on line feeds only, as Obsidian does, so other line separators stay in a value", () => {
+    const split = splitFrontmatter("---\ndescription: a\u2028b\rc\nexpires: 2020-01-01\n---\nBody");
+    expect(split).toEqual({
+      frontmatter: "description: a\u2028b\rc\nexpires: 2020-01-01\n",
+      content: "Body",
+    });
+  });
+
   test("treats a note without a closing line as content only", () => {
     expect(splitFrontmatter("---\na: 1\nBody")).toEqual({ content: "---\na: 1\nBody" });
   });

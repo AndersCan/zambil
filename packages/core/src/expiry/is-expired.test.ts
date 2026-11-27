@@ -32,10 +32,12 @@ describe("isExpired", () => {
       "---\nexpires: 2026-11-28\ntags: [a\n---\n",
       "---\nexpires:\n  - 2026-11-28\n---\n",
       "---\nexpires: {date: 2026-11-28}\n---\n",
+      '---\n"expires": 2026-11-28\nfoo: [\n---\n',
+      "---\n{expires: 2026-11-28, foo: [}\n---\n",
     ];
     const now = new Date(2026, 10, 27);
     const expired = broken.map((text) => isExpired(parseNote(text, { file }).note, { now }));
-    expect(expired).toEqual([true, true, true, true]);
+    expect(expired).toEqual([true, true, true, true, true, true]);
   });
 
   test("keeps the name of the note that tells how to refresh it", () => {

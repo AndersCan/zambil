@@ -4,7 +4,7 @@ export interface SplitNote {
   content: string;
 }
 
-const frontmatterPattern = /^---[ \t]*\r?\n(?<yaml>(?:.*\r?\n)*?)---[ \t]*(?:\r?\n|$)/;
+const frontmatterPattern = /^---[ \t]*\r?\n(?<yaml>(?:[^\n]*\n)*?)---[ \t]*\r?(?:\n|$)/;
 
 /**
  * Splits a note the way Obsidian does: frontmatter starts on the first line with `---` and ends at the

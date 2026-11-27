@@ -32,7 +32,7 @@ interface KindOptions {
 }
 
 const unlinkableCharacters = /[[\]#^|]/;
-const expiresLine = /^expires[ \t]*:(?<text>.*)$/m;
+const expiresLine = /(?:^|[{,])[ \t]*["']?expires["']?[ \t]*:(?<text>[^\n]*)$/m;
 
 interface ExpiryOptions {
   frontmatter: string | undefined;
