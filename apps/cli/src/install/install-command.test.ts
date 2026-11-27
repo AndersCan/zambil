@@ -144,7 +144,7 @@ describe("zambil install and zambil uninstall", () => {
           "Skipped Notification, because zambil never answers there.",
           `Installed the zambil-save skill in ${machine.skill}.`,
           `Saved the configuration repo ${repo} in ${machine.userConfig}.`,
-          "Start a new Claude Code session to load the hooks. Run zambil install again after a note names a new hook, or after you change the version of Node.",
+          "Start a new Claude Code session to load the hooks. Run zambil install again after a note names a new hook or changes its tools, or after you change the version of Node.",
           "",
         ].join("\n"),
         stderr: [

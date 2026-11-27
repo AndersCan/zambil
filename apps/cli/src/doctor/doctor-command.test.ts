@@ -166,11 +166,14 @@ describe("zambil doctor", () => {
     });
   });
 
-  test("reports a matcher that a note changed since the install, and says ok after install runs again", async () => {
+  test("reports a matcher that is too wide or too narrow after a note changed, and says ok after install runs again", async () => {
     const setup = await installedSetup();
+    const args = ["--repo", setup.repo, "--offline"];
+    await writeFile(join(setup.repo, "shell.md"), "---\nhooks: PreToolUse\n---\nQuote.\n");
+    await installCommand.run({ args, config: setup.config, input, output: silent, now });
     const shell = "---\nhooks: PreToolUse\ntools: Bash\n---\nQuote.\n";
     await writeFile(join(setup.repo, "shell.md"), shell);
-    const args = ["--repo", setup.repo, "--offline"];
+    const wide = await doctor(setup.config);
     await installCommand.run({ args, config: setup.config, input, output: silent, now });
     const style = "---\nhooks: PreToolUse\ntools: [Edit, Write]\n---\nStyle.\n";
     await writeFile(join(setup.repo, "style.md"), style);
@@ -178,12 +181,14 @@ describe("zambil doctor", () => {
     await installCommand.run({ args, config: setup.config, input, output: silent, now });
     const fixed = await doctor(setup.config);
     expect({
+      wide: hookLines(wide.stdout)[1],
       stale: hookLines(stale.stdout).slice(0, 2),
       fixed: hookLines(fixed.stdout)[0],
     }).toEqual({
+      wide: "      zambil hook runs at PreToolUse for every tool, but zambil install now writes it for Bash.",
       stale: [
         `fail  The zambil hooks in ${setup.settings} do not match what zambil install writes now.`,
-        "      zambil hook runs at PreToolUse for Bash, but the notes need it for Bash, Edit, Write.",
+        "      zambil hook runs at PreToolUse for Bash, but zambil install now writes it for Bash, Edit, Write.",
       ],
       fixed: expect.stringMatching(/^ok {4}The zambil hooks in .* are up to date/),
     });

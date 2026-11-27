@@ -29,6 +29,8 @@ describe("matcherCovers", () => {
       matcherCovers("Bash|Edit", { needed: "Edit" }),
       matcherCovers("Bash", { needed: "Bash|Edit" }),
       matcherCovers("Bash", { needed: undefined }),
-    ]).toEqual([true, true, false, false]);
+      matcherCovers("Bash, Edit", { needed: "Edit" }),
+      matcherCovers("mcp__deploy-server__run", { needed: "mcp__deploy-server__run" }),
+    ]).toEqual([true, true, false, false, true, true]);
   });
 });

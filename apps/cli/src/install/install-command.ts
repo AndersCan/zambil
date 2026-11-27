@@ -41,7 +41,7 @@ async function runInstall(options: CommandRunOptions): Promise<ExitCode> {
   const { list } = loadHookList(config.environment);
   const level = reportProblems(repo.value, { hookList: list, output });
   output.write(
-    "Start a new Claude Code session to load the hooks. Run zambil install again after a note names a new hook, or after you change the version of Node.\n",
+    "Start a new Claude Code session to load the hooks. Run zambil install again after a note names a new hook or changes its tools, or after you change the version of Node.\n",
   );
   const hasFailed = level === "errors" || remembered === "failed";
   return hasFailed ? 1 : 0;
@@ -55,7 +55,7 @@ export const installCommand: Command = {
     "It adds `zambil hook` at UserPromptSubmit, SessionStart and SubagentStart, and at each other hook that a note names, and keeps every other setting and hook. At a tool hook where each note names its tools, the hook runs only for those tools.",
     "It reads the hook list from the Claude Code docs and indexes the notes, which downloads the model the first time.",
     "It reports the problems that `zambil check` finds, and exits with 1 for an error.",
-    "It never changes a note. Run it again after a note names a new hook. `zambil uninstall` removes it.",
+    "It never changes a note. Run it again after a note names a new hook or changes its tools. `zambil uninstall` removes it.",
   ].join("\n"),
   options: [
     {

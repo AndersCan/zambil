@@ -375,7 +375,7 @@ describe("hookCommand", () => {
       runHook([], { stdin: sessionStart, repo, claudeConfigFolder: wide }),
     ]);
     expect(results.map((result) => result.stdout)).toEqual([
-      `${JSON.stringify({ systemMessage: "zambil: Some notes for PreToolUse do not reach the agent, because the zambil hook there runs only for other tools. Run zambil doctor to see the fix." })}\n`,
+      `${JSON.stringify({ systemMessage: "zambil: Some notes for PreToolUse do not reach the agent, because the zambil hook there runs only for some tools. Run zambil doctor to see the fix." })}\n`,
       "",
     ]);
   });

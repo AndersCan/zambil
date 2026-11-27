@@ -4,7 +4,10 @@ import type { Note } from "@zambil/core/note";
 const matchedHooks = ["PreToolUse", "PostToolUse", "PostToolUseFailure"];
 
 /** Claude Code reads a matcher of only these characters as a list of exact tool names. */
-const plainToolName = /^\w+$/;
+const plainToolName = /^[\w-]+$/;
+
+/** A matcher with another character is a pattern that the user wrote, which zambil does not read. */
+const plainMatcher = /^[\w|-]+$/;
 
 /** The hooks that install connects. */
 export interface ToolMatchersOptions {
@@ -47,12 +50,15 @@ export interface MatcherCoversOptions {
   needed: string | undefined;
 }
 
-/** Whether a handler with this matcher runs for each tool that the notes need. */
+/**
+ * Whether a handler with this matcher runs for each tool that the notes need. A pattern that the user
+ * wrote by hand counts as covering, so that zambil gives no false warning.
+ */
 export function matcherCovers(
   installed: string | undefined,
   options: MatcherCoversOptions,
 ): boolean {
-  if (installed === undefined) return true;
+  if (installed === undefined || !plainMatcher.test(installed)) return true;
   if (options.needed === undefined) return false;
   const tools = new Set(installed.split("|"));
   return options.needed.split("|").every((tool) => tools.has(tool));

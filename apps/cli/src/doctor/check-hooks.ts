@@ -66,7 +66,9 @@ function eventProblems(events: string[], options: EventProblemsOptions): string[
     if (!isStale) continue;
     const now = describeTools(options.matchers[hook]);
     const tools = describeTools(needed[hook]);
-    problems.push(`zambil hook runs at ${hook} for ${now}, but the notes need it for ${tools}.`);
+    problems.push(
+      `zambil hook runs at ${hook} for ${now}, but zambil install now writes it for ${tools}.`,
+    );
   }
   return problems;
 }

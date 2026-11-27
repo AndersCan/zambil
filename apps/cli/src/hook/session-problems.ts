@@ -45,7 +45,7 @@ function narrowHookProblems(narrow: string[]): string[] {
   if (narrow.length === 0) return [];
   const names = narrow.join(", ");
   return [
-    `Some notes for ${names} do not reach the agent, because the zambil hook there runs only for other tools.`,
+    `Some notes for ${names} do not reach the agent, because the zambil hook there runs only for some tools.`,
   ];
 }
 

@@ -74,28 +74,69 @@ function newGroup(options: ReplaceOptions): Record<string, unknown> {
   return group;
 }
 
+interface MatcherOptions {
+  matcher: string | undefined;
+}
+
+/** The group with this matcher. A group with no matcher runs for every tool. */
+function withMatcher(
+  group: Record<string, unknown>,
+  options: MatcherOptions,
+): Record<string, unknown> {
+  const changed = { ...group };
+  delete changed.matcher;
+  return options.matcher === undefined ? changed : { matcher: options.matcher, ...changed };
+}
+
+function hasZambil(group: unknown): boolean {
+  return handlersOf(group).some(isZambilHandler);
+}
+
+/** The group with a zambil handler and the matcher that zambil needs, or else the first group with a zambil handler. */
+function zambilGroupAt(groups: unknown[], options: ReplaceOptions): number {
+  const exact = groups.findIndex(
+    (group) => matcherOf(group) === options.matcher && hasZambil(group),
+  );
+  return exact === -1 ? groups.findIndex(hasZambil) : exact;
+}
+
+interface RegroupOptions extends MatcherOptions {
+  replaced: unknown[];
+  updated: Record<string, unknown>;
+}
+
+/** The groups in place of the group of the zambil handler, with the matcher that zambil needs. */
+function regroup(group: Record<string, unknown>, options: RegroupOptions): unknown[] {
+  const { replaced, updated } = options;
+  if (matcherOf(group) === options.matcher) return [{ ...group, hooks: replaced }];
+  if (replaced.length === 1) return [withMatcher({ ...group, hooks: replaced }, options)];
+  const others = replaced.filter((handler) => handler !== updated);
+  return [{ ...group, hooks: others }, withMatcher({ hooks: [updated] }, options)];
+}
+
 /**
- * Puts the handler in place of the first zambil handler in a group with the matcher that zambil needs,
- * or in a new group at the end. Each other zambil handler goes away, so the hook runs once.
+ * Puts the handler in place of the first zambil handler, so that it keeps its place and its other
+ * fields, such as `timeout`. If the matcher changes, a group that holds only zambil gets the new
+ * matcher, and a group with handlers of the user keeps them and the zambil handler moves to a new
+ * group right after it. Each other zambil handler goes away, so the hook runs once.
  */
 function withHandler(groups: unknown[], options: ReplaceOptions): unknown[] {
-  const position = groups.findIndex(
-    (group) => matcherOf(group) === options.matcher && handlersOf(group).some(isZambilHandler),
-  );
+  const position = zambilGroupAt(groups, options);
   if (position === -1) return [...withoutZambil(groups), newGroup(options)];
-  const group = asRecord(groups[position]);
+  const group = asRecord(groups[position]) ?? {};
   const handlers = handlersOf(group);
   const first = handlers.findIndex(isZambilHandler);
-  const replaced: unknown[] = [];
   const { command } = options.handler;
+  const updated = { ...options.handler, ...asRecord(handlers[first]), command };
+  const replaced: unknown[] = [];
   for (const [index, handler] of handlers.entries()) {
-    const updated = { ...options.handler, ...asRecord(handler), command };
     if (index === first) replaced.push(updated);
     else if (!isZambilHandler(handler)) replaced.push(handler);
   }
   const before = withoutZambil(groups.slice(0, position));
   const after = withoutZambil(groups.slice(position + 1));
-  return [...before, { ...group, hooks: replaced }, ...after];
+  const changed = regroup(group, { replaced, updated, matcher: options.matcher });
+  return [...before, ...changed, ...after];
 }
 
 interface WithEventsOptions {
