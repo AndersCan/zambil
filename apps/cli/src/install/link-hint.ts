@@ -1,6 +1,6 @@
+import { join, resolve } from "node:path";
 import type { CliConfig } from "../config.ts";
 import { fileURLToPath } from "node:url";
-import { join } from "node:path";
 import { quoteArgument } from "@zambil/core/quote-argument";
 
 /** The command to run again after the fix, for example `zambil install`. */
@@ -17,7 +17,7 @@ export function linkHint(config: CliConfig, options: LinkHintOptions): string {
     `  mkdir -p ~/.local/bin && ln -sf ${main} ~/.local/bin/zambil`,
   ];
   const localBin = join(config.environment.home, ".local", "bin");
-  const searchPath = config.searchPath ?? [];
+  const searchPath = (config.searchPath ?? []).map((folder) => resolve(folder));
   if (!searchPath.includes(localBin)) {
     lines.push(
       "",

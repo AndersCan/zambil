@@ -136,7 +136,7 @@ describe("zambil install and zambil uninstall", () => {
       first: {
         code: 0,
         stdout: [
-          "Skipped the hook list and the model, because of --offline.",
+          "Skipped the hook list and the model, because of --offline. Run zambil index when you are online.",
           `Installed the zambil hooks (SessionStart, UserPromptSubmit, PreToolUse) in ${settings}.`,
           `The hooks read the configuration repo ${repo}.`,
           "Skipped Notification, because zambil never answers there.",

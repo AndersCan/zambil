@@ -1,4 +1,5 @@
 import { downloadText, refreshHookList } from "@zambil/claude-code/refresh-hook-list";
+import { left, right, wrap } from "@zambil/core/either";
 import { readOptionalText, replaceText } from "./text-file.ts";
 import { saveSkillPath, settingsPath } from "./claude-paths.ts";
 import { changeSettings } from "./settings-file.ts";
@@ -10,11 +11,9 @@ import { hooksToInstall } from "@zambil/claude-code/hooks-to-install";
 import { installHooks } from "@zambil/claude-code/settings-hooks";
 import { isNever } from "@zambil/core/is-never";
 import { join } from "node:path";
-import { left } from "@zambil/core/either";
 import { loadHookList } from "@zambil/claude-code/load-hook-list";
 import { nodeFolders } from "./node-folders.ts";
 import type { Note } from "@zambil/core/note";
-import { right } from "@zambil/core/either";
 import type { SaveResult } from "./settings-file.ts";
 import { saveSkillText } from "@zambil/claude-code/save-skill";
 
@@ -62,8 +61,14 @@ async function saveSkill(path: string, options: SkillOptions): Promise<Either<st
 
 async function indexNotes(repo: ConfigurationRepo, options: CommandRunOptions): Promise<void> {
   const { output } = options;
-  const { openNoteSearch } = await import("@zambil/embed/open-note-search");
-  const noteSearch = await openNoteSearch(options.config.environment, {
+  const loaded = await wrap(import("@zambil/embed/open-note-search"));
+  if (!loaded.ok) {
+    output.error(
+      `zambil cannot load the embedder for similar notes: ${String(loaded.error)}\nThe hooks work without it.\n`,
+    );
+    return;
+  }
+  const noteSearch = await loaded.value.openNoteSearch(options.config.environment, {
     report: (message) => output.write(`${message}\n`),
     download: "allow",
   });
@@ -145,26 +150,46 @@ async function installHandlers(
   return right(undefined);
 }
 
+/** Online, it refreshes the hook list, because the hooks to install depend on it. */
+async function refreshStep(options: SetUpClaudeCodeOptions): Promise<void> {
+  switch (options.network) {
+    case "online":
+      await refreshList(options.run);
+      return;
+    case "offline":
+      options.run.output.write(
+        "Skipped the hook list and the model, because of --offline. Run zambil index when you are online.\n",
+      );
+      return;
+    default:
+      isNever(options.network);
+  }
+}
+
+/** Online, it indexes the notes last, so that a slow model download never holds back the hooks. */
+async function indexStep(repo: ConfigurationRepo, options: SetUpClaudeCodeOptions): Promise<void> {
+  switch (options.network) {
+    case "online":
+      await indexNotes(repo, options.run);
+      return;
+    case "offline":
+      return;
+    default:
+      isNever(options.network);
+  }
+}
+
 /**
- * Adds the zambil hooks and the zambil-save skill to Claude Code. Online, it first refreshes the hook
- * list and indexes the notes. It never changes a note. A failed refresh or index is reported, not an error.
+ * Adds the zambil hooks and the zambil-save skill to Claude Code. Online, it also refreshes the hook
+ * list first and indexes the notes last. It never changes a note. A failed refresh or index is
+ * reported, not an error.
  */
 export async function setUpClaudeCode(
   repo: ConfigurationRepo,
   options: SetUpClaudeCodeOptions,
 ): Promise<Either<string, undefined>> {
   const { run } = options;
-  switch (options.network) {
-    case "online":
-      await refreshList(run);
-      await indexNotes(repo, run);
-      break;
-    case "offline":
-      run.output.write("Skipped the hook list and the model, because of --offline.\n");
-      break;
-    default:
-      isNever(options.network);
-  }
+  await refreshStep(options);
   const handlers = await installHandlers(repo, options);
   if (!handlers.ok) return handlers;
 
@@ -176,5 +201,6 @@ export async function setUpClaudeCode(
     unchanged: `The zambil-save skill in ${skillPath} is up to date.`,
   });
   run.output.write(`${skillMessage}\n`);
+  await indexStep(repo, options);
   return right(undefined);
 }
