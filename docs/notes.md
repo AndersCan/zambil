@@ -180,11 +180,11 @@ Writing a note is a deliberate act. zambil, a hook or a background process never
 
 `zambil save <name>` has three modes:
 
-| Mode    | Command                                          | What it does                                                    |
-| ------- | ------------------------------------------------ | --------------------------------------------------------------- |
-| create  | `zambil save <name>`                             | Writes a new note. Its name and its aliases must be free.       |
-| rewrite | `zambil save <name> --rewrite`                   | Changes an existing note. zambil finds it by its name.          |
-| verify  | `zambil save <name> --verified --expires <date>` | Sets a new `expires` date. The rest of the note stays the same. |
+| Mode    | Command                                          | What it does                                                                                                                        |
+| ------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| create  | `zambil save <name>`                             | Writes a new note. Its name and its aliases must be free.                                                                           |
+| rewrite | `zambil save <name> --rewrite`                   | Changes an existing note. zambil finds it by its name.                                                                              |
+| verify  | `zambil save <name> --verified --expires <date>` | Sets a new `expires` date. The rest of the note stays the same. A date equal to the old one is refused, because it changes nothing. |
 
 The text of the note comes on standard input. It is Markdown, with optional frontmatter. Each property in that frontmatter replaces the same property of the note. The other properties stay line for line, with their comments and their format. The content of the text replaces the old content. In a rewrite, text without content keeps the old content.
 

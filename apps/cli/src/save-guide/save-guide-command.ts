@@ -35,7 +35,7 @@ To see if a note exists, run \`zambil list\`. Then save the when-expired note an
   zambil save deploy --rewrite --expires 2027-01-15 < new-text.md
   zambil save deploy --verified --expires 2027-03-01
 
---rewrite keeps the properties that the new text does not set. --verified records that the claims still hold: it sets the new expires date and keeps the content.
+--rewrite keeps the properties that the new text does not set. --verified records that the claims still hold: give it a new expires date: the date when its claims are likely to change next. It keeps the content.
 `;
 
 function runSaveGuide(options: CommandRunOptions): ExitCode {

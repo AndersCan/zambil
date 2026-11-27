@@ -189,6 +189,22 @@ function writeChanges(request: WriteRequest, options: ChangeOptions): Either<Sav
   return isEmptyNote ? invalid("The note has no text.") : right(changes);
 }
 
+function verifyChanges(expires: string, options: ChangeOptions): Either<SaveRefusal, Changes> {
+  const edit = expiresEdit(expires, options);
+  if (!edit.ok) return edit;
+  const { file, oldText } = options.target;
+  const current = parseNote(oldText ?? "", { file }).note.expiry;
+  const requested = parseExpires(expires);
+  const isSameMoment =
+    current.kind === "at" &&
+    requested.kind === "at" &&
+    current.time.getTime() === requested.time.getTime();
+  if (!isSameMoment) return right({ edits: [edit.value] });
+  return invalid(
+    `${file.path} already expires on ${expires}, so a verify with that date changes nothing. Give the date when its claims are likely to change next.`,
+  );
+}
+
 function requestChanges(
   request: SaveRequest,
   options: ChangeOptions,
@@ -197,10 +213,8 @@ function requestChanges(
     case "create":
     case "rewrite":
       return writeChanges(request, options);
-    case "verify": {
-      const expires = expiresEdit(request.expires, options);
-      return expires.ok ? right({ edits: [expires.value] }) : expires;
-    }
+    case "verify":
+      return verifyChanges(request.expires, options);
     default:
       return isNever(request);
   }
