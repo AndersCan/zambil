@@ -27,5 +27,6 @@ export interface CommandRunOptions {
 export interface Command {
   summary: string;
   usage: string;
+  details?: string;
   run: (options: CommandRunOptions) => ExitCode | Promise<ExitCode>;
 }

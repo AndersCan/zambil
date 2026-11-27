@@ -29,7 +29,18 @@ async function formatHelp(config: CliConfig): Promise<string> {
 }
 
 function formatUsage(command: Command): string {
-  return `${command.usage}\n\n${command.summary}\n`;
+  const lines = [command.usage, "", command.summary];
+  if (command.details !== undefined) lines.push(command.details);
+  lines.push("");
+  return lines.join("\n");
+}
+
+function commandNameIn(args: string[]): string | undefined {
+  for (const [position, argument] of args.entries()) {
+    const isRepoValue = args[position - 1] === "--repo";
+    if (!isRepoValue && Object.hasOwn(commands, argument)) return argument;
+  }
+  return undefined;
 }
 
 function unknownCommandMessage(args: string[]): string {
@@ -37,7 +48,7 @@ function unknownCommandMessage(args: string[]): string {
   if (!first.startsWith("-")) return `zambil has no command "${first}".`;
   const isSharedOption = first === "--repo" || first.startsWith("--repo=");
   if (!isSharedOption) return `zambil has no option "${first}".`;
-  const command = args.find((argument) => Object.hasOwn(commands, argument)) ?? "<command>";
+  const command = commandNameIn(args) ?? "<command>";
   const words = ["zambil", command];
   for (const argument of args) {
     if (argument !== command) words.push(quoteArgument(argument));
@@ -46,28 +57,25 @@ function unknownCommandMessage(args: string[]): string {
   return `Put the command first: ${fixed}`;
 }
 
+async function printHelp(args: string[], options: RunCliOptions): Promise<ExitCode> {
+  const name = commandNameIn(args);
+  const load = name === undefined ? undefined : commands[name];
+  const text = load === undefined ? await formatHelp(options.config) : formatUsage(await load());
+  options.output.write(text);
+  return 0;
+}
+
 /** Runs `zambil` with the arguments after the program name, and returns the exit code. */
 export async function runCli(args: string[], options: RunCliOptions): Promise<ExitCode> {
-  const [first, ...rest] = args;
-  const asksForHelp = first === undefined || helpWords.has(first);
-  const name = asksForHelp ? rest.find((argument) => !helpWords.has(argument)) : first;
-  if (name === undefined) {
-    options.output.write(await formatHelp(options.config));
-    return 0;
-  }
+  const asksForHelp = args.length === 0 || args.some((argument) => helpWords.has(argument));
+  if (asksForHelp) return printHelp(args, options);
+  const [name = "", ...rest] = args;
   const load = Object.hasOwn(commands, name) ? commands[name] : undefined;
   if (load === undefined) {
     const help = await formatHelp(options.config);
-    const message = unknownCommandMessage(asksForHelp ? rest : args);
-    options.output.error(`${message}\n\n${help}`);
+    options.output.error(`${unknownCommandMessage(args)}\n\n${help}`);
     return 2;
   }
   const command = await load();
-  const commandArgs = asksForHelp ? [] : rest;
-  const hasHelpFlag = commandArgs.includes("--help") || commandArgs.includes("-h");
-  if (asksForHelp || hasHelpFlag) {
-    options.output.write(formatUsage(command));
-    return 0;
-  }
-  return command.run({ ...options, args: commandArgs });
+  return command.run({ ...options, args: rest });
 }

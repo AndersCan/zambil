@@ -2,6 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 import type { CliConfig } from "./config.ts";
 import { fileURLToPath } from "node:url";
 import { runCli } from "./run-cli.ts";
+import { writeTestRepo } from "@zambil/core/write-test-repo";
 
 const sampleRepo = fileURLToPath(
   new URL("../../../packages/core/fixtures/sample-repo", import.meta.url),
@@ -31,6 +32,13 @@ async function run(args: string[], options: RunOptions = {}) {
   return { code, ...printed };
 }
 
+const checkUsage = [
+  "Usage: zambil check [--repo <path>]",
+  "",
+  "Report duplicate names and other invalid notes.",
+  "An error sets the exit code to 1. A warning does not.",
+].join("\n");
+
 describe("runCli", () => {
   test("lists the notes of the sample repo and marks an expired note", async () => {
     const after = await run(["list", "--repo", sampleRepo], { now: new Date(2026, 10, 28) });
@@ -48,6 +56,14 @@ describe("runCli", () => {
       ].join("\n"),
       stderr: "",
     });
+  });
+
+  test("points to check, with the same --repo, when the repo has problems", async () => {
+    const root = await writeTestRepo({ "my notes/a/same.md": "", "my notes/b/same.md": "" });
+    const listed = await run(["list", "--repo", `${root}/my notes`]);
+    expect(listed.stderr).toBe(
+      `The repo has problems. Run \`zambil check --repo '${root}/my notes'\` to see them.\n`,
+    );
   });
 
   test("checks the sample repo and finds no problems", async () => {
@@ -78,29 +94,26 @@ describe("runCli", () => {
     });
   });
 
-  test("prints the help, and the usage of one command in both forms", async () => {
+  test("prints the help, and the usage of one command in every form", async () => {
     const help = await run([]);
-    const usage = await run(["check", "--help"]);
-    const helpCheck = await run(["help", "check"]);
-    expect({
-      help: help.stdout.split("\n").slice(0, 5),
-      usage,
-      same: helpCheck.stdout === usage.stdout,
-    }).toEqual({
-      help: [
-        "Usage: zambil <command> [--repo <path>]",
-        "",
-        "Commands:",
-        "  check  Report duplicate names and other invalid notes.",
-        "  list   List every note with its kind, path and description.",
+    const rows = [];
+    for (const line of help.stdout.split("\n")) {
+      const [name, summary] = line.trim().split(/\s{2,}/);
+      if (name === "check" || name === "list") rows.push([name, summary]);
+    }
+    const usages = [
+      ["check", "--help"],
+      ["help", "check"],
+      ["--repo", "x", "check", "-h"],
+    ];
+    const printed = await Promise.all(usages.map(async (args) => (await run(args)).stdout));
+    expect({ header: help.stdout.split("\n").slice(0, 3), rows, printed }).toEqual({
+      header: ["Usage: zambil <command> [--repo <path>]", "", "Commands:"],
+      rows: [
+        ["check", "Report duplicate names and other invalid notes."],
+        ["list", "List every note with its kind, path and description."],
       ],
-      usage: {
-        code: 0,
-        stdout:
-          "Usage: zambil check [--repo <path>]\n\nReport duplicate names and other invalid notes.\n",
-        stderr: "",
-      },
-      same: true,
+      printed: usages.map(() => `${checkUsage}\n`),
     });
   });
 
@@ -114,15 +127,16 @@ describe("runCli", () => {
   test("rejects an unknown command, a flag before the command and an unknown option", async () => {
     const command = await run(["lst"]);
     const flagFirst = await run(["--repo", "/my notes", "list"]);
+    const repoNamedList = await run(["--repo", "list", "check"]);
     const unknownFlag = await run(["--version"]);
     const option = await run(["list", "--bogus"]);
-    const firstLines = [command, flagFirst, unknownFlag].map(
-      (result) => result.stderr.split("\n")[0],
-    );
+    const results = [command, flagFirst, repoNamedList, unknownFlag];
+    const firstLines = results.map((result) => result.stderr.split("\n")[0]);
     expect([command.code, ...firstLines, option]).toEqual([
       2,
       'zambil has no command "lst".',
       "Put the command first: zambil list --repo '/my notes'",
+      "Put the command first: zambil check --repo list",
       'zambil has no option "--version".',
       {
         code: 2,

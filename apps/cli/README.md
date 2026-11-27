@@ -19,13 +19,13 @@ ln -s "$PWD/apps/cli/src/main.ts" ~/.local/bin/zambil
 
 Then `zambil list` works in every folder.
 
-| Command        | What it does                                                                                               |
-| -------------- | ---------------------------------------------------------------------------------------------------------- |
-| `zambil list`  | Prints one line per note: the name, the kind, the path and the description.                                |
-| `zambil check` | Prints each problem with its path. An error sets the exit code to 1.                                       |
-| `zambil help`  | Prints the commands. `zambil help <command>` or `zambil <command> --help` prints the usage of one command. |
+The commands are:
 
-Each command takes `--repo <path>`. Without it, zambil reads `ZAMBIL_REPO`, then `~/.config/zambil/config.json`.
+- `zambil list` prints one line per note: the name, the kind, the path and the description.
+- `zambil check` prints each problem with its path. An error sets the exit code to 1.
+- `zambil help` prints the commands. `zambil help <command>` or `zambil <command> --help` prints the usage of one command.
+
+Each command takes `--repo <path>`. Without it, zambil reads `ZAMBIL_REPO`, then `$XDG_CONFIG_HOME/zambil/config.json`. If `XDG_CONFIG_HOME` is not set, the file is `~/.config/zambil/config.json`.
 
 The exit codes are:
 
