@@ -126,7 +126,7 @@ describe("answerHook", () => {
     const showCheck = `zambil show 'check deploy' --repo ${root}`;
     const showToday = `zambil show today --repo ${root} --expired`;
     const checkLink = `[[check deploy]]: How to check the deploy note. To read [[check deploy]], run \`${showCheck}\`.`;
-    const list = `To see the name of every note, run \`zambil list --repo ${root}\`.`;
+    const list = `To find a note by a part of its name, run \`zambil list <part of the name> --repo ${root}\`.`;
     expect(contextOf(stdout)).toEqual({
       hookSpecificOutput: {
         hookEventName: "UserPromptSubmit",

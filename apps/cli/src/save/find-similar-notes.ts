@@ -1,0 +1,44 @@
+import { checkSearchFiles } from "@zambil/embed/check-search-files";
+import type { CliConfig } from "../config.ts";
+import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
+import type { NoteScore } from "@zambil/embed/score-notes";
+import { wrap } from "@zambil/core/either";
+
+/**
+ * The lowest score at which a new description repeats a current note. Paraphrases of one note score
+ * 0.85 to 0.95 with the search model. Notes on another subject of the same field mostly score under 0.65.
+ */
+export const duplicateScore = 0.8;
+
+/** The repo before the save, the startup config, and the moment that decides which notes are expired. */
+export interface FindSimilarNotesOptions {
+  repo: ConfigurationRepo;
+  config: CliConfig;
+  now: Date;
+}
+
+/**
+ * The current notes whose description scores `duplicateScore` or more against the description, best
+ * first. It loads the model only when the model is in the cache, so a save never waits for a download.
+ * When the model does not load, it finds no notes and the save goes on.
+ */
+export async function findSimilarNotes(
+  description: string,
+  options: FindSimilarNotesOptions,
+): Promise<NoteScore[]> {
+  const { repo, config, now } = options;
+  const { environment } = config;
+  const files = await checkSearchFiles(repo, { environment });
+  if (files.model === "missing") return [];
+  const loaded = await wrap(import("@zambil/embed/open-note-search"));
+  if (!loaded.ok) return [];
+  const noteSearch = await loaded.value.openNoteSearch(environment, {
+    report: () => undefined,
+    download: "never",
+  });
+  if (!noteSearch.ok) return [];
+  if (files.unindexed > 0) await noteSearch.value.index(repo);
+  const result = await noteSearch.value.search(repo, { text: description, now });
+  if (!result.ok) return [];
+  return result.value.matches.filter((match) => match.score >= duplicateScore);
+}

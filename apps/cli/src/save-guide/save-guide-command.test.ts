@@ -28,6 +28,15 @@ describe("saveGuideCommand", () => {
     });
   });
 
+  test("the zambil-save skill tells the agent to look for a note that covers it already", () => {
+    const skill = saveSkillText({ repoRoot: "/home/ada/notes" });
+    const steps = [
+      'zambil search "<what the note is about>" --repo /home/ada/notes',
+      "zambil list <word> --repo /home/ada/notes",
+    ];
+    expect(steps.filter((step) => !skill.includes(step))).toEqual([]);
+  });
+
   test("prints the rules for writing a note", async () => {
     const printed: string[] = [];
     const output = {
@@ -44,6 +53,9 @@ describe("saveGuideCommand", () => {
     const text = printed.join("");
     const rules = [
       "Write a note only when the user asks for it.",
+      'zambil search "<what the note is about>"',
+      "zambil list <word>",
+      "If a note covers it, change that note with --rewrite.",
       "Give the note an expires date",
       "Give it a when-expired note that tells how to update the note or verify its claims",
       "zambil save deploy --verified --expires",

@@ -149,6 +149,18 @@ async function testMachine(): Promise<CliConfig> {
   return { environment, claudeConfigFolder: join(home, "claude") };
 }
 
+/** A machine whose cache links to the model in the shared cache, so that a save can load it. */
+async function machineWithModel(): Promise<CliConfig> {
+  const shared = { home: homedir(), workingFolder: "/" };
+  const loaded = await openNoteSearch(shared, { report: () => undefined, download: "allow" });
+  if (!loaded.ok) throw new Error(loaded.error);
+  const config = await testMachine();
+  const cache = join(config.environment.cacheHome ?? "", "zambil");
+  await mkdir(cache, { recursive: true });
+  await symlink(join(homedir(), ".cache", "zambil", "models"), join(cache, "models"));
+  return config;
+}
+
 /** The config of the machine that the check reads. */
 interface SimilarCheckOptions {
   config: CliConfig;
@@ -166,13 +178,7 @@ describe("saveCommand and the index for similar notes", () => {
     "adds the new note to the index when the model is in the cache, so doctor finds nothing to fix",
     { timeout: 120_000 },
     async () => {
-      const shared = { home: homedir(), workingFolder: "/" };
-      const loaded = await openNoteSearch(shared, { report: () => undefined, download: "allow" });
-      if (!loaded.ok) throw new Error(loaded.error);
-      const config = await testMachine();
-      const cache = join(config.environment.cacheHome ?? "", "zambil");
-      await mkdir(cache, { recursive: true });
-      await symlink(join(homedir(), ".cache", "zambil", "models"), join(cache, "models"));
+      const config = await machineWithModel();
       const root = await writeTestRepo({ "zambil-welcome.md": welcome });
       const result = await run(["deploy", "--repo", root, "--no-expires"], { input: note, config });
       expect({ result, check: await similarCheck(root, { config }) }).toEqual({
@@ -213,6 +219,60 @@ describe("saveCommand and the index for similar notes", () => {
       hasModels: false,
     });
   });
+});
+
+describe("saveCommand and notes with a similar description", () => {
+  test(
+    "refuses a new note that repeats a current note, unless --allow-similar is given",
+    { timeout: 120_000 },
+    async () => {
+      const config = await machineWithModel();
+      const blog = "---\ndescription: How to deploy the blog.\n---\nRun `make blog`.\n";
+      const root = await writeTestRepo({ "ops/deploy-blog.md": blog });
+      const repeat = "---\ndescription: Steps to deploy the blog.\n---\nRun `make blog`.\n";
+      const other = "---\ndescription: How to write a commit message.\n---\nShort.\n";
+      const refused = await run(["publish-blog", "--repo", root, "--no-expires"], {
+        input: repeat,
+        config,
+      });
+      const isRefusedSaved = existsSync(join(root, "publish-blog.md"));
+      const allowed = await run(
+        ["publish-blog", "--repo", root, "--no-expires", "--allow-similar"],
+        {
+          input: repeat,
+          config,
+        },
+      );
+      const distinct = await run(["commit-messages", "--repo", root, "--no-expires"], {
+        input: other,
+        config,
+      });
+      const refusal = {
+        code: refused.code,
+        stdout: refused.stdout,
+        lines: refused.stderr.split("\n"),
+      };
+      expect({ refusal, isRefusedSaved, allowed, distinct }).toEqual({
+        refusal: {
+          code: 1,
+          stdout: "",
+          lines: [
+            'zambil did not save "publish-blog". A current note has a very similar description:',
+            expect.stringMatching(
+              /^ {2}0\.9\d {2}deploy-blog {2}ops\/deploy-blog\.md {2}How to deploy the blog\.$/,
+            ),
+            "If the new note says the same, put its text into that note instead:",
+            `  zambil save deploy-blog --rewrite --no-expires --repo ${root} < merged-text.md`,
+            "If it is about something else, run the same save again with --allow-similar.",
+            "",
+          ],
+        },
+        isRefusedSaved: false,
+        allowed: { code: 0, stdout: "Created publish-blog.md.\n", stderr: "" },
+        distinct: { code: 0, stdout: "Created commit-messages.md.\n", stderr: "" },
+      });
+    },
+  );
 });
 
 describe("saveCommand and zambil install", () => {

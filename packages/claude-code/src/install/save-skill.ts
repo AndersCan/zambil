@@ -23,7 +23,7 @@ export function saveSkillText(options: SaveSkillOptions): string {
     `The notes of the user are in the zambil configuration repo ${options.repoRoot}. zambil never writes a note on its own. Write a note only when the user asks for it.`,
     "",
     `1. Run \`zambil save-guide --repo ${repo}\` and follow it.`,
-    `2. Run \`zambil list --repo ${repo}\` to see the names that are in use.`,
+    `2. Look for a note that covers it already: run \`zambil search "<what the note is about>" --repo ${repo}\` and \`zambil list <word> --repo ${repo}\`. If one does, change that note with --rewrite instead of saving a second note.`,
     `3. Save the note with \`zambil save <name> --repo ${repo}\` and the options that the guide gives.`,
     "",
     "Do not change the files of the repo with other tools. `zambil save` checks the names, the links and the expiry before it writes.",
