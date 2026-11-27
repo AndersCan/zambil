@@ -28,20 +28,23 @@ interface MissingHookOptions {
   notes: Note[];
 }
 
-/** `SubagentStart` carries the `SessionStart` notes to subagents, so it matters only when such a note exists. */
+/**
+ * `SubagentStart` also carries the `SessionStart` notes to subagents. Without a note that names it, it
+ * matters only when a `SessionStart` note exists.
+ */
 function missingHookProblems(missing: string[], options: MissingHookOptions): string[] {
   const problems: string[] = [];
-  const others = missing.filter((hook) => hook !== subagentStart);
-  if (others.length > 0) {
-    const names = others.join(", ");
+  const { notes } = options;
+  const namesSubagentStart = notes.some((note) => note.hooks.includes(subagentStart));
+  const lost = missing.filter((hook) => hook !== subagentStart || namesSubagentStart);
+  if (lost.length > 0) {
+    const names = lost.join(", ");
     problems.push(
       `The notes for ${names} do not reach the agent, because no zambil hook runs there.`,
     );
   }
-  const reachesSubagents = options.notes.some((note) =>
-    note.hooks.some((hook) => hook === "SessionStart" || hook === subagentStart),
-  );
-  if (missing.includes(subagentStart) && reachesSubagents) {
+  const hasSessionNote = notes.some((note) => note.hooks.includes("SessionStart"));
+  if (missing.includes(subagentStart) && hasSessionNote) {
     problems.push(
       "Subagents get no SessionStart notes, because no zambil hook runs at SubagentStart.",
     );

@@ -72,14 +72,17 @@ describe("searchableNotes", () => {
         "---\ndescription: How to check the deploy note.\nhooks: UserPromptSubmit\n---\nRun make status.\n",
       "today.md":
         '---\ndescription: The date.\nexpires: 2026-11-28\nwhen-expired: "[[check-deploy]]"\n---\nFriday.\n',
+      "deploy-blog.md":
+        '---\ndescription: How to deploy the blog.\nexpires: 2027-06-01\nwhen-expired: "[[deploy-blog]]"\n---\nRun make blog.\n',
     });
     const repo = loadRepo(root);
     if (!repo.ok) throw new Error(repo.error.message);
-    const notes = searchableNotes(repo.value.notes, { inContext: { deploy: "an older version" } });
+    const notes = searchableNotes(repo.value, { inContext: { deploy: "an older version" } });
     expect(notes.map((note) => note.name)).toEqual([
       "billing",
       "check-deploy",
       "constructor",
+      "deploy-blog",
       "rebase",
       "today",
     ]);

@@ -52,7 +52,7 @@ export const installCommand: Command = {
   summary: "Install the zambil hooks and the zambil-save skill in Claude Code.",
   usage: "Usage: zambil install [--repo <path>] [--offline]",
   details: [
-    "It adds `zambil hook` at UserPromptSubmit and at each other hook that a note names, and keeps every other setting and hook.",
+    "It adds `zambil hook` at UserPromptSubmit, SessionStart and SubagentStart, and at each other hook that a note names, and keeps every other setting and hook.",
     "It reads the hook list from the Claude Code docs and indexes the notes, which downloads the model the first time.",
     "It reports the problems that `zambil check` finds, and exits with 1 for an error.",
     "It never changes a note. Run it again after a note names a new hook. `zambil uninstall` removes it.",

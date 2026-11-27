@@ -134,7 +134,7 @@ describe("answerHook", () => {
       hookSpecificOutput: {
         hookEventName: "SubagentStart",
         additionalContext: [
-          `${repoHeading} These notes name the SessionStart or SubagentStart hook:`,
+          `${repoHeading} These notes name the SessionStart or SubagentStart hook. A subagent gets the SessionStart notes of the session too, so skip what is only for the main agent, such as a greeting:`,
           "",
           '<note name="welcome" path="session/welcome.md">',
           "Description: Session start.",

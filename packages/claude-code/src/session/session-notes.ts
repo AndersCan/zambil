@@ -24,7 +24,9 @@ export interface SessionNotesOptions {
  */
 function startsContext(request: HookAnswerRequest): boolean {
   const { hookEventName } = request.input;
-  return hookEventName === "SessionStart" || hookEventName === "SubagentStart";
+  const startsSubagent =
+    hookEventName === "SubagentStart" && request.session?.agentId !== undefined;
+  return hookEventName === "SessionStart" || startsSubagent;
 }
 
 function pathOf(request: HookAnswerRequest, options: SessionNotesOptions): string | undefined {

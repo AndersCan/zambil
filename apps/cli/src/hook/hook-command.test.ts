@@ -184,6 +184,7 @@ describe("hookCommand", () => {
     const elsewhere = await writeClaudeFolder([]);
     const beforeSubagents = await writeClaudeFolder(["SessionStart", "UserPromptSubmit"]);
     const sessionNote = await writeTestRepo({ "a.md": "---\nhooks: SessionStart\n---\nA.\n" });
+    const subagentNote = await writeTestRepo({ "a.md": "---\nhooks: SubagentStart\n---\nA.\n" });
     const results = await Promise.all([
       runHook([], { stdin: sessionStart, ...missing }),
       runHook([], { stdin: compact, ...missing }),
@@ -192,12 +193,21 @@ describe("hookCommand", () => {
       runHook([], { stdin: sessionStart, repo: toolNote, claudeConfigFolder: elsewhere }),
       runHook([], { stdin: sessionStart, repo: sessionNote, claudeConfigFolder: beforeSubagents }),
       runHook([], { stdin: sessionStart, repo: toolNote, claudeConfigFolder: beforeSubagents }),
+      runHook([], { stdin: sessionStart, repo: subagentNote, claudeConfigFolder: beforeSubagents }),
     ]);
-    const [moved, compacted, unhooked, onlyWarning, projectHooks, noSubagents, noSessionNote] =
-      results.map((result) => ({
-        code: result.code,
-        stdout: result.stdout === "" ? "" : JSON.parse(result.stdout),
-      }));
+    const [
+      moved,
+      compacted,
+      unhooked,
+      onlyWarning,
+      projectHooks,
+      noSubagents,
+      noSessionNote,
+      subagentOnly,
+    ] = results.map((result) => ({
+      code: result.code,
+      stdout: result.stdout === "" ? "" : JSON.parse(result.stdout),
+    }));
     expect({
       moved,
       compacted,
@@ -206,6 +216,7 @@ describe("hookCommand", () => {
       projectHooks,
       noSubagents: noSubagents?.stdout.systemMessage,
       noSessionNote: noSessionNote?.stdout.systemMessage,
+      subagentOnly: subagentOnly?.stdout.systemMessage,
     }).toEqual({
       moved: {
         code: 0,
@@ -235,6 +246,8 @@ describe("hookCommand", () => {
         "zambil: Subagents get no SessionStart notes, because no zambil hook runs at SubagentStart. Run zambil doctor to see the fix.",
       noSessionNote:
         "zambil: The notes for PreToolUse do not reach the agent, because no zambil hook runs there. Run zambil doctor to see the fix.",
+      subagentOnly:
+        "zambil: The notes for SubagentStart do not reach the agent, because no zambil hook runs there. Run zambil doctor to see the fix.",
     });
   });
 

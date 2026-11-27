@@ -15,7 +15,9 @@ export interface HookSectionOptions {
 }
 
 function describeHook(input: HookInput): string {
-  if (input.hookEventName === "SubagentStart") return "the SessionStart or SubagentStart hook";
+  if (input.hookEventName === "SubagentStart") {
+    return "the SessionStart or SubagentStart hook. A subagent gets the SessionStart notes of the session too, so skip what is only for the main agent, such as a greeting";
+  }
   if (input.kind !== "tool") return `the ${input.hookEventName} hook`;
   const tools = [...new Set(input.toolNames)].join(", ");
   const label = input.toolNames.length === 1 ? "tool" : "tools";
