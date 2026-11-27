@@ -6,12 +6,11 @@ import { renderNote } from "@zambil/core/render-note";
 import type { RenderWording } from "@zambil/core/render-wording";
 import { selectHookNotes } from "./select-hook-notes.ts";
 
-/** The hook that runs, the clock, the wording, and the notes that a `z:<name>` already added. */
+/** The hook that runs, the clock and the wording. */
 export interface HookSectionOptions {
   input: HookInput;
   now: Date;
   wording: RenderWording;
-  skip: Set<string>;
 }
 
 function describeHook(input: HookInput): string {
@@ -29,11 +28,11 @@ export function hookSection(
   const { input, now, wording } = options;
   const blocks: ContextBlock[] = [];
   for (const note of selectHookNotes(repo.notes, { input, now })) {
-    if (options.skip.has(nameKey(note.name))) continue;
     const rendered = renderNote(repo, { target: note.name, now, wording });
     const description = note.description?.replaceAll(/\s*\n\s*/g, " ") ?? "It has no description.";
     const open = wording.openNote(note.name);
-    blocks.push({ text: rendered.text, pointer: `[[${note.name}]]: ${description} ${open}` });
+    const pointer = `[[${note.name}]]: ${description} ${open}`;
+    blocks.push({ key: nameKey(note.name), text: rendered.text, pointer });
   }
   const hook = describeHook(input);
   const heading = `zambil reads notes from the user's configuration repo. These notes name ${hook}:`;

@@ -1,7 +1,7 @@
-import type { ContextBudget, ContextSection } from "./context/fit-context.ts";
+import { claudeCodeWording, listNotes } from "./context/claude-code-wording.ts";
 import { defaultBudget, fitContext } from "./context/fit-context.ts";
-import { claudeCodeWording } from "./context/claude-code-wording.ts";
 import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
+import type { ContextSection } from "./context/fit-context.ts";
 import { formatHookOutput } from "./context/format-hook-output.ts";
 import type { HookInput } from "./hook-input/parse-hook-input.ts";
 import { hookSection } from "./hook-notes/hook-section.ts";
@@ -9,11 +9,10 @@ import { isNever } from "@zambil/core/is-never";
 import { recallSection } from "./recall/recall-section.ts";
 import type { RenderWording } from "@zambil/core/render-wording";
 
-/** The parsed hook input and the clock. `budget` is for tests; the default stays under Claude Code's cap. */
+/** The parsed hook input and the clock. */
 export interface AnswerHookOptions {
   input: HookInput;
   now: Date;
-  budget?: ContextBudget;
 }
 
 interface SectionOptions extends AnswerHookOptions {
@@ -26,11 +25,12 @@ interface PromptSectionOptions extends SectionOptions {
 
 type HookRepo = Pick<ConfigurationRepo, "root" | "names" | "notes">;
 
-/** The prompt sections in order. Similarity matches will be one more section after the hook notes. */
+/**
+ * The prompt sections in order. Similarity matches will be one more section after the hook notes, and
+ * `fitContext` leaves out a note that an earlier section already added.
+ */
 function promptSections(repo: HookRepo, options: PromptSectionOptions): ContextSection[] {
-  const recalls = recallSection(repo, options);
-  const hookNotes = hookSection(repo, { ...options, skip: recalls.recalled });
-  return [recalls.section, hookNotes];
+  return [recallSection(repo, options), hookSection(repo, options)];
 }
 
 function contextSections(repo: HookRepo, options: SectionOptions): ContextSection[] {
@@ -40,7 +40,7 @@ function contextSections(repo: HookRepo, options: SectionOptions): ContextSectio
       return promptSections(repo, { ...options, prompt: input.prompt });
     case "plain":
     case "tool":
-      return [hookSection(repo, { ...options, skip: new Set() })];
+      return [hookSection(repo, options)];
     default:
       return isNever(input);
   }
@@ -53,7 +53,8 @@ function contextSections(repo: HookRepo, options: SectionOptions): ContextSectio
 export function answerHook(repo: HookRepo, options: AnswerHookOptions): string {
   const wording = claudeCodeWording({ root: repo.root });
   const sections = contextSections(repo, { ...options, wording });
-  const text = fitContext(sections, { budget: options.budget ?? defaultBudget });
+  const findMore = listNotes({ root: repo.root });
+  const text = fitContext(sections, { budget: defaultBudget, findMore });
   if (text === "") return "";
   return formatHookOutput(text, { hookEventName: options.input.hookEventName });
 }

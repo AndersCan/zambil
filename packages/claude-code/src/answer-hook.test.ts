@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import { hookPayload, preToolUse } from "./hook-input/hook-payloads.ts";
 import { answerHook } from "./answer-hook.ts";
-import type { ContextBudget } from "./context/fit-context.ts";
 import { loadRepo } from "@zambil/core/load-repo";
 import { parseHookInput } from "./hook-input/parse-hook-input.ts";
 import { writeTestRepo } from "@zambil/core/write-test-repo";
@@ -29,20 +28,14 @@ const notes = {
   "finish.md": "---\ndescription: Finish.\nhooks: Stop\n---\nSay done.\n",
 };
 
-interface AnswerOptions {
-  budget?: ContextBudget;
-}
-
-async function answer(payload: string, options: AnswerOptions = {}) {
+async function answer(payload: string) {
   const root = await writeTestRepo(notes);
   const repo = loadRepo(root);
   const request = parseHookInput(payload);
   if (!repo.ok || !request.ok) return { root, stdout: "not answered" };
   if (request.value.kind === "ignore") return { root, stdout: "not answered" };
   const { input } = request.value;
-  const { budget } = options;
-  const answerOptions = budget === undefined ? { input, now } : { input, now, budget };
-  return { root, stdout: answerHook(repo.value, answerOptions) };
+  return { root, stdout: answerHook(repo.value, { input, now }) };
 }
 
 function contextOf(stdout: string): unknown {
@@ -109,10 +102,9 @@ describe("answerHook", () => {
     const outputs = await Promise.all([
       answer(hookPayload("SubagentStart", { agent_id: "a1", agent_type: "Explore" })),
       answer(hookPayload("PostToolUse", { tool_name: "Bash", tool_input: {}, tool_response: {} })),
-      answer(hookPayload("Stop", { stop_hook_active: true })),
     ]);
     const stdouts = outputs.map((output) => output.stdout);
-    expect(stdouts).toEqual(["", "", "not answered"]);
+    expect(stdouts).toEqual(["", ""]);
   });
 
   test("adds each z:<name> next to the prompt, with offers for skills and scripts and clear warnings", async () => {
@@ -178,22 +170,21 @@ describe("answerHook", () => {
     });
   });
 
-  test("reads names with spaces and parts of notes, and skips z: in code", async () => {
+  test("reads names with spaces and parts of notes, and a part keeps the whole hook note", async () => {
     const prompt = "z:[[check deploy]] z:deploy#Steps `z:release`";
     const names = await namesAt(hookPayload("UserPromptSubmit", { prompt }));
-    expect(names).toEqual(["check deploy", "deploy", "language"]);
+    expect(names).toEqual(["check deploy", "deploy", "deploy", "language"]);
   });
 
-  test("puts a pointer in place of each note that does not fit the budget", async () => {
-    const prompt = "z:deploy z:release z:backup z:[[check deploy]]";
-    const payload = hookPayload("UserPromptSubmit", { prompt });
-    const { root, stdout } = await answer(payload, { budget: { full: 700, total: 800 } });
-    const output = contextOf(stdout);
-    const context = JSON.stringify(output).split("\\n").slice(-3);
+  test("points a missing heading to the note, not to the list of names", async () => {
+    const { root, stdout } = await answer(
+      hookPayload("UserPromptSubmit", { prompt: "z:deploy#Nope" }),
+    );
+    const context = JSON.stringify(contextOf(stdout)).split("\\n").slice(1, 4);
     expect(context).toEqual([
-      "These notes match too, but zambil left them out to keep the context short:",
-      `- z:release: To read [[release]], run \`zambil show release --repo ${root}\`.`,
-      '- 3 more notes are not listed."}}',
+      "",
+      "The user typed z:deploy#Nope in the prompt.",
+      `Warning: zambil cannot show \\"deploy#Nope\\", because [[deploy]] has no heading \\"Nope\\". To read [[deploy]], run \`zambil show deploy --repo ${root}\`.`,
     ]);
   });
 });

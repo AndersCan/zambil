@@ -5,7 +5,6 @@
   "type": "module",
   "exports": {
     "./answer-hook": "./src/answer-hook.ts",
-    "./context-hooks": "./src/hook-input/context-hooks.ts",
     "./parse-hook-input": "./src/hook-input/parse-hook-input.ts"
   },
   "dependencies": {

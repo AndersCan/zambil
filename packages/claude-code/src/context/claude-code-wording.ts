@@ -7,6 +7,12 @@ export interface ClaudeCodeWordingOptions {
   root: string;
 }
 
+/** The sentence that tells Claude how to see the name of every note. */
+export function listNotes(options: ClaudeCodeWordingOptions): string {
+  const root = quoteArgument(options.root);
+  return `To see the name of every note, run \`zambil list --repo ${root}\`.`;
+}
+
 /**
  * Tells Claude to open notes with `zambil show` in Bash, and to load a skill by reading its `SKILL.md`,
  * because a hook cannot load a skill and the skill is not in a folder that Claude Code scans.

@@ -3,10 +3,10 @@ import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import { findNote } from "@zambil/core/find-note";
 import { findRecalls } from "./find-recalls.ts";
 import { isNever } from "@zambil/core/is-never";
+import { listNotes } from "../context/claude-code-wording.ts";
 import { nameKey } from "@zambil/core/index-names";
 import type { Note } from "@zambil/core/note";
 import { parseLinkTarget } from "@zambil/core/parse-link-target";
-import { quoteArgument } from "@zambil/core/quote-argument";
 import type { Recall } from "./find-recalls.ts";
 import type { RenderedNote } from "@zambil/core/render-note";
 import { renderNote } from "@zambil/core/render-note";
@@ -17,12 +17,6 @@ export interface RecallSectionOptions {
   prompt: string;
   now: Date;
   wording: RenderWording;
-}
-
-/** The notes that the prompt named, and the `nameKey` of each, so that a hook does not add them twice. */
-export interface RecallSection {
-  section: ContextSection;
-  recalled: Set<string>;
 }
 
 const heading =
@@ -50,29 +44,49 @@ function introduce(recall: Recall, options: IntroOptions): string {
   }
 }
 
-function listHint(repo: Pick<ConfigurationRepo, "root">): string {
-  const root = quoteArgument(repo.root);
-  return `To see the name of every note, run \`zambil list --repo ${root}\`.`;
+interface HintOptions {
+  note: Note | undefined;
+  wording: RenderWording;
+  root: string;
+}
+
+/** A note that resolves but has no such heading or block points to the note, not to the list of names. */
+function unresolvedHint(rendered: RenderedNote, options: HintOptions): string {
+  if (rendered.status !== "unresolved") return "";
+  const { note } = options;
+  const hint =
+    note === undefined ? listNotes({ root: options.root }) : options.wording.openNote(note.name);
+  return ` ${hint}`;
+}
+
+/**
+ * The key of a recall that shows a whole note is the note's own, so that a hook does not add the note
+ * again. A part of a note, an expired note or a warning keeps the hook note.
+ */
+function recallKey(recall: Recall, options: IntroOptions): string {
+  const isWholeNote = options.rendered.status === "shown" && !recall.target.includes("#");
+  if (isWholeNote && options.note !== undefined) return nameKey(options.note.name);
+  return `z:${nameKey(recall.target)}`;
 }
 
 /** Renders each `z:<name>` of the prompt. The prompt stays as typed, and this text goes next to it. */
 export function recallSection(
   repo: Pick<ConfigurationRepo, "root" | "names">,
   options: RecallSectionOptions,
-): RecallSection {
+): ContextSection {
   const { now, wording } = options;
   const blocks: ContextBlock[] = [];
-  const recalled = new Set<string>();
   for (const recall of findRecalls(options.prompt)) {
     const name = parseLinkTarget(`[[${recall.target}]]`);
     const lookup = findNote(repo, { name });
     const note = lookup.kind === "found" ? lookup.note : undefined;
-    if (note !== undefined) recalled.add(nameKey(note.name));
     const rendered = renderNote(repo, { target: recall.target, now, wording });
     const intro = introduce(recall, { rendered, note });
-    const hint = rendered.status === "unresolved" ? ` ${listHint(repo)}` : "";
+    const hint = unresolvedHint(rendered, { note, wording, root: repo.root });
+    const key = recallKey(recall, { rendered, note });
     const open = wording.openNote(recall.target);
-    blocks.push({ text: `${intro}\n${rendered.text}${hint}`, pointer: `${recall.typed}: ${open}` });
+    const pointer = `${recall.typed}: ${open}`;
+    blocks.push({ key, text: `${intro}\n${rendered.text}${hint}`, pointer });
   }
-  return { section: { heading, blocks }, recalled };
+  return { heading, blocks };
 }

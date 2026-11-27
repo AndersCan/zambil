@@ -36,10 +36,10 @@ Type `z:<name>` anywhere in a prompt, for example `Ship it the way z:deploy says
 - `z:deploy` names the note `deploy` by its name or an alias, in any case.
 - `z:[[on call rota]]` names a note that has spaces in its name.
 - `z:deploy#Steps` and `z:[[deploy#Steps]]` name the section under the heading `Steps`. `z:deploy#^intro` names a block.
-- Punctuation at the end of a plain name ends the sentence: `z:deploy.` names `deploy`.
-- A `z:` in inline code or in a code block is text. A `z:` after a letter, as in `xyz:abc`, is text too.
+- A comma ends a plain name. Punctuation, Markdown emphasis or a possessive `'s` at the end of a plain name is not part of it: `z:deploy.`, `**z:deploy**` and `z:deploy's` name `deploy`.
+- A `z:` in inline code or in a code block is text. A `z:` after a letter, a digit or a `/`, as in `xyz:abc`, is text too. So is `z:[[` without its closing `]]`.
 
-If no note has the name, or more than one note has it, the agent gets a warning. The warning tells it how to list the names. A name that you type twice is added once. A note that the prompt names and that also names `UserPromptSubmit` is added once.
+If no note has the name, or more than one note has it, the agent gets a warning. The warning tells it how to list the names. If the note has no such heading or block, the warning tells it how to open the note. A name that you type twice is added once. A note that the prompt names in full and that also names `UserPromptSubmit` is added once.
 
 ## Skills, scripts and expired notes
 
@@ -58,7 +58,7 @@ Claude Code saves a hook text over 10,000 characters to a file and gives the age
 A later version of zambil installs the hooks for you. Until then, do these steps:
 
 1. Put `zambil` on your `PATH`, as `apps/cli/README.md` tells you. The agent also runs `zambil show` to open a linked note.
-2. Tell zambil where your configuration repo is, with `ZAMBIL_REPO` or `~/.config/zambil/config.json`. See `docs/notes.md`. You can also add `--repo <path>` to the command.
+2. Tell zambil where your configuration repo is, with `ZAMBIL_REPO` or `~/.config/zambil/config.json`. See `docs/notes.md`. You can also write `zambil hook --repo <path>`. Put `--repo` after `hook`, because `zambil --repo <path> hook` is a usage error that exits with 2, and Claude Code then blocks the event.
 3. Add a `hooks` entry to `~/.claude/settings.json` for each hook that your notes name:
 
    ```json
@@ -101,24 +101,32 @@ A later version of zambil installs the hooks for you. Until then, do these steps
    }
    ```
 
-4. Start a new Claude Code session. Claude Code reads the hooks at the start of a session.
+4. Make sure that the hook finds your notes. Run this command in a terminal. It must print a JSON object with your `SessionStart` notes, or nothing if no note names `SessionStart`:
+
+   ```sh
+   echo '{"hook_event_name":"SessionStart","source":"startup"}' | zambil hook
+   ```
+
+   If it prints a message that starts with `zambil hook:`, fix that problem first.
+
+5. Start a new Claude Code session. Claude Code reads the hooks at the start of a session.
 
 `NODE_COMPILE_CACHE` lets Node keep the compiled code between runs. It must be set before Node starts. Leave out `matcher`: zambil filters by the `tools` of each note. A hook that you add costs one run of `zambil hook` per event, so add only the hooks that your notes name.
 
 ## The hook never blocks a session
 
-Claude Code reads exit code 2 from a hook as a blocking error. `zambil hook` always exits with 0. Bad input, a wrong option, or a repo that zambil cannot find or read prints a message on standard error and adds nothing. A note with a problem still loads, and the other notes still apply. If Node itself fails, it exits with 1, and Claude Code reads that as an error that does not block.
+Claude Code reads exit code 2 from a hook as a blocking error. `zambil hook` always exits with 0. Bad input, a wrong option, or a repo that zambil cannot find or read prints a message on standard error and adds nothing. Claude Code does not show that message in the session. To see it, start Claude Code with `claude --debug=hooks`, or run the command in step 4. A note with a problem still loads, and the other notes still apply. If Node itself fails, it exits with 1, and Claude Code reads that as an error that does not block.
 
 ## Speed
 
 Each event starts a new Node process that loads the whole repo. Measured in the development container (aarch64), with 20 runs each:
 
-| Case                                      | Without `NODE_COMPILE_CACHE` | With it |
-| ----------------------------------------- | ---------------------------- | ------- |
-| `node -e 0`, for comparison               | 10 ms                        |         |
-| Sample repo, `UserPromptSubmit` with `z:` | 67 ms                        | 27 ms   |
-| 1,000 notes, `PreToolUse`                 | 86 ms                        | 46 ms   |
-| A hook that cannot add context            |                              | 22 ms   |
+| Case                                      | Without `NODE_COMPILE_CACHE` | With it      |
+| ----------------------------------------- | ---------------------------- | ------------ |
+| `node -e 0`, for comparison               | 10 ms                        | not measured |
+| Sample repo, `UserPromptSubmit` with `z:` | 67 ms                        | 27 ms        |
+| 1,000 notes, `PreToolUse`                 | 86 ms                        | 46 ms        |
+| A hook that cannot add context            | not measured                 | 22 ms        |
 
 ## Code
 
