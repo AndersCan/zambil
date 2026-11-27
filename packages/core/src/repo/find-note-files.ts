@@ -1,10 +1,11 @@
-import { left, right, wrap } from "../either.ts";
+import { left, right } from "../either.ts";
+import { comparePaths } from "./compare-paths.ts";
 import type { Dirent } from "node:fs";
 import type { Either } from "../either.ts";
 import { join } from "node:path";
 import type { NoteFile } from "../note/note-file.ts";
 import type { NoteProblem } from "../note/note-problem.ts";
-import { readdir } from "node:fs/promises";
+import { readFolder } from "./read-folder.ts";
 
 /** The note files of a repo, sorted by path, and the folders that could not be read. */
 export interface FoundNoteFiles {
@@ -14,6 +15,11 @@ export interface FoundNoteFiles {
 
 interface WalkOptions {
   root: string;
+  found: FoundNoteFiles;
+}
+
+interface EntriesOptions extends WalkOptions {
+  folder: string;
 }
 
 const skillFileName = "SKILL.md";
@@ -33,26 +39,17 @@ function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function walkFolder(
-  folder: string,
-  options: WalkOptions,
-): Promise<Either<unknown, FoundNoteFiles>> {
-  const entries = await wrap(readdir(join(options.root, folder), { withFileTypes: true }));
-  if (!entries.ok) return left(entries.error);
-  if (folder !== "" && isSkillFolder(entries.value)) {
+function walkEntries(entries: Dirent[], options: EntriesOptions): void {
+  const { found, folder } = options;
+  if (folder !== "" && isSkillFolder(entries)) {
     const name = folder.split("/").at(-1) ?? folder;
-    return right({
-      files: [{ path: `${folder}/${skillFileName}`, name, kind: "skill" }],
-      problems: [],
-    });
+    found.files.push({ path: `${folder}/${skillFileName}`, name, kind: "skill" });
+    return;
   }
-
-  const found: FoundNoteFiles = { files: [], problems: [] };
-  const subfolders: string[] = [];
-  for (const entry of entries.value) {
+  for (const entry of entries) {
     if (isSkipped(entry)) continue;
     const path = folder === "" ? entry.name : `${folder}/${entry.name}`;
-    if (entry.isDirectory()) subfolders.push(path);
+    if (entry.isDirectory()) walkFolder(path, options);
     if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
     if (path === skillFileName) {
       const message =
@@ -62,23 +59,16 @@ async function walkFolder(
     }
     found.files.push({ path, name: entry.name.slice(0, -".md".length), kind: "note" });
   }
+}
 
-  const nested = await Promise.all(
-    subfolders.map(async (subfolder) => ({
-      subfolder,
-      walked: await walkFolder(subfolder, options),
-    })),
-  );
-  for (const { subfolder, walked } of nested) {
-    if (walked.ok) {
-      found.files.push(...walked.value.files);
-      found.problems.push(...walked.value.problems);
-      continue;
-    }
-    const message = `zambil cannot read this folder: ${describeError(walked.error)}`;
-    found.problems.push({ severity: "warning", path: subfolder, message });
+function walkFolder(folder: string, options: WalkOptions): void {
+  const entries = readFolder(join(options.root, folder));
+  if (entries.ok) {
+    walkEntries(entries.value, { ...options, folder });
+    return;
   }
-  return right(found);
+  const message = `zambil cannot read this folder: ${describeError(entries.error)}`;
+  options.found.problems.push({ severity: "warning", path: folder, message });
 }
 
 /**
@@ -86,9 +76,13 @@ async function walkFolder(
  * `node_modules` are skipped. A folder with a `SKILL.md` is one skill: its other files are not notes.
  * Symlinks are not followed.
  */
-export async function findNoteFiles(root: string): Promise<Either<unknown, FoundNoteFiles>> {
-  const walked = await walkFolder("", { root });
-  if (!walked.ok) return walked;
-  const files = walked.value.files.toSorted((first, second) => (first.path < second.path ? -1 : 1));
-  return right({ files, problems: walked.value.problems });
+export function findNoteFiles(root: string): Either<unknown, FoundNoteFiles> {
+  const entries = readFolder(root);
+  if (!entries.ok) return left(entries.error);
+  const found: FoundNoteFiles = { files: [], problems: [] };
+  walkEntries(entries.value, { root, found, folder: "" });
+  const files = found.files.toSorted((first, second) =>
+    comparePaths(first.path, { other: second.path }),
+  );
+  return right({ files, problems: found.problems });
 }

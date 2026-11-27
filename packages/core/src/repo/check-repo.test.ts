@@ -4,15 +4,15 @@ import { fileURLToPath } from "node:url";
 import { loadRepo } from "./load-repo.ts";
 import { writeTestRepo } from "./write-test-repo.ts";
 
-async function problemsIn(root: string) {
-  const loaded = await loadRepo(root);
+function problemsIn(root: string) {
+  const loaded = loadRepo(root);
   return loaded.ok ? checkRepo(loaded.value) : loaded.error;
 }
 
 describe("checkRepo", () => {
-  test("finds no problems in the sample repo", async () => {
+  test("finds no problems in the sample repo", () => {
     const sampleRepo = fileURLToPath(new URL("../../fixtures/sample-repo", import.meta.url));
-    expect(await problemsIn(sampleRepo)).toEqual([]);
+    expect(problemsIn(sampleRepo)).toEqual([]);
   });
 
   test("reports a missing script and a missing when-expired note, sorted by path", async () => {
@@ -22,7 +22,7 @@ describe("checkRepo", () => {
       "m/dup.md": "",
       "b/dup.md": "",
     });
-    expect(await problemsIn(root)).toEqual([
+    expect(problemsIn(root)).toEqual([
       {
         severity: "error",
         path: "a/today.md",

@@ -1,4 +1,4 @@
-import { left, right, wrap } from "../either.ts";
+import { left, right } from "../either.ts";
 import type { ConfigurationRepo } from "./configuration-repo.ts";
 import type { Either } from "../either.ts";
 import { findNoteFiles } from "./find-note-files.ts";
@@ -6,7 +6,7 @@ import { indexNames } from "./index-names.ts";
 import type { Note } from "../note/note.ts";
 import type { NoteProblem } from "../note/note-problem.ts";
 import { parseNote } from "../note/parse-note.ts";
-import { readFile } from "node:fs/promises";
+import { readTextFile } from "./read-text-file.ts";
 import { resolve } from "node:path";
 
 /** The repo root could not be read: it is missing, not a folder, or not readable. */
@@ -24,9 +24,9 @@ function describeError(error: unknown): string {
  * Loads every note of a configuration repo, with the problems of each note and every duplicate name.
  * Only the root failing is an error. A note that cannot be read is a problem, and the others still load.
  */
-export async function loadRepo(root: string): Promise<Either<LoadRepoError, ConfigurationRepo>> {
+export function loadRepo(root: string): Either<LoadRepoError, ConfigurationRepo> {
   const absoluteRoot = resolve(root);
-  const found = await findNoteFiles(absoluteRoot);
+  const found = findNoteFiles(absoluteRoot);
   if (!found.ok) {
     return left({
       kind: "unreadable-root",
@@ -35,15 +35,10 @@ export async function loadRepo(root: string): Promise<Either<LoadRepoError, Conf
     });
   }
 
-  const texts = await Promise.all(
-    found.value.files.map(async (file) => ({
-      file,
-      text: await wrap(readFile(`${absoluteRoot}/${file.path}`, "utf8")),
-    })),
-  );
   const notes: Note[] = [];
   const problems: NoteProblem[] = [...found.value.problems];
-  for (const { file, text } of texts) {
+  for (const file of found.value.files) {
+    const text = readTextFile(`${absoluteRoot}/${file.path}`);
     if (!text.ok) {
       const message = `zambil cannot read this note: ${describeError(text.error)}`;
       problems.push({ severity: "error", path: file.path, message });

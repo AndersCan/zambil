@@ -3,7 +3,25 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": {},
+  "exports": {
+    "./either": "./src/either.ts",
+    "./is-never": "./src/is-never.ts",
+    "./as-record": "./src/as-record.ts",
+    "./note": "./src/note/note.ts",
+    "./note-file": "./src/note/note-file.ts",
+    "./note-problem": "./src/note/note-problem.ts",
+    "./parse-note": "./src/note/parse-note.ts",
+    "./split-frontmatter": "./src/properties/split-frontmatter.ts",
+    "./parse-frontmatter": "./src/properties/parse-frontmatter.ts",
+    "./is-expired": "./src/expiry/is-expired.ts",
+    "./configuration-repo": "./src/repo/configuration-repo.ts",
+    "./load-repo": "./src/repo/load-repo.ts",
+    "./index-names": "./src/repo/index-names.ts",
+    "./find-note": "./src/repo/find-note.ts",
+    "./check-repo": "./src/repo/check-repo.ts",
+    "./locate-repo": "./src/locate/locate-repo.ts",
+    "./write-test-repo": "./src/repo/write-test-repo.ts"
+  },
   "dependencies": {
     "js-yaml": "catalog:"
   }

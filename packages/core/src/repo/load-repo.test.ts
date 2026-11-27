@@ -6,8 +6,8 @@ import { writeTestRepo } from "./write-test-repo.ts";
 const sampleRepo = fileURLToPath(new URL("../../fixtures/sample-repo", import.meta.url));
 
 describe("loadRepo", () => {
-  test("loads every note of the sample repo and skips hidden folders and skill resources", async () => {
-    const loaded = await loadRepo(sampleRepo);
+  test("loads every note of the sample repo and skips hidden folders and skill resources", () => {
+    const loaded = loadRepo(sampleRepo);
     const summary = loaded.ok
       ? {
           notes: loaded.value.notes.map((note) => [note.name, note.kind, note.path]),
@@ -27,8 +27,8 @@ describe("loadRepo", () => {
     });
   });
 
-  test("reads the properties of a note in the sample repo", async () => {
-    const loaded = await loadRepo(sampleRepo);
+  test("reads the properties of a note in the sample repo", () => {
+    const loaded = loadRepo(sampleRepo);
     const note = loaded.ok
       ? loaded.value.notes.find((candidate) => candidate.name === "typescript-style")
       : undefined;
@@ -59,7 +59,7 @@ describe("loadRepo", () => {
       "node_modules/package/README.md": "Not a note.",
       "notes/a.md": "A note.",
     });
-    const loaded = await loadRepo(root);
+    const loaded = loadRepo(root);
     const summary = loaded.ok
       ? { names: loaded.value.notes.map((note) => note.name), problems: loaded.value.problems }
       : loaded.error;
@@ -76,8 +76,8 @@ describe("loadRepo", () => {
     });
   });
 
-  test("returns an error when the root cannot be read", async () => {
-    const loaded = await loadRepo("/no/such/zambil/repo");
+  test("returns an error when the root cannot be read", () => {
+    const loaded = loadRepo("/no/such/zambil/repo");
     expect(loaded.ok ? "loaded" : loaded.error.kind).toBe("unreadable-root");
   });
 });
