@@ -11,6 +11,7 @@ export interface KnownProperties {
   tools: string[];
   projects: string[];
   paths: string[];
+  triggers: string[];
   expires: string | undefined;
   whenExpired: string | undefined;
   script: string | undefined;
@@ -45,12 +46,15 @@ function splitText(text: string, separator: RegExp): string[] {
   return parts;
 }
 
+/** What splits a single text into items. Without a separator, a single text is one item. */
 interface ReadListOptions {
-  separator: RegExp;
+  separator?: RegExp;
 }
 
 function readList(property: unknown, options: ReadListOptions): string[] | undefined {
-  if (typeof property === "string") return splitText(property, options.separator);
+  if (typeof property === "string" && options.separator !== undefined) {
+    return splitText(property, options.separator);
+  }
   const entries: unknown[] = Array.isArray(property) ? property : [property];
   const texts: string[] = [];
   for (const entry of entries) {
@@ -72,14 +76,14 @@ function readList(property: unknown, options: ReadListOptions): string[] | undef
 
 /**
  * Reads the known properties from parsed frontmatter. A single text counts as a list, as in Obsidian:
- * aliases split on commas, tags on commas and spaces. A property with the wrong shape is left out and
+ * aliases split on commas, tags on commas and spaces. A trigger is a prompt, so it keeps its commas. A property with the wrong shape is left out and
  * gets a problem message.
  */
 export function readProperties(properties: Record<string, unknown>): PropertyReading {
   const problems: string[] = [];
 
-  function list(key: string, separator: RegExp): string[] {
-    const texts = readList(properties[key], { separator });
+  function list(key: string, options: ReadListOptions): string[] {
+    const texts = readList(properties[key], options);
     if (texts !== undefined) return texts;
     problems.push(`\`${key}\` must be text or a list of text`);
     return [];
@@ -104,12 +108,13 @@ export function readProperties(properties: Record<string, unknown>): PropertyRea
   const known: KnownProperties = {
     name: text("name"),
     description: text("description"),
-    aliases: list("aliases", /,/),
-    tags: list("tags", /[,\s]+/).map((tag) => tag.replace(/^#/, "")),
-    hooks: list("hooks", /,/),
-    tools: list("tools", /,/),
-    projects: list("projects", /,/),
-    paths: list("paths", /,/),
+    aliases: list("aliases", { separator: /,/ }),
+    tags: list("tags", { separator: /[,\s]+/ }).map((tag) => tag.replace(/^#/, "")),
+    hooks: list("hooks", { separator: /,/ }),
+    tools: list("tools", { separator: /,/ }),
+    projects: list("projects", { separator: /,/ }),
+    paths: list("paths", { separator: /,/ }),
+    triggers: list("triggers", {}),
     expires: text("expires"),
     whenExpired: whenExpired === undefined ? undefined : parseLinkTarget(whenExpired),
     script: text("script"),

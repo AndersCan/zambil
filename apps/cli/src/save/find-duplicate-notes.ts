@@ -20,7 +20,8 @@ export interface FindDuplicateNotesOptions {
 
 /**
  * The current notes whose description scores `duplicateScore` or more against the description, best
- * first. It loads the model only when the model is in the cache, so a save never waits for a download.
+ * first. Triggers are left out, and a description on more than one line counts as one line, because
+ * the score was measured between two whole descriptions. It loads the model only when the model is in the cache, so a save never waits for a download.
  * When the model does not load, or the search fails or throws, it finds no notes and the save goes on.
  */
 export async function findDuplicateNotes(
@@ -39,7 +40,12 @@ export async function findDuplicateNotes(
   const noteSearch = opened.ok ? opened.value : opened;
   if (!noteSearch.ok) return [];
   if (files.unindexed > 0) await wrap(noteSearch.value.index(repo));
-  const searched = await wrap(noteSearch.value.search(repo, { text: description, now }));
+  const descriptionsOnly = {
+    ...repo,
+    notes: repo.notes.map((note) => ({ ...note, triggers: [] })),
+  };
+  const text = description.replaceAll(/\s+/g, " ");
+  const searched = await wrap(noteSearch.value.search(descriptionsOnly, { text, now }));
   const result = searched.ok ? searched.value : searched;
   if (!result.ok) return [];
   return result.value.matches.filter((match) => match.score >= duplicateScore);

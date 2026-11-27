@@ -255,7 +255,7 @@ describe("answerHook", () => {
           "Answer in English.",
           "</note>",
           "",
-          `${repoHeading} The description of each of these notes is similar to the prompt. The user did not name them, so use one only if it fits the task:`,
+          `${repoHeading} The description or a trigger of each of these notes is similar to the prompt. The user did not name them, so use one only if it fits the task:`,
           "",
           'The skill "release" matched the prompt. The user did not opt in to it, so load it only if it fits the task.',
           '<skill name="release" path="skills/release/SKILL.md">',

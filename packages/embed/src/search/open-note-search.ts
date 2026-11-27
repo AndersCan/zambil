@@ -18,7 +18,7 @@ export interface OpenNoteSearchOptions {
 }
 
 /**
- * The text to match, the moment that decides which notes are expired, and the most descriptions that
+ * The text to match, the moment that decides which notes are expired, and the most texts (descriptions or triggers) that
  * are not in the index to embed now. Without a limit, each one is embedded.
  */
 export interface NoteSearchOptions {

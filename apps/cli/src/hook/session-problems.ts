@@ -8,6 +8,7 @@ import { hooksToInstall } from "@zambil/claude-code/hooks-to-install";
 import type { ModelState } from "@zambil/embed/check-search-files";
 import type { Note } from "@zambil/core/note";
 import { readSettings } from "../install/settings-file.ts";
+import { searchTextsOf } from "@zambil/core/search-texts";
 import { settingsPath } from "../install/claude-paths.ts";
 
 /** The startup config, the hook list in use, and the hook that runs now, which is installed. */
@@ -18,8 +19,8 @@ export interface SessionProblemsOptions {
 }
 
 function needsModel(repo: ConfigurationRepo, options: SessionProblemsOptions): Promise<ModelState> {
-  const hasDescription = repo.notes.some((note) => note.description !== undefined);
-  if (!hasDescription) return Promise.resolve("ready");
+  const hasSearchText = repo.notes.some((note) => searchTextsOf(note).length > 0);
+  if (!hasSearchText) return Promise.resolve("ready");
   return checkModel({ environment: options.config.environment });
 }
 

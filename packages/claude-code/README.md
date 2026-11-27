@@ -46,7 +46,7 @@ If no note has the name, or more than one note has it, the agent gets a warning.
 
 ## Similar notes
 
-At `UserPromptSubmit`, the hook finds the notes whose `description` is similar to the prompt, with the model of `packages/embed`. It adds at most 3 notes that score 0.38 or more, best first. A question about iterating finds a note about for loops. `packages/embed/README.md` says how the model and the threshold were chosen.
+At `UserPromptSubmit`, the hook finds the notes whose `description` or one of whose `triggers` is similar to the prompt, with the model of `packages/embed`. It adds at most 3 notes that score 0.38 or more, best first. A question about iterating finds a note about for loops. `packages/embed/README.md` says how the model and the threshold were chosen.
 
 Run `zambil install` or `zambil index` once before you use the hook. Each downloads the model, about 23 MB, and embeds the descriptions ahead of time. `zambil save` adds the description of each note that it writes to the index. Run `zambil index` again after you change descriptions in your editor.
 
@@ -57,7 +57,7 @@ A note that another note names in `when-expired`, and that names no hook itself,
 The hook never blocks or slows a prompt for long:
 
 - If the model is not in the cache, the hook adds no similar notes. It does not download the model. It prints a message on standard error that tells you to run `zambil index`. With the model in the cache, the hook needs no network.
-- If the index is missing or stale, the hook embeds at most 10 of the descriptions that are not in the index. It leaves out the other notes. It prints on standard error how many descriptions it left out. The hook never writes the index or a note.
+- If the index is missing or stale, the hook embeds at most 10 of the descriptions and triggers that are not in the index. It does not score the others. It prints on standard error how many it did not score. The hook never writes the index or a note.
 - If the embedder cannot load or fails, the hook prints a message on standard error and still adds the other notes.
 - A slash command, such as `/compact`, and a prompt with no letter get no search. The hook does not load the model for them.
 - A very long prompt is cut: the model reads its first 256 tokens. A short reply such as "yes" or "continue" scores under the threshold.
@@ -171,7 +171,7 @@ Each event starts a new Node process that loads the whole repo. Measured in the 
 | 1,000 notes, `PreToolUse`                 | 86 ms                        | 46 ms        |
 | A hook that cannot add context            | not measured                 | 22 ms        |
 
-The table above was measured before the similarity search. At `UserPromptSubmit`, the search loads the model in each new process. `packages/embed/measurements.md` times the whole hook from a cold start, with `NODE_COMPILE_CACHE`. On the prose repo of 20 notes, the search adds about 70 ms to a short prompt. It adds about 100 ms to a prompt of 300 words. A slash command and a prompt with no letter add nothing, because the hook does not load the model for them. `packages/embed/README.md` says why zambil has no background process that keeps the model loaded.
+The table above was measured before the similarity search. At `UserPromptSubmit`, the search loads the model in each new process. `packages/embed/measurements.md` times the whole hook from a cold start, with `NODE_COMPILE_CACHE`. On the prose repo of 50 notes, the search adds about 60 ms to a short prompt. It adds about 100 ms to a prompt of 300 words. A slash command and a prompt with no letter add nothing, because the hook does not load the model for them. `packages/embed/README.md` says why zambil has no background process that keeps the model loaded.
 
 ## Code
 

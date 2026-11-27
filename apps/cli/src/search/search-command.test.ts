@@ -51,7 +51,7 @@ describe("zambil search", () => {
         hookSpecificOutput: {
           hookEventName: "UserPromptSubmit",
           additionalContext: [
-            "zambil reads notes from the user's configuration repo. The description of each of these notes is similar to the prompt. The user did not name them, so use one only if it fits the task:",
+            "zambil reads notes from the user's configuration repo. The description or a trigger of each of these notes is similar to the prompt. The user did not name them, so use one only if it fits the task:",
             "",
             '<note name="for-loops" path="coding/for-loops.md">',
             "Description: How to write for loops in TypeScript.",
@@ -67,7 +67,7 @@ describe("zambil search", () => {
           addsRecall: hookBeforeIndex.stdout.includes('<note name=\\"rebase\\"'),
           stderr: hookBeforeIndex.stderr.replace(freshCache, "<cache>"),
         },
-        indexed: indexed.stdout.startsWith("Indexed 20 descriptions, 20 of them new"),
+        indexed: indexed.stdout.startsWith("Indexed 50 descriptions and triggers, 50 of them new"),
         found,
         expired,
         searchIterating,
@@ -83,8 +83,9 @@ describe("zambil search", () => {
           code: 0,
           stderr: "",
           stdout: [
-            "SCORE  NAME    PATH           DESCRIPTION",
-            "0.??   rebase  git/rebase.md  How to rebase a branch onto main and resolve conflicts.",
+            "SCORE  NAME      PATH             DESCRIPTION",
+            "0.??   branches  git/branches.md  How to name a git branch.",
+            "0.??   rebase    git/rebase.md    How to rebase a branch onto main and resolve conflicts.",
             "",
           ].join("\n"),
         },

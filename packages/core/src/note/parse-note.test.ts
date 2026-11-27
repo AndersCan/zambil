@@ -21,6 +21,7 @@ describe("parseNote", () => {
         tools: [],
         projects: [],
         paths: [],
+        triggers: [],
         expiry: { kind: "never" },
         properties: {
           description: "Deploy steps.",

@@ -7,6 +7,7 @@ import { nameKey } from "@zambil/core/index-names";
 import type { Note } from "@zambil/core/note";
 import type { NoteScore } from "@zambil/embed/score-notes";
 import type { ProjectPlace } from "@zambil/core/project-place";
+import { searchTextsOf } from "@zambil/core/search-texts";
 import type { ShownNotes } from "../session/shown-notes.ts";
 import type { UserEnvironment } from "@zambil/core/locate-repo";
 
@@ -41,7 +42,7 @@ export interface SimilarNotesError {
 export type PromptKind = "text" | "command" | "no-text";
 
 /**
- * The most descriptions that are not in the index to embed on one prompt. Each takes a few
+ * The most descriptions and triggers that are not in the index to embed on one prompt. Each takes a few
  * milliseconds, so a few new notes still match before the next `zambil index`, and a repo that was
  * never indexed does not stall the prompt.
  */
@@ -108,10 +109,10 @@ function failed(message: string): Either<SimilarNotesError, never> {
 }
 
 /**
- * Finds the current notes whose description is similar to the prompt. It never downloads the model,
+ * Finds the current notes whose description or a trigger is similar to the prompt. It never downloads the model,
  * so a missing model is an error. Every failure, a thrown one too, is an error value, so that the hook
  * still adds its other notes. It writes nothing. It loads the embedder only for a prompt with text, in
- * a repo with at least one description. It searches only the `searchableNotes`.
+ * a repo with at least one description or trigger. It searches only the `searchableNotes`.
  */
 export async function findSimilarNotes(
   repo: ConfigurationRepo,
@@ -119,8 +120,8 @@ export async function findSimilarNotes(
 ): Promise<Either<SimilarNotesError, SimilarNotes>> {
   const none = right({ matches: [], skipped: 0 });
   if (readPrompt(options.prompt) !== "text") return none;
-  const hasDescription = repo.notes.some((note) => note.description !== undefined);
-  if (!hasDescription) return none;
+  const hasSearchText = repo.notes.some((note) => searchTextsOf(note).length > 0);
+  if (!hasSearchText) return none;
   const loaded = await wrap(import("@zambil/embed/open-note-search"));
   if (!loaded.ok) return failed(`cannot load the embedder: ${describe(loaded.error)}`);
   const opened = await wrap(

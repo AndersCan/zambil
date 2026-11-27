@@ -43,6 +43,7 @@ describe("loadRepo", () => {
       tools: ["Edit", "Write"],
       projects: [],
       paths: [],
+      triggers: [],
       expiry: { kind: "never" },
       properties: {
         description: "How to write TypeScript in my projects.",

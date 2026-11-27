@@ -6,7 +6,7 @@ import { right } from "@zambil/core/either";
 import { scoreNotes } from "./score-notes.ts";
 
 /**
- * The matches, best first, how many descriptions were not in the index, and how many of those were
+ * The matches, best first, how many descriptions and triggers were not in the index, and how many of those were
  * left out because of `unindexedLimit`.
  */
 export interface SearchResult {
@@ -16,7 +16,7 @@ export interface SearchResult {
 }
 
 /**
- * Finds the current notes whose description is similar to the text: at most `matchLimit` notes that
+ * Finds the current notes whose description or a trigger is similar to the text: at most `matchLimit` notes that
  * score at least `minimumScore`. Expired notes are left out. The threshold fits `searchModel` only, so
  * callers outside this package use `openNoteSearch`, which pairs the two.
  */

@@ -23,6 +23,7 @@ interface NoteFields {
   tools: string[];
   projects: string[];
   paths: string[];
+  triggers: string[];
   expiry: Expiry;
   whenExpired?: string;
   properties: Record<string, unknown>;

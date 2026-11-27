@@ -1,4 +1,5 @@
 import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
+import { countSearchTexts } from "./count-search-texts.ts";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
 import { repoOptionHelp } from "../parse-command-args.ts";
@@ -30,15 +31,15 @@ async function runIndex(options: CommandRunOptions): Promise<ExitCode> {
     output.error(`zambil cannot index the notes: ${summary.error}\n`);
     return 1;
   }
-  const { descriptions, embedded, path } = summary.value;
-  const count = descriptions === 1 ? "1 description" : `${descriptions} descriptions`;
+  const { texts, embedded, path } = summary.value;
+  const count = countSearchTexts(texts);
   output.write(`Indexed ${count}, ${embedded} of them new, in ${path}.\n`);
   return 0;
 }
 
-/** `zambil index`: embeds the note descriptions ahead of time, so that `zambil search` is fast. */
+/** `zambil index`: embeds the note descriptions and triggers ahead of time, so that `zambil search` is fast. */
 export const indexCommand: Command = {
-  summary: "Embed the note descriptions ahead of time, so that search is fast.",
+  summary: "Embed the note descriptions and triggers ahead of time, so that search is fast.",
   details:
     "The index and the model are in $XDG_CACHE_HOME/zambil, or ~/.cache/zambil. The first run downloads the model, about 23 MB. zambil hook finds similar notes only after that run, because it never downloads the model. zambil never changes a note.",
   usage: "Usage: zambil index [--repo <path>]",

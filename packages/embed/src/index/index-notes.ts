@@ -3,6 +3,7 @@ import type { ConfigurationRepo } from "@zambil/core/configuration-repo";
 import type { Either } from "@zambil/core/either";
 import type { Embedder } from "../embed/open-embedder.ts";
 import { right } from "@zambil/core/either";
+import { searchTextsOf } from "@zambil/core/search-texts";
 
 /** The loaded model, and the zambil cache folder where the index goes. */
 export interface IndexNotesOptions {
@@ -10,25 +11,25 @@ export interface IndexNotesOptions {
   cacheFolder: string;
 }
 
-/** The index file, how many descriptions it holds, and how many of them the model embedded this time. */
+/** The index file, how many texts it holds, and how many of them the model embedded this time. */
 export interface IndexSummary {
   path: string;
-  descriptions: number;
+  texts: number;
   embedded: number;
 }
 
-/** Each distinct description in the repo, expired notes included: expiry is checked at query time. */
-export function listDescriptions(repo: ConfigurationRepo): string[] {
-  const descriptions = new Set<string>();
+/** Each distinct search text in the repo, expired notes included: expiry is checked at query time. */
+export function listSearchTexts(repo: ConfigurationRepo): string[] {
+  const texts = new Set<string>();
   for (const note of repo.notes) {
-    if (note.description !== undefined) descriptions.add(note.description);
+    for (const text of searchTextsOf(note)) texts.add(text);
   }
-  return [...descriptions];
+  return [...texts];
 }
 
 /**
- * Embeds the description of every note ahead of time and writes the vectors to the cache. It
- * reuses the vectors of descriptions that did not change. It never writes to the repo.
+ * Embeds the description and the triggers of every note ahead of time and writes the vectors to the cache. It
+ * reuses the vectors of texts that did not change. It never writes to the repo.
  */
 export async function indexNotes(
   repo: ConfigurationRepo,
@@ -36,18 +37,18 @@ export async function indexNotes(
 ): Promise<Either<string, IndexSummary>> {
   const { embedder, cacheFolder } = options;
   const previous = readNoteIndex(repo.root, { cacheFolder, modelKey: embedder.modelKey });
-  const descriptions = listDescriptions(repo);
-  const missing = descriptions.filter((description) => !previous.vectors.has(description));
+  const texts = listSearchTexts(repo);
+  const missing = texts.filter((text) => !previous.vectors.has(text));
   const embedded = await embedder.embed(missing, { role: "document" });
   if (!embedded.ok) return embedded;
   const vectors = new Map<string, Float32Array>();
-  for (const [position, description] of missing.entries()) {
+  for (const [position, text] of missing.entries()) {
     const vector = embedded.value[position];
-    if (vector !== undefined) vectors.set(description, vector);
+    if (vector !== undefined) vectors.set(text, vector);
   }
-  for (const description of descriptions) {
-    const vector = previous.vectors.get(description);
-    if (vector !== undefined) vectors.set(description, vector);
+  for (const text of texts) {
+    const vector = previous.vectors.get(text);
+    if (vector !== undefined) vectors.set(text, vector);
   }
   const written = await writeNoteIndex(
     { modelKey: embedder.modelKey, root: repo.root, vectors },
@@ -56,7 +57,7 @@ export async function indexNotes(
   if (!written.ok) return written;
   return right({
     path: written.value,
-    descriptions: descriptions.length,
+    texts: texts.length,
     embedded: missing.length,
   });
 }

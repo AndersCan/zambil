@@ -179,6 +179,7 @@ export function parseNote(text: string, options: ParseNoteOptions): ParsedNote {
     tools: known.tools,
     projects: known.projects,
     paths: known.paths,
+    triggers: known.triggers,
     expiry: readExpiry({ frontmatter: split.frontmatter, properties: parsedProperties, known }),
     properties,
     content: split.content,

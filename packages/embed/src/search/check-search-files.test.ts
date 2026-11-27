@@ -30,7 +30,7 @@ describe("checkSearchFiles", () => {
     const cacheFolder = join(cacheHome, "zambil");
     const weights = modelFilePath(searchModel, { file: searchModel.weights, cacheFolder });
     const modelFolder = join(weights, "..");
-    const shared = { modelFolder, indexPath, descriptions: 2 };
+    const shared = { modelFolder, indexPath, texts: 2 };
     expect({ before, after }).toEqual({
       before: { ...shared, model: "missing", unindexed: 2 },
       after: { ...shared, model: "ready", unindexed: 1 },

@@ -22,6 +22,7 @@ import { parseNote } from "@zambil/core/parse-note";
 import { quoteArgument } from "@zambil/core/quote-argument";
 import { repoOptionHelp } from "../parse-command-args.ts";
 import { saveNote } from "@zambil/core/save-note";
+import { searchTextsOf } from "@zambil/core/search-texts";
 import { sharedOptions } from "../parse-command-args.ts";
 import { updateIndex } from "./update-index.ts";
 
@@ -180,7 +181,7 @@ function usabilityWarnings(saved: SavedNote): string[] {
   const warnings: string[] = [];
   const recalled = recallWarning(note.name);
   if (saved.mode === "create" && recalled !== undefined) warnings.push(recalled);
-  if (saved.mode !== "verify" && note.description === undefined) {
+  if (saved.mode !== "verify" && searchTextsOf(note).length === 0) {
     warnings.push(
       "The note has no description, so zambil search and the similar notes in a prompt never find it. Add `description: <one sentence>` to its frontmatter.",
     );

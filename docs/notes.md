@@ -71,6 +71,7 @@ zambil reads the properties in the table. The `properties` field of the note hol
 | Property       | Value             | Meaning                                                                                                                      |
 | -------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `description`  | text              | What the note is for. Similarity search matches the prompt against this text.                                                |
+| `triggers`     | list of text      | Prompts that the note is for, as you type them, for example `open a PR`. Similarity search matches each one as well.         |
 | `aliases`      | list of text      | More names for the note.                                                                                                     |
 | `tags`         | list of text      | Obsidian tags. zambil also reads the `#tags` in the text of the note.                                                        |
 | `hooks`        | list of text      | The hooks where the note applies, with the hook names of Claude Code, for example `SessionStart` or `PreToolUse`.            |
@@ -83,9 +84,11 @@ zambil reads the properties in the table. The `properties` field of the note hol
 | `run-with`     | text              | The program that runs the script, for example `bash`, `node` or `uv run`. Without it, the agent runs the script file itself. |
 | `name`         | text              | Only in a `SKILL.md`. Claude Code reads it. It must be the name of the skill folder.                                         |
 
+The model for similarity search knows English only. If you write prompts in another language, write the `triggers` in that language. `packages/embed/README.md` has the numbers.
+
 zambil accepts the same short forms as Obsidian:
 
-- A single text counts as a list. In `aliases`, `hooks`, `tools`, `projects` and `paths`, commas separate the items. In `tags`, commas and spaces separate the items.
+- A single text counts as a list. In `aliases`, `hooks`, `tools`, `projects` and `paths`, commas separate the items. In `tags`, commas and spaces separate the items. In `triggers`, a single text is one trigger, commas included.
 - A leading `#` on a tag is removed.
 - An empty value, such as `description:` with nothing after it, is the same as no property.
 - A number or `true` and `false` becomes text.
@@ -229,7 +232,7 @@ zambil refuses to save, and changes no file, in these cases:
 
 A refusal exits with 1. A wrong usage, such as no choice about expiry, exits with 2.
 
-After a save, zambil adds the descriptions that are new to the index for similar notes. It does this only when the model is in the cache, so a save never downloads the model. If the index update fails, zambil prints a warning with the `zambil index` command, and the save still exits with 0. The zambil hooks in the Claude Code settings read one repo. If they read this repo, and the note names a hook where they do not run yet, zambil prints the `zambil install` command that connects it.
+After a save, zambil adds the descriptions and triggers that are new to the index for similar notes. It does this only when the model is in the cache, so a save never downloads the model. If the index update fails, zambil prints a warning with the `zambil index` command, and the save still exits with 0. The zambil hooks in the Claude Code settings read one repo. If they read this repo, and the note names a hook where they do not run yet, zambil prints the `zambil install` command that connects it.
 
 ## Problems
 

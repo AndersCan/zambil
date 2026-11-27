@@ -214,12 +214,14 @@ describe("zambil doctor", () => {
     }).toEqual({
       indexed: {
         code: 0,
-        lines: ["ok    The model and the index for similar notes are ready: 1 description."],
+        lines: [
+          "ok    The model and the index for similar notes are ready: 1 description or trigger.",
+        ],
       },
       stale: {
         code: 1,
         lines: [
-          `fail  1 of 2 descriptions are not in the index ${written.value}.`,
+          `fail  1 of 2 descriptions and triggers are not in the index ${written.value}.`,
           "      The hook embeds them on each prompt, which makes it slower.",
           "      Fix: zambil index",
         ],

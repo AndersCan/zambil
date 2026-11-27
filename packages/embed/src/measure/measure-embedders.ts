@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { arch, cpus, loadavg, release, tmpdir } from "node:os";
-import { dirname, join } from "node:path";
 import {
+  caseLabel,
+  fiftyNoteMatchCases,
+  fiftyNoteNoMatchCases,
   laterMatchCases,
   laterNoMatchCases,
   matchCases,
@@ -12,6 +14,7 @@ import {
   taskMatchCases,
   taskNoMatchCases,
 } from "./prose-cases.ts";
+import { dirname, join } from "node:path";
 import { left, right } from "@zambil/core/either";
 import { minimumScore, searchModel } from "../model/search-model.ts";
 import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
@@ -237,7 +240,7 @@ function formatSummary(measurements: ModelMeasurement[], timings: Timings): stri
     "Load model",
     "One query",
     "300-word query",
-    "20 descriptions",
+    "50 descriptions",
   ];
   const rows: string[][] = [];
   for (const measurement of measurements) {
@@ -302,6 +305,7 @@ const caseGroups: CaseGroup[] = [
   { label: "Short texts", cases: [...shortMatchCases, ...shortNoMatchCases] },
   { label: "Task prompts", cases: [...taskMatchCases, ...taskNoMatchCases] },
   { label: "Later cases", cases: [...laterMatchCases, ...laterNoMatchCases] },
+  { label: "Cases on 50 notes", cases: [...fiftyNoteMatchCases, ...fiftyNoteNoMatchCases] },
 ];
 
 function formatGroups(measurement: ModelMeasurement): string[] {
@@ -328,7 +332,8 @@ function formatFalseMatches(measurement: ModelMeasurement): string[] {
     for (const note of result.ranked) {
       const isFalse = note.score >= minimumScore && !result.expected.includes(note.name);
       const noteScore = note.score.toFixed(3);
-      if (isFalse) lines.push(`- "${result.query}" finds ${note.name} (${noteScore}).`);
+      const label = caseLabel(result.query);
+      if (isFalse) lines.push(`- "${label}" finds ${note.name} (${noteScore}).`);
     }
   }
   return lines;
@@ -347,7 +352,7 @@ function formatCases(measurement: ModelMeasurement): string[] {
   for (const result of measurement.results) {
     const expected = result.expected.length === 0 ? "(none)" : result.expected.join(", ");
     const scores = [score(result.topScore), score(result.expectedScore), score(result.wrongScore)];
-    const query = result.query.replaceAll("|", "\\|");
+    const query = caseLabel(result.query).replaceAll("|", "\\|");
     rows.push([query, expected, result.top, ...scores]);
   }
   return [`### ${measurement.model.id}`, "", ...table(header, { rows })];
@@ -406,7 +411,12 @@ const hookCases: HookCase[] = [
   { label: "A 300-word prompt, with the index", prompt: longQuery, cache: "indexed" },
   { label: "A pasted prompt of 1 MB, with the index", prompt: pastedQuery, cache: "indexed" },
   {
-    label: '"iterating", with no index. The hook embeds 10 of the 20 descriptions.',
+    label: "A pasted prompt of 1 MB and a question in a last paragraph, with the index",
+    prompt: `${pastedQuery}\n\nhow do I deploy the blog?`,
+    cache: "indexed",
+  },
+  {
+    label: '"iterating", with no index. The hook embeds 10 of the 50 descriptions.',
     prompt: "iterating",
     cache: "unindexed",
   },
@@ -507,13 +517,13 @@ function formatReport(measurements: ModelMeasurement[], timings: Timings): strin
     '- "iterating": the score of the for-loops note for "iterating", and whether it is the best note.',
     `- Cold start: a new Node process loads the code and the model and embeds one query. The fastest of ${timedRuns} runs. The runs go in rounds, one run of each model per round, so that a busy moment slows each model.`,
     "- Load model, One query: the parts of the cold start that the process measured itself.",
-    `- 300-word query, 20 descriptions: the time to embed with a loaded model, the fastest of ${timedRuns} runs.`,
+    `- 300-word query, 50 descriptions: the time to embed with a loaded model, the fastest of ${timedRuns} runs.`,
     "",
     "## Summary",
     "",
     ...formatSummary(measurements, timings),
     "",
-    `The whole \`zambil search\` command, with ${searchModel.id}, the index in the cache and the 20 notes of the prose repo, takes ${milliseconds(timings.cliSearch)} from the start of the process to its exit. The fastest of ${timedRuns} runs.`,
+    `The whole \`zambil search\` command, with ${searchModel.id}, the index in the cache and the 50 notes of the prose repo, takes ${milliseconds(timings.cliSearch)} from the start of the process to its exit. The fastest of ${timedRuns} runs.`,
     "",
     "## Thresholds",
     "",
@@ -521,7 +531,7 @@ function formatReport(measurements: ModelMeasurement[], timings: Timings): strin
     "",
     ...formatSweep(measurements),
     "",
-    `${searchModel.id} at ${minimumScore}, by group of cases. The later cases were written after the threshold was chosen:`,
+    `${searchModel.id} at ${minimumScore}, by group of cases. The later cases were written after the threshold was chosen, and the cases on 50 notes when the repo grew from 20 notes:`,
     "",
     ...(current === undefined ? [] : formatGroups(current)),
     "",

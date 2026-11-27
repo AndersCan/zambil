@@ -52,6 +52,28 @@ describe("scoreNotes", () => {
     });
   });
 
+  test("scores a note by the best of its description and triggers", async () => {
+    const root = await writeTestRepo({
+      "loops.md": "---\ndescription: How to write a loop.\n---\n",
+      "release.md": "---\ndescription: How to cut a release.\ntriggers: [deploy it]\n---\n",
+    });
+    const repo = loadRepo(root);
+    if (!repo.ok) throw new Error(repo.error.message);
+    const cacheFolder = await mkdtemp(join(tmpdir(), "zambil-cache-"));
+    const text = "deploy it now";
+    const options = { text, embedder: topicEmbedder, cacheFolder, now: new Date() };
+    const scored = await scoreNotes(repo.value, options);
+    if (!scored.ok) throw new Error(scored.error);
+    const scores = scored.value.scores.map((score) => [score.note.name, score.score.toFixed(2)]);
+    expect({ scores, unindexed: scored.value.unindexed }).toEqual({
+      scores: [
+        ["release", "1.00"],
+        ["loops", "0.00"],
+      ],
+      unindexed: 3,
+    });
+  });
+
   test("embeds a description that is not in the index at query time", async () => {
     const root = await writeTestRepo({ "deploy.md": "---\ndescription: How to deploy.\n---\n" });
     const repo = loadRepo(root);

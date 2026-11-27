@@ -25,7 +25,7 @@ type SectionRepo = Pick<ConfigurationRepo, "root" | "names">;
 const sessionHook = "SessionStart";
 
 const heading =
-  "zambil reads notes from the user's configuration repo. The description of each of these notes is similar to the prompt. The user did not name them, so use one only if it fits the task:";
+  "zambil reads notes from the user's configuration repo. The description or a trigger of each of these notes is similar to the prompt. The user did not name them, so use one only if it fits the task:";
 
 interface RecalledOptions {
   prompt: string;
