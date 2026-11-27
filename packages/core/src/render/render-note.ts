@@ -11,7 +11,7 @@ import { join } from "node:path";
 import type { MarkdownLine } from "./scan-lines.ts";
 import { nameKey } from "../repo/index-names.ts";
 import { parseWikilinkTarget } from "./parse-wikilink-target.ts";
-import { quoteArgument } from "./quote-argument.ts";
+import { quoteArgument } from "../quote-argument.ts";
 import { removeBlockId } from "./select-section.ts";
 import type { RenderContext } from "./describe-link.ts";
 import type { Wikilink } from "./find-wikilinks.ts";

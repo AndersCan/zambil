@@ -1,7 +1,7 @@
 import type { Command, CommandRunOptions, ExitCode } from "./command.ts";
 import type { CliConfig } from "./config.ts";
 import { commands } from "./commands.ts";
-import { quoteArgument } from "./quote-argument.ts";
+import { quoteArgument } from "@zambil/core/quote-argument";
 import { userConfigPath } from "@zambil/core/locate-repo";
 
 /** Everything a command gets except its arguments. A new field here reaches every command unchanged. */

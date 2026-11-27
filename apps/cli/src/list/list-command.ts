@@ -4,7 +4,7 @@ import { formatColumns } from "./format-columns.ts";
 import { isExpired } from "@zambil/core/is-expired";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
-import { quoteArgument } from "../quote-argument.ts";
+import { quoteArgument } from "@zambil/core/quote-argument";
 import { sharedOptions } from "../parse-command-args.ts";
 
 interface FormatListOptions {

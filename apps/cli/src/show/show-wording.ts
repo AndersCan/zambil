@@ -1,4 +1,4 @@
-import { quoteArgument } from "../quote-argument.ts";
+import { quoteArgument } from "@zambil/core/quote-argument";
 import type { RenderWording } from "@zambil/core/render-note";
 
 /** The `--repo` flag that the user gave, so that each printed command reads the same repo. */

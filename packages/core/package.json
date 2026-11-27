@@ -20,6 +20,7 @@
     "./parse-frontmatter": "./src/properties/parse-frontmatter.ts",
     "./parse-link-target": "./src/properties/parse-link-target.ts",
     "./parse-note": "./src/note/parse-note.ts",
+    "./quote-argument": "./src/quote-argument.ts",
     "./render-note": "./src/render/render-note.ts",
     "./resolve-note": "./src/expiry/resolve-note.ts",
     "./save-note": "./src/write/save-note.ts",

@@ -18,7 +18,6 @@ export interface DescribeLinkOptions {
   context: RenderContext;
 }
 
-/** The description of a note on one line, or a sentence that says it has none. */
 export function oneLineDescription(note: Note): string {
   const description = note.description?.replaceAll(/\s*\n\s*/g, " ");
   return description ?? "It has no description.";

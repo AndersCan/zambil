@@ -278,6 +278,7 @@ Later features import from `@zambil/core`. Each export is one file. A new export
 - `@zambil/core/parse-frontmatter`. `parseFrontmatter` reads frontmatter YAML the same way as the loader.
 - `@zambil/core/parse-link-target`. `parseLinkTarget` returns the note name in a link such as `[[folder/name#heading]]`, or in a plain name.
 - `@zambil/core/parse-note`. `parseNote` reads one note from its text.
+- `@zambil/core/quote-argument`. `quoteArgument` quotes an argument for a POSIX shell, so that a printed command can be pasted as it is.
 - `@zambil/core/render-note`. `renderNote` turns a note into the text an agent gets. See [Rendering](#rendering).
 - `@zambil/core/resolve-note`. `resolveNote` looks up a name and returns `expired`, with the `when-expired` note, for an expired note.
 - `@zambil/core/save-note`. `saveNote` creates, rewrites or verifies one note. Only `zambil save` calls it, so that a note is always written on purpose.
