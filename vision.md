@@ -22,8 +22,8 @@ normal editor, and Obsidian in particular.
 Writing a note is a deliberate act and never automatic. Most often, the user
 asks the agent to write the note and then asks it for changes. If the text
 must be very specific, the user edits the note by hand in Obsidian. So the
-order is: the agent writes, the agent rewrites, and the user rewrites when
-needed.
+order is: the agent writes first, the agent rewrites, and the user rewrites
+last.
 
 Claude Code comes first. Other agent tools must be able to use zambil too.
 
@@ -54,17 +54,18 @@ small, visible steps.
    matches by similarity, it is told that the skill matched. In both cases it
    is told how to load the skill. A hook cannot load a skill itself. For a script, the agent
    is told what it does, where it is and how to run it.
-5. **Notes expire and say how to check them.** A note that makes a claim
-   will probably go out of date. Example: a note says how a module works, but
+5. **Notes that make claims expire and say how to verify them.** A note that
+   makes a claim will probably go out of date. Example: a note says how a module works, but
    the code changed since. The note is then false and confuses the agent. So
    a note can have an `expires` date and a "when expired" note. The "when
    expired" note tells how to update the note or verify its claims. It helps
-   before the date too, because a note can become false early. If a claim
-   still holds, the result is a new `expires` date with the same content. An
+   before the date too, because a note can become false early. If its claims
+   still hold, the result is a new `expires` date with the same content. An
    agent that writes a note decides on its expiry and its "when expired"
    note. A cache is one use: a note holds today's date and expires tomorrow,
    so the agent knows the day without work. An expiry warning can offer an
-   update. The agent saves the new content only when the user asks.
+   update. The agent saves a change, a new `expires` date included, only
+   when the user asks.
 6. **The repo opens in Obsidian.** A user opens their configuration repo in
    Obsidian and gets its features. They search for every note on a given hook,
    see the options, and follow links.
@@ -85,8 +86,8 @@ that tells how to update or verify it. Then the warning links to it.
 
 **Notes are written on purpose.** Writing a note is never automatic. zambil,
 a hook or a background process never writes a note on its own. This includes
-an update to an expired note. The user writes the note, or asks the agent to
-write it.
+an update or a new `expires` date, before or after the note expires. The user
+writes the note, or asks the agent to write it.
 
 **Nothing runs because it matched.** A match adds text to the context. It
 never runs a script. Script source is not added to the context.
@@ -158,8 +159,8 @@ from the current documentation, not from this file.
 
 - A user writes a note, or asks the agent to write it, and opens the repo in
   Obsidian. The note shows up in the next session where it applies.
-- A note that went out of date is caught by its expiry. Its "when expired"
-  note tells the agent how to update it or verify it.
+- A note that makes claims has an expiry and a "when expired" note, so the
+  agent can verify it before or after the date.
 - `z:<name>` and similarity matches feel instant, and the time they take is
   measured.
 - A test on prose picks the embedder. Example: "iterating" finds a note about
@@ -178,8 +179,7 @@ None.
 ## What we will not do
 
 **No memory store.** zambil does not record what the agent learns on its own.
-It serves notes. A note is written only when the user writes it or asks for
-it.
+It serves notes. The user writes each note or asks the agent to write it.
 
 **No shared names.** Two notes with the same name are an error, not a choice.
 
