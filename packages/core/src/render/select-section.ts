@@ -120,6 +120,24 @@ export function removeBlockId(text: string): string {
   return blockMarker.test(text) ? text.replace(blockMarker, "").trimEnd() : text;
 }
 
+/** The form in which two subpaths point to the same part: `# A` and `#a` are the same heading. */
+export function sectionKey(subpath: Subpath): string {
+  switch (subpath.kind) {
+    case "whole":
+      return "";
+    case "heading": {
+      const keys = subpath.headings.map((heading) => headingKey(heading));
+      const joined = keys.join("#");
+      return `#${joined}`;
+    }
+    case "block":
+      const id = subpath.id.toLowerCase();
+      return `#^${id}`;
+    default:
+      return isNever(subpath);
+  }
+}
+
 /**
  * The lines that a subpath points to, as an Obsidian embed shows them. A heading takes its section up
  * to the next heading of the same or a higher level. A block id at the end of a paragraph or a list

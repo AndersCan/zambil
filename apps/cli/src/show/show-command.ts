@@ -29,7 +29,7 @@ function runShow(options: CommandRunOptions): ExitCode {
     output.error(`${repo.error}\n`);
     return 2;
   }
-  const wording = showWording({ repo: values.repo });
+  const wording = showWording({ repo: values.repo === undefined ? undefined : repo.value.root });
   const expired = values.expired === true ? "show" : "warn";
   const rendered = renderNote(repo.value, { target, now: options.now, wording, expired });
   output.write(`${rendered.text}\n`);

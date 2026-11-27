@@ -1,31 +1,23 @@
 import { describeLink, oneLineDescription } from "./describe-link.ts";
 import type { ExpiredMode, TargetLookup } from "./find-target.ts";
 import type { Note, ScriptNote } from "../note/note.ts";
+import { removeBlockId, sectionKey } from "./select-section.ts";
+import type { RenderWording, SkillOffer } from "./render-wording.ts";
 import type { ConfigurationRepo } from "../repo/configuration-repo.ts";
 import { expiredPhrase } from "./describe-expiry.ts";
 import { findTarget } from "./find-target.ts";
 import { findWikilinks } from "./find-wikilinks.ts";
 import { formatMoment } from "./describe-expiry.ts";
+import { isFile } from "../repo/is-file.ts";
 import { isNever } from "../is-never.ts";
 import { join } from "node:path";
 import type { MarkdownLine } from "./scan-lines.ts";
 import { nameKey } from "../repo/index-names.ts";
 import { parseWikilinkTarget } from "./parse-wikilink-target.ts";
 import { quoteArgument } from "../quote-argument.ts";
-import { removeBlockId } from "./select-section.ts";
 import type { RenderContext } from "./describe-link.ts";
 import type { Wikilink } from "./find-wikilinks.ts";
 import type { WikilinkTarget } from "./parse-wikilink-target.ts";
-
-/**
- * The words that depend on the agent tool. Each returns one whole sentence about a link target such as
- * `deploy#Steps`, or about a skill name. An adapter passes its own, so that the core names no tool.
- */
-export interface RenderWording {
-  openNote: (target: string) => string;
-  openExpired: (target: string) => string;
-  loadSkill: (name: string) => string;
-}
 
 /** What to show, the clock, the wording of the agent tool, and whether to read an expired note anyway. */
 export interface RenderNoteOptions {
@@ -143,9 +135,14 @@ function readAnywayLines(note: Note, options: BlockOptions): string[] {
 
 function scriptSentence(note: ScriptNote, options: BlockOptions): string {
   const path = join(options.context.repo.root, note.script.path);
+  if (!isFile(path)) return `Warning: no file is at ${path}, so the script cannot run.`;
   const quoted = quoteArgument(path);
   const command = note.script.runWith === undefined ? quoted : `${note.script.runWith} ${quoted}`;
   return `The script is ${path}. Run it with \`${command}\`.`;
+}
+
+function skillOffer(note: Note, options: BlockOptions): SkillOffer {
+  return { name: note.name, path: join(options.context.repo.root, note.path) };
 }
 
 function offerLine(note: Note, options: BlockOptions): string {
@@ -153,7 +150,7 @@ function offerLine(note: Note, options: BlockOptions): string {
     case "note":
       return "";
     case "skill":
-      return options.context.wording.loadSkill(note.name);
+      return options.context.wording.loadSkill(skillOffer(note, options));
     case "script":
       return scriptSentence(note, options);
     default:
@@ -168,8 +165,10 @@ interface EmbedOptions {
 
 function renderEmbed(link: Wikilink, options: EmbedOptions): string {
   const { note, context } = options;
-  const name = link.target.name === "" ? note.name : link.target.name;
-  const target = { ...link.target, name };
+  const isSameNote = link.target.name === "";
+  const name = isSameNote ? note.name : link.target.name;
+  const text = isSameNote ? `${note.name}${link.target.text}` : link.target.text;
+  const target = { ...link.target, name, text };
   const lookup = findTarget(target, { repo: context.repo, now: context.now, expired: "warn" });
   return renderLookup(lookup, { target, context, subject: link.raw });
 }
@@ -199,7 +198,13 @@ function renderContent(note: Note, options: ContentOptions): RenderedContent {
       text += source.slice(cursor, link.start);
       cursor = link.end;
       if (link.kind === "embed") {
-        text += renderEmbed(link, { note, context: options.context });
+        const rest = source.slice(link.end);
+        const before = text.trim() === "" ? "" : "\n";
+        const after = rest.trim() === "" ? "" : "\n";
+        const embedded = renderEmbed(link, { note, context: options.context });
+        const lead = text.trimEnd();
+        text = `${lead}${before}${embedded}${after}`;
+        cursor += rest.length - rest.trimStart().length;
         continue;
       }
       text += link.raw;
@@ -243,8 +248,7 @@ function shownBlock(note: Note, options: ShownOptions): string {
 
 function trailKey(note: Note, options: BlockOptions): string {
   const { subpath } = options.target;
-  const section = subpath.kind === "whole" ? "" : nameKey(subpath.text);
-  return `${nameKey(note.name)}${section}`;
+  return `${nameKey(note.name)}${sectionKey(subpath)}`;
 }
 
 function trailLabel(note: Note, options: BlockOptions): string {

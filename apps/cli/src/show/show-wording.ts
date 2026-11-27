@@ -1,12 +1,12 @@
 import { quoteArgument } from "@zambil/core/quote-argument";
-import type { RenderWording } from "@zambil/core/render-note";
+import type { RenderWording } from "@zambil/core/render-wording";
 
-/** The `--repo` flag that the user gave, so that each printed command reads the same repo. */
+/** The full path of the repo when the user named it with `--repo`, so that each printed command reads the same repo. */
 export interface ShowWordingOptions {
   repo: string | undefined;
 }
 
-/** Tells the agent to open notes with `zambil show`, the one way the CLI offers. */
+/** Tells the agent to open notes with `zambil show` and to read the `SKILL.md` of a skill. */
 export function showWording(options: ShowWordingOptions): RenderWording {
   const repoFlag = options.repo === undefined ? "" : ` --repo ${quoteArgument(options.repo)}`;
 
@@ -18,6 +18,6 @@ export function showWording(options: ShowWordingOptions): RenderWording {
   return {
     openNote: (target) => `To read it, run \`${command(target)}\`.`,
     openExpired: (target) => `To read it anyway, run \`${command(target)} --expired\`.`,
-    loadSkill: (name) => `To use it, load the skill ${JSON.stringify(name)}.`,
+    loadSkill: (skill) => `To use it, read ${skill.path} and follow it.`,
   };
 }

@@ -2,12 +2,13 @@ import { describe, expect, test } from "vite-plus/test";
 import type { ExpiredMode } from "./find-target.ts";
 import { loadRepo } from "../repo/load-repo.ts";
 import { renderNote } from "./render-note.ts";
+import type { SkillOffer } from "./render-wording.ts";
 import { writeTestRepo } from "../repo/write-test-repo.ts";
 
 const wording = {
   openNote: (target: string) => `Open ${target}.`,
   openExpired: (target: string) => `Open ${target} anyway.`,
-  loadSkill: (name: string) => `Load the skill ${name}.`,
+  loadSkill: (skill: SkillOffer) => `Load ${skill.path}.`,
 };
 
 interface RenderOptions {
@@ -73,8 +74,7 @@ describe("renderNote", () => {
     };
     const tip = ['<note name="guide" path="guide.md" section="#^tip">', "Run it.", "</note>"];
     const use = ['<note name="guide" path="guide.md" section="#Use">', "# Use", "Run it.", ""];
-    const embeddedTip = tip.join("\n");
-    use.push(`See [[#Use]] and ${embeddedTip}.`, "</note>");
+    use.push("See [[#Use]] and", ...tip, ".", "</note>");
     const host = ['<note name="host" path="host.md">', ...use, ...tip, "</note>"];
     expect((await render(files, { target: "host" })).text).toBe(host.join("\n"));
   });
@@ -95,7 +95,8 @@ describe("renderNote", () => {
         'Warning: zambil cannot show ![[same]], because 2 notes use the name "same": a/same.md, b/same.md.',
         'Warning: zambil cannot show ![[loop#^missing]], because [[loop]] has no block "^missing".',
         '<note name="loop" path="loop.md">',
-        "Loop: Warning: zambil cannot show ![[host]], because it embeds itself: host > loop > host.",
+        "Loop:",
+        "Warning: zambil cannot show ![[host]], because it embeds itself: host > loop > host.",
         "</note>",
         "</note>",
       ].join("\n"),
@@ -128,7 +129,7 @@ describe("renderNote", () => {
         "See [[today]].",
         "",
         "Links:",
-        "- [[today]]: The date. Warning: it expired on 2026-11-28, so it can be out of date. To update or verify it, see [[refresh]]. Open today anyway.",
+        "- [[today]]: The date. Warning: it expired on 2026-11-28, so it can be out of date. To update or verify it, read [[refresh]]: How to refresh the date. Warning: it expired on 2026-11-27 12:00, so it can be out of date. Open refresh anyway. Open today anyway.",
         "</note>",
       ].join("\n"),
       "expired",
@@ -182,17 +183,19 @@ describe("renderNote", () => {
       "tools/backup.md":
         "---\ndescription: Back up.\nscript: back up.sh\nrun-with: bash\n---\nPass a folder.\n",
       "tools/back up.sh": "echo SCRIPT-SOURCE\n",
-      "host.md": "[[release]] [[backup]] ![[backup.sh]]",
+      "tools/gone.md": "---\nscript: gone.sh\n---\n",
+      "host.md": "[[release]] [[backup]] ![[backup.sh]]\n![[gone]]",
     };
     const skill = await render(files, { target: "release" });
     const script = await render(files, { target: "backup" });
     const host = await render(files, { target: "host" });
     const path = `${script.root}/tools/back up.sh`;
+    const gone = `${host.root}/tools/gone.sh`;
     expect([skill.text, script.text, host.text]).toEqual([
       [
         '<skill name="release" path="skills/release/SKILL.md">',
         "Description: Release a package.",
-        "Load the skill release.",
+        `Load ${skill.root}/skills/release/SKILL.md.`,
         "</skill>",
       ].join("\n"),
       [
@@ -205,14 +208,25 @@ describe("renderNote", () => {
       ].join("\n"),
       [
         '<note name="host" path="host.md">',
-        '[[release]] [[backup]] Warning: zambil cannot show ![[backup.sh]], because no note has the name "backup.sh".',
+        "[[release]] [[backup]]",
+        'Warning: zambil cannot show ![[backup.sh]], because no note has the name "backup.sh".',
+        '<script name="gone" path="tools/gone.md">',
+        `Warning: no file is at ${gone}, so the script cannot run.`,
+        "</script>",
         "",
         "Links:",
-        "- [[release]] (skill): Release a package. Load the skill release.",
+        `- [[release]] (skill): Release a package. Load ${host.root}/skills/release/SKILL.md.`,
         "- [[backup]] (script): Back up. Open backup.",
         "</note>",
       ].join("\n"),
     ]);
+  });
+
+  test("finds headings in a note with Windows line endings", async () => {
+    const files = { "guide.md": "# Use\r\nRun it.\r\n# Other\r\n" };
+    expect((await render(files, { target: "guide#Use" })).text).toBe(
+      '<note name="guide" path="guide.md" section="#Use">\n# Use\nRun it.\n</note>',
+    );
   });
 
   test("leaves links in code blocks and inline code as plain text", async () => {

@@ -1,3 +1,4 @@
+import { basename, dirname } from "node:path";
 import { describe, expect, test } from "vite-plus/test";
 import { showCommand } from "./show-command.ts";
 import { writeTestRepo } from "@zambil/core/write-test-repo";
@@ -49,13 +50,13 @@ describe("showCommand", () => {
     });
   });
 
-  test("keeps the --repo flag in the commands that it prints", async () => {
+  test("prints the full path of a relative --repo in the commands that it prints", async () => {
     const root = await writeTestRepo({ "a.md": "[[b c]]", "b c.md": "B." });
     const printed: string[] = [];
     const output = { write: (text: string) => printed.push(text), error: () => 0 };
     await showCommand.run({
-      args: ["a", "--repo", root],
-      config: { environment: { home: "/home/ada", workingFolder: "/" } },
+      args: ["a", "--repo", basename(root)],
+      config: { environment: { home: "/home/ada", workingFolder: dirname(root) } },
       input: { readAll: () => Promise.resolve("") },
       output,
       now: new Date(),

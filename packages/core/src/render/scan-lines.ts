@@ -22,7 +22,7 @@ function closesFence(text: string, options: FenceOptions): boolean {
 export function scanLines(content: string): MarkdownLine[] {
   const lines: MarkdownLine[] = [];
   let openFence: string | undefined = undefined;
-  for (const text of content.split("\n")) {
+  for (const text of content.split(/\r?\n/)) {
     if (openFence !== undefined) {
       lines.push({ kind: "code", text });
       if (closesFence(text, { fence: openFence })) openFence = undefined;
