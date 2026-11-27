@@ -413,7 +413,7 @@ function checkUpdateCommand(machine: Machine): void {
       updated: updated.stdout.includes("Updated zambil to"),
       commits: updated.stdout.includes("The new commits:\n"),
       subject: updated.stdout.includes(" add smoke-update-command.txt\n"),
-      doctor: updated.stdout.includes("\nzambil doctor checks the setup:\n"),
+      doctor: updated.stdout.includes("zambil doctor checks your setup."),
     },
     { ran: true, updated: true, commits: true, subject: true, doctor: true },
     `${updated.stdout}${updated.stderr}`,

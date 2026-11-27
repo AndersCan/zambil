@@ -1,8 +1,8 @@
+import { changesSince, isNewerVersion } from "./changes-since.ts";
 import type { Command, CommandOutput, CommandRunOptions, ExitCode } from "../command.ts";
 import { dirname, join } from "node:path";
 import { parseCommandArgs, sharedOptions } from "../parse-command-args.ts";
 import { readFile, realpath } from "node:fs/promises";
-import { changesSince } from "./changes-since.ts";
 import type { CliConfig } from "../config.ts";
 import { execFile } from "node:child_process";
 import { findOnPath } from "../install/find-on-path.ts";
@@ -17,16 +17,34 @@ import { wrap } from "@zambil/core/either";
 const runFile = promisify(execFile);
 const commitLimit = 20;
 
-/** The folder of the `zambil` on the `PATH` when it runs this clone, so that install.sh keeps that link. */
+interface LinkOptions {
+  entry: string;
+}
+
+/** Whether the path is a link to the `main.ts` of this clone, not that file itself. */
+async function isLinkToClone(path: string, options: LinkOptions): Promise<boolean> {
+  const linked = await wrap(realpath(path));
+  return linked.ok && linked.value === options.entry && linked.value !== path;
+}
+
+/**
+ * The folder of the link that runs this clone, so that install.sh keeps that link and makes no other
+ * one: the link that started zambil, or else the `zambil` on the `PATH`.
+ */
 async function linkFolder(root: string, config: CliConfig): Promise<string | undefined> {
+  const entry = await wrap(realpath(join(root, "apps/cli/src/main.ts")));
+  if (!entry.ok) return undefined;
   const found = findOnPath("zambil", { searchPath: config.searchPath ?? [] });
-  if (found === undefined) return undefined;
-  const [linked, entry] = await Promise.all([
-    wrap(realpath(found)),
-    wrap(realpath(join(root, "apps/cli/src/main.ts"))),
-  ]);
-  const isThisClone = linked.ok && entry.ok && linked.value === entry.value;
-  return isThisClone ? dirname(found) : undefined;
+  const candidates: string[] = [];
+  if (config.commandPath !== undefined) candidates.push(config.commandPath);
+  if (found !== undefined) candidates.push(found);
+  const checks = await Promise.all(
+    candidates.map((path) => isLinkToClone(path, { entry: entry.value })),
+  );
+  for (const [position, path] of candidates.entries()) {
+    if (checks[position] === true) return dirname(path);
+  }
+  return undefined;
 }
 
 /** The folder of the `zambil` link to keep, if one runs this clone. */
@@ -52,23 +70,31 @@ async function commitLines(before: InstallState, options: ChangeOptions): Promis
   const gitDir = `--git-dir=${join(options.root, ".git")}`;
   const range = `${before.commit}..${options.after.commit}`;
   const listed = await wrap(runFile("git", [gitDir, "log", "--format=  %h %s", range]));
-  if (!listed.ok) return [];
-  const lines = listed.value.stdout.trimEnd().split("\n");
+  const text = listed.ok ? listed.value.stdout.trimEnd() : "";
+  if (text === "") return [];
+  const lines = text.split("\n");
   const shown = lines.slice(0, commitLimit);
   const hidden = lines.length - commitLimit;
   if (hidden > 0) shown.push(`  and ${hidden} more commits.`);
   return ["The new commits:", ...shown];
 }
 
-/** What to print about the change: the new sections of the changelog, or the new commits on a branch. */
+/**
+ * What to print about the change: the new sections of the changelog, or the new commits on a branch.
+ * A move back to an older version lists nothing as new.
+ */
 async function describeChanges(before: InstallState, options: ChangeOptions): Promise<string[]> {
   const { root, after } = options;
   if (after.commit === before.commit) return [];
+  if (isNewerVersion(before.version, { than: after.version })) {
+    return [`zambil went back from ${before.version} to ${after.version}.`];
+  }
   if (after.version === before.version) return commitLines(before, options);
   const changelog = await wrap(readFile(join(root, "CHANGELOG.md"), "utf8"));
   const sections = changelog.ok ? changesSince(changelog.value, before) : [];
   if (sections.length === 0) return commitLines(before, options);
-  return [`What changed since ${before.version}:`, "", ...sections];
+  const text = sections.join("\n\n");
+  return [`What changed since ${before.version}:`, "", text];
 }
 
 interface DoctorOptions {
@@ -81,6 +107,25 @@ function runDoctor(root: string, options: DoctorOptions): Promise<number> {
   const command = [process.execPath, join(root, "apps/cli/src/main.ts"), "doctor"];
   if (options.repoFlag !== undefined) command.push("--repo", options.repoFlag);
   return runProgram(command, { input: "", output: options.output });
+}
+
+function reinstallLine(root: string): string {
+  const home = quoteArgument(root);
+  return `If zambil update does not start, run the install command: curl -fsSL ${installScriptUrl} | ZAMBIL_HOME=${home} sh`;
+}
+
+interface PrintChangesOptions {
+  root: string;
+  output: CommandOutput;
+}
+
+async function printChanges(before: InstallState, options: PrintChangesOptions): Promise<void> {
+  const { root, output } = options;
+  const after = await readInstall(root);
+  if (!after.ok) return;
+  const lines = await describeChanges(before, { root, after: after.value });
+  const changes = lines.join("\n");
+  if (lines.length > 0) output.write(`\n${changes}\n`);
 }
 
 function developmentClone(root: string): string {
@@ -99,7 +144,11 @@ async function runUpdate(options: CommandRunOptions): Promise<ExitCode> {
     output.error(`${parsed.error}\n${updateCommand.usage}\n`);
     return 2;
   }
-  const root = config.zambilFolder ?? "";
+  const root = config.zambilFolder;
+  if (root === undefined) {
+    output.error("zambil update did not run, because zambil cannot tell which clone runs.\n");
+    return 1;
+  }
   const before = await readInstall(root);
   if (!before.ok) {
     output.error(`zambil update did not run, because ${before.error}\n`);
@@ -114,19 +163,23 @@ async function runUpdate(options: CommandRunOptions): Promise<ExitCode> {
     wrap(readFile(join(root, "install.sh"), "utf8")),
     linkFolder(root, config),
   ]);
-  const input = script.ok ? script.value : "";
-  const installed = await runProgram(installCommand(root, { binFolder }), { input, output });
-  if (installed !== 0) {
-    output.error("zambil did not update. install.sh printed the reason above.\n");
+  if (!script.ok) {
+    output.error(`zambil update did not run, because ${root} has no install.sh.\n`);
+    output.error(`${reinstallLine(root)}\n`);
     return 1;
   }
-  const after = await readInstall(root);
-  if (after.ok) {
-    const lines = await describeChanges(before.value, { root, after: after.value });
-    const changes = lines.join("\n");
-    if (lines.length > 0) output.write(`\n${changes}\n`);
+  const command = installCommand(root, { binFolder });
+  const installed = await runProgram(command, { input: script.value, output });
+  if (installed !== 0) {
+    await printChanges(before.value, { root, output });
+    output.error(
+      `The update did not finish. When you fixed the problem above, run zambil update again.\n`,
+    );
+    output.error(`${reinstallLine(root)}\n`);
+    return 1;
   }
-  output.write("\nzambil doctor checks the setup:\n");
+  await printChanges(before.value, { root, output });
+  output.write("\n");
   const repoFlag = parsed.value.values.repo;
   const checked = await runDoctor(root, { repoFlag, output });
   return checked === 0 ? 0 : 1;
@@ -139,6 +192,7 @@ export const updateCommand: Command = {
   details: [
     "It runs the install.sh of this clone, so it follows the same rules as the install command.",
     "Set ZAMBIL_GIT_REF to install one release, or to follow a branch such as main.",
+    "It exits with 1 when the update fails or zambil doctor finds a problem.",
   ].join("\n"),
   options: [
     { flag: "--repo <path>", text: "The notes folder that zambil doctor checks after the update." },

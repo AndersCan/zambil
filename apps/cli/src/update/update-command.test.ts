@@ -1,7 +1,9 @@
 import { describe, expect, test } from "vite-plus/test";
 import { dirname, join } from "node:path";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
+import type { CliConfig } from "../config.ts";
 import { execFileSync } from "node:child_process";
+import { installScriptUrl } from "@zambil/claude-code/install-script-command";
 import { tmpdir } from "node:os";
 import { updateCommand } from "./update-command.ts";
 
@@ -26,6 +28,16 @@ echo more >> CHANGELOG.md
 git ${gitIdentity} commit --quiet --all -m "Fix the list hint"
 echo "Updated zambil."
 `;
+
+/** An install.sh that goes back to the older version 0.0.9. */
+const backScript = `set -eu
+cd "$ZAMBIL_HOME"
+printf '{"version": "0.0.9"}\\n' > apps/cli/package.json
+git ${gitIdentity} commit --quiet --all -m "Back to 0.0.9"
+`;
+
+/** An install.sh that prints the link folder that it got. */
+const binScript = 'echo "bin=${ZAMBIL_BIN_DIR:-unset}"\n';
 
 const failingScript = 'echo "zambil did not update, because of local changes." >&2\nexit 1\n';
 
@@ -62,13 +74,19 @@ async function writeFakeClone(options: FakeCloneOptions): Promise<string> {
   return root;
 }
 
-/** The arguments after `zambil update`. */
+/** The arguments after `zambil update`, and the path that started zambil. */
 interface RunOptions {
   args?: string[];
+  commandPath?: string;
 }
 
 async function run(root: string, options: RunOptions = {}) {
   const args = options.args ?? [];
+  const config: CliConfig = {
+    environment: { home: "/home/ada", workingFolder: "/" },
+    zambilFolder: root,
+  };
+  if (options.commandPath !== undefined) config.commandPath = options.commandPath;
   const printed = { stdout: "", stderr: "" };
   const output = {
     write: (text: string) => {
@@ -80,7 +98,7 @@ async function run(root: string, options: RunOptions = {}) {
   };
   const code = await updateCommand.run({
     args,
-    config: { environment: { home: "/home/ada", workingFolder: "/" }, zambilFolder: root },
+    config,
     input: { readAll: () => Promise.reject(new Error("read standard input")) },
     output,
     now: new Date(),
@@ -109,7 +127,6 @@ describe("updateCommand", () => {
           "",
           "- Second.",
           "",
-          "zambil doctor checks the setup:",
           "doctor ran with: doctor --repo /notes",
           "",
         ].join("\n"),
@@ -123,7 +140,6 @@ describe("updateCommand", () => {
           "The new commits:",
           newCommit,
           "",
-          "zambil doctor checks the setup:",
           "doctor ran with: doctor",
           "",
         ].join("\n"),
@@ -149,7 +165,8 @@ describe("updateCommand", () => {
         stdout: "",
         stderr: [
           "zambil did not update, because of local changes.",
-          "zambil did not update. install.sh printed the reason above.",
+          "The update did not finish. When you fixed the problem above, run zambil update again.",
+          `If zambil update does not start, run the install command: curl -fsSL ${installScriptUrl} | ZAMBIL_HOME=${failing} sh`,
           "",
         ].join("\n"),
       },
@@ -157,6 +174,30 @@ describe("updateCommand", () => {
         code: 1,
         first: `zambil update did not run, because ${development} is a development clone: its development dependencies are installed.`,
       },
+    });
+  });
+
+  test("says that zambil went back, and keeps the link that started it", async () => {
+    const [back, linked] = await Promise.all([
+      writeFakeClone({ installScript: backScript }),
+      writeFakeClone({ installScript: binScript }),
+    ]);
+    const bin = await mkdtemp(join(tmpdir(), "zambil-bin-"));
+    const main = join(linked, "apps/cli/src/main.ts");
+    await symlink(main, join(bin, "zambil"));
+    const [wentBack, throughLink, throughFile] = await Promise.all([
+      run(back),
+      run(linked, { commandPath: join(bin, "zambil") }),
+      run(linked, { commandPath: main }),
+    ]);
+    expect({
+      wentBack: wentBack.stdout.split("\n")[1],
+      throughLink: throughLink.stdout.split("\n")[0],
+      throughFile: throughFile.stdout.split("\n")[0],
+    }).toEqual({
+      wentBack: "zambil went back from 0.1.0 to 0.0.9.",
+      throughLink: `bin=${bin}`,
+      throughFile: "bin=unset",
     });
   });
 });

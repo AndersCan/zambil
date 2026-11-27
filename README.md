@@ -167,7 +167,7 @@ The install command puts zambil in `~/.local/share/zambil`. To put zambil in ano
 curl -fsSL https://raw.githubusercontent.com/AndersCan/zambil/main/install.sh | ZAMBIL_HOME=~/apps/zambil sh
 ```
 
-It installs zambil in the new folder and points `~/.local/bin/zambil` at it. The hooks run `~/.local/bin/zambil`, so they keep working. You do not need to run the `zambil init` that the output names. Then delete the old folder with `rm -rf ~/.local/share/zambil`. Set the same `ZAMBIL_HOME` each time that you update.
+It installs zambil in the new folder and points `~/.local/bin/zambil` at it. The hooks run `~/.local/bin/zambil`, so they keep working. You do not need to run the `zambil init` that the output names. Then delete the old folder with `rm -rf ~/.local/share/zambil`. Set the same `ZAMBIL_HOME` each time that you run the install command. `zambil update` finds the clone by itself.
 
 ## Uninstall
 
