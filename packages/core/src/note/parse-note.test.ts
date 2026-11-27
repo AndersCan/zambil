@@ -50,7 +50,8 @@ describe("parseNote", () => {
         {
           severity: "error",
           path: "ops/deploy.md",
-          message: "`script` must be a path inside the repo, relative to the folder of the note",
+          message:
+            '`script` is "../../secret.sh", but it must be a path inside the repo, relative to the folder of the note',
         },
       ],
     });
@@ -98,7 +99,8 @@ describe("parseNote", () => {
           {
             severity: "error",
             path: "ops/deploy.md",
-            message: '`expires` is not a date: "soon"; the note counts as expired',
+            message:
+              '`expires` is not a date: "soon"; write 2026-11-28 or 2026-11-28T09:30. The note counts as expired',
           },
         ],
       },

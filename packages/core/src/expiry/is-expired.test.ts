@@ -25,6 +25,19 @@ describe("isExpired", () => {
     ]);
   });
 
+  test("expires a cache note whose frontmatter does not parse or whose `expires` has the wrong shape", () => {
+    const file = { path: "today.md", name: "today", kind: "note" } as const;
+    const broken = [
+      "---\ndescription: Today: the date\nexpires: 2026-11-28\n---\n",
+      "---\nexpires: 2026-11-28\ntags: [a\n---\n",
+      "---\nexpires:\n  - 2026-11-28\n---\n",
+      "---\nexpires: {date: 2026-11-28}\n---\n",
+    ];
+    const now = new Date(2026, 10, 27);
+    const expired = broken.map((text) => isExpired(parseNote(text, { file }).note, { now }));
+    expect(expired).toEqual([true, true, true, true]);
+  });
+
   test("keeps the name of the note that tells how to refresh it", () => {
     expect(noteExpiring("2026-11-28").whenExpired).toBe("refresh-today");
   });

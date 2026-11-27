@@ -60,7 +60,7 @@ hooks: [SessionStart]
 The text of the note.
 ```
 
-zambil reads the YAML with the YAML 1.2 core schema. Dates stay text, so `expires` keeps the local time that Obsidian writes. If the YAML does not parse, the note gets an error and loads without properties.
+zambil reads the YAML with the YAML 1.2 core schema. Dates stay text, so `expires` keeps the local time that Obsidian writes. If the YAML does not parse, the note gets an error and loads without properties. If that frontmatter has an `expires` line, the note counts as expired.
 
 ## Properties
 
@@ -151,7 +151,12 @@ A note with `expires` is a cache. For example, a note holds the date of today an
 
 A note is expired from its `expires` moment on. Obsidian writes dates and times without a time zone, so zambil reads them as local time.
 
-If zambil cannot read the value, the note gets an error, and it counts as expired. Expired content is never shown as current.
+If zambil cannot read the value, the note gets an error, and it counts as expired. These cases also count as expired:
+
+- The frontmatter has an `expires` line, but the YAML does not parse.
+- `expires` is a list or a mapping, not text.
+
+Expired content is never shown as current.
 
 Each feature that shows notes must leave an expired note out of search, hook injection and similarity matches. A link, an embed or a `z:<name>` that points to an expired note shows a warning in place of the content. If the note has `when-expired`, the warning links to that note. If the `when-expired` note does not exist, `zambil check` gives an error.
 

@@ -20,7 +20,8 @@
     "./find-note": "./src/repo/find-note.ts",
     "./check-repo": "./src/repo/check-repo.ts",
     "./locate-repo": "./src/locate/locate-repo.ts",
-    "./write-test-repo": "./src/repo/write-test-repo.ts"
+    "./write-test-repo": "./src/repo/write-test-repo.ts",
+    "./parse-link-target": "./src/properties/parse-link-target.ts"
   },
   "dependencies": {
     "js-yaml": "catalog:"

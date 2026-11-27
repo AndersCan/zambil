@@ -1,4 +1,4 @@
-import type { Note, PlainNote } from "./note.ts";
+import type { Expiry, Note, PlainNote } from "./note.ts";
 import type { NoteProblem, ProblemSeverity } from "./note-problem.ts";
 import { findInlineTags } from "../properties/find-inline-tags.ts";
 import type { KnownProperties } from "../properties/read-properties.ts";
@@ -32,6 +32,34 @@ interface KindOptions {
 }
 
 const unlinkableCharacters = /[[\]#^|]/;
+const expiresLine = /^expires[ \t]*:(?<text>.*)$/m;
+
+interface ExpiryOptions {
+  frontmatter: string | undefined;
+  properties: Record<string, unknown> | undefined;
+  known: KnownProperties;
+}
+
+function expiryMessage(expiry: Expiry, options: ExpiryOptions): string | undefined {
+  if (expiry.kind !== "unreadable") return undefined;
+  if (options.properties === undefined) {
+    return "the note has `expires`, but its frontmatter does not parse, so it counts as expired";
+  }
+  const forms = "write 2026-11-28 or 2026-11-28T09:30";
+  return `\`expires\` is not a date: ${JSON.stringify(expiry.text)}; ${forms}. The note counts as expired`;
+}
+
+function readExpiry(options: ExpiryOptions): Expiry {
+  const { properties, known } = options;
+  if (properties === undefined) {
+    const line = expiresLine.exec(options.frontmatter ?? "")?.groups?.text;
+    return line === undefined ? { kind: "never" } : { kind: "unreadable", text: line.trim() };
+  }
+  const raw = properties.expires;
+  const hasWrongShape = known.expires === undefined && raw !== undefined && raw !== null;
+  if (hasWrongShape) return { kind: "unreadable", text: JSON.stringify(raw) };
+  return parseExpires(known.expires);
+}
 
 function uniqueTags(tags: string[]): string[] {
   const seen = new Set<string>();
@@ -84,7 +112,8 @@ function withKind(plain: PlainNote, options: KindOptions): Note {
   }
   const path = scriptPath(options);
   if (path === undefined) {
-    const message = "`script` must be a path inside the repo, relative to the folder of the note";
+    const script = JSON.stringify(known.script);
+    const message = `\`script\` is ${script}, but it must be a path inside the repo, relative to the folder of the note`;
     findings.push({ severity: "error", message });
     return plain;
   }
@@ -94,11 +123,7 @@ function withKind(plain: PlainNote, options: KindOptions): Note {
 
 function propertyFindings(plain: PlainNote, options: KindOptions): void {
   const { known, findings } = options;
-  if (plain.expiry.kind === "unreadable") {
-    const message = `\`expires\` is not a date: "${plain.expiry.text}"; the note counts as expired`;
-    findings.push({ severity: "error", message });
-  }
-  if (known.whenExpired !== undefined && known.expires === undefined) {
+  if (known.whenExpired !== undefined && plain.expiry.kind === "never") {
     findings.push({
       severity: "warning",
       message: "`when-expired` has no effect without `expires`",
@@ -123,7 +148,8 @@ export function parseNote(text: string, options: ParseNoteOptions): ParsedNote {
   const split = splitFrontmatter(text);
   const parsed = split.frontmatter === undefined ? undefined : parseFrontmatter(split.frontmatter);
   if (parsed?.ok === false) findings.push({ severity: "error", message: parsed.error });
-  const properties = parsed?.ok === true ? parsed.value : {};
+  const parsedProperties = parsed?.ok === false ? undefined : (parsed?.value ?? {});
+  const properties = parsedProperties ?? {};
   const reading = readProperties(properties);
   for (const message of reading.problems) findings.push({ severity: "error", message });
   const known = reading.known;
@@ -136,13 +162,16 @@ export function parseNote(text: string, options: ParseNoteOptions): ParsedNote {
     tags: uniqueTags([...known.tags, ...findInlineTags(split.content)]),
     hooks: known.hooks,
     tools: known.tools,
-    expiry: parseExpires(known.expires),
+    expiry: readExpiry({ frontmatter: split.frontmatter, properties: parsedProperties, known }),
     properties,
     content: split.content,
   };
   if (known.description !== undefined) plain.description = known.description;
   if (known.whenExpired !== undefined) plain.whenExpired = known.whenExpired;
 
+  const expiryOptions = { frontmatter: split.frontmatter, properties: parsedProperties, known };
+  const message = expiryMessage(plain.expiry, expiryOptions);
+  if (message !== undefined) findings.push({ severity: "error", message });
   const kindOptions = { file, known, findings };
   propertyFindings(plain, kindOptions);
   const note = withKind(plain, kindOptions);

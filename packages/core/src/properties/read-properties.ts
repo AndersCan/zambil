@@ -1,4 +1,5 @@
 import { isNever } from "../is-never.ts";
+import { parseLinkTarget } from "./parse-link-target.ts";
 
 /** The properties that zambil reads, after the lenient forms that Obsidian accepts are normalized. */
 export interface KnownProperties {
@@ -20,9 +21,9 @@ export interface PropertyReading {
   problems: string[];
 }
 
-type TextReading = { kind: "text"; text: string } | { kind: "absent" } | { kind: "invalid" };
+const unquotedLinkMessage = '`when-expired` must be text; put a link in quotes: "[[name]]"';
 
-const linkPattern = /^\[\[(?<target>[^\]|#^]*)[^\]]*\]\]$/;
+type TextReading = { kind: "text"; text: string } | { kind: "absent" } | { kind: "invalid" };
 
 function readScalar(property: unknown): TextReading {
   if (property === undefined || property === null) return { kind: "absent" };
@@ -31,12 +32,6 @@ function readScalar(property: unknown): TextReading {
   const text = String(property).trim();
   if (text === "") return { kind: "absent" };
   return { kind: "text", text };
-}
-
-function linkTarget(text: string): string {
-  const target = linkPattern.exec(text)?.groups?.target ?? text;
-  const name = target.split("/").at(-1) ?? target;
-  return name.replace(/\.md$/i, "").trim();
 }
 
 function splitText(text: string, separator: RegExp): string[] {
@@ -94,7 +89,7 @@ export function readProperties(properties: Record<string, unknown>): PropertyRea
       case "text":
         return reading.text;
       case "invalid":
-        problems.push(`\`${key}\` must be text`);
+        problems.push(key === "when-expired" ? unquotedLinkMessage : `\`${key}\` must be text`);
         return undefined;
       case "absent":
         return undefined;
@@ -112,7 +107,7 @@ export function readProperties(properties: Record<string, unknown>): PropertyRea
     hooks: list("hooks", /,/),
     tools: list("tools", /,/),
     expires: text("expires"),
-    whenExpired: whenExpired === undefined ? undefined : linkTarget(whenExpired),
+    whenExpired: whenExpired === undefined ? undefined : parseLinkTarget(whenExpired),
     script: text("script"),
     runWith: text("run-with"),
   };
