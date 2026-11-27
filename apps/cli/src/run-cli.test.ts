@@ -129,7 +129,9 @@ describe("runCli", () => {
     const root = await writeTestRepo({ "notes.md": "" });
     const missing = await run(["list", "--repo", `${root}/gone`]);
     const file = await run(["check", "--repo", `${root}/notes.md`]);
-    expect([missing, file]).toEqual([
+    const environment = { home: "/home/ada", workingFolder: "/", repo: `${root}/gone` };
+    const fromVariable = await run(["list"], { config: { environment } });
+    expect([missing, file, fromVariable]).toEqual([
       {
         code: 2,
         stdout: "",
@@ -139,6 +141,11 @@ describe("runCli", () => {
         code: 2,
         stdout: "",
         stderr: `The configuration repo ${root}/notes.md is not a folder.\nThe path comes from --repo "${root}/notes.md". Fix the path.\n`,
+      },
+      {
+        code: 2,
+        stdout: "",
+        stderr: `The configuration repo ${root}/gone does not exist.\nThe path comes from ZAMBIL_REPO="${root}/gone". Fix ZAMBIL_REPO, or unset it and run \`zambil init\`.\n`,
       },
     ]);
   });
@@ -276,14 +283,14 @@ describe("runCli", () => {
 
   test("prints the version, also before a command", async () => {
     const results = await Promise.all(
-      [["--version"], ["--version", "list"]].map((args) => run(args)),
+      [["--version"], ["--version", "list"], ["--repo", "x", "--version"]].map((args) => run(args)),
     );
     const shown = results.map((result) => ({
       ...result,
       stdout: result.stdout.replace(/\d+\.\d+\.\d+/, "<version>"),
     }));
     const version = { code: 0, stdout: "zambil <version>\n", stderr: "" };
-    expect(shown).toEqual([version, version]);
+    expect(shown).toEqual([version, version, version]);
   });
 
   test("answers a mistyped or unknown command in two lines, also for help", async () => {

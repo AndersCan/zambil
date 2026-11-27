@@ -183,8 +183,12 @@ async function printHelp(request: HelpRequest, options: RunCliOptions): Promise<
   return 0;
 }
 
+/** `--version` before any command word, so that `zambil --repo x --version` prints it and `zambil search -- --version` searches. */
 function asksForVersion(args: string[]): boolean {
-  return flagsOf(args)[0] === "--version";
+  const flags = flagsOf(args);
+  const position = flags.indexOf("--version");
+  const word = firstWordPosition(flags, { after: 0 });
+  return position !== -1 && (word === undefined || position < word);
 }
 
 /** Runs `zambil` with the arguments after the program name, and returns the exit code. */

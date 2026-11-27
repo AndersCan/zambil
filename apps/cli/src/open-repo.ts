@@ -79,7 +79,9 @@ function describeSource(location: RepoLocation, options: SourceOptions): string[
       return [`The path comes from --repo ${written}. ${fix}`];
     }
     case "environment":
-      return [`The path comes from ZAMBIL_REPO=${written}. Fix ZAMBIL_REPO, or ${initStep}`];
+      return [
+        `The path comes from ZAMBIL_REPO=${written}. Fix ZAMBIL_REPO, or unset it and run \`zambil init\`.`,
+      ];
     case "user-config": {
       const lines = [`The path comes from "repo": ${written} in ${options.configPath}.`];
       const advice = configPathAdvice(location.written);

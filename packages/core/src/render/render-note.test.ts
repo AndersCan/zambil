@@ -82,31 +82,35 @@ describe("renderNote", () => {
     expect((await render(files, { target: "host" })).text).toBe(host.join("\n"));
   });
 
-  test("warns in place of an unknown name, an ambiguous name, a missing block and a cycle", async () => {
+  test("warns in place of an unknown name, an ambiguous name, a missing block and a cycle, and suggests a name only for the target", async () => {
     const files = {
-      "host.md": "![[nope]]\n![[same]]\n![[loop#^missing]]\n![[loop]]\n",
+      "host.md": "![[loo]] [[loo]]\n![[same]]\n![[loop#^missing]]\n![[loop]]\n",
       "a/same.md": "One.",
       "b/same.md": "Two.",
       "loop.md": "Loop: ![[host]]",
     };
     const shown = await render(files, { target: "host" });
-    const missing = await render(files, { target: "nope" });
+    const missing = await render(files, { target: "loo" });
     expect([shown.text, missing]).toEqual([
       [
         '<note name="host" path="host.md">',
-        'Warning: zambil cannot show ![[nope]], because no note has the name "nope".',
+        'Warning: zambil cannot show ![[loo]], because no note has the name "loo".',
+        "[[loo]]",
         'Warning: zambil cannot show ![[same]], because 2 notes use the name "same": a/same.md, b/same.md.',
         'Warning: zambil cannot show ![[loop#^missing]], because [[loop]] has no block "^missing".',
         '<note name="loop" path="loop.md">',
         "Loop:",
         "Warning: zambil cannot show ![[host]], because it embeds itself: host > loop > host.",
         "</note>",
+        "",
+        "Links:",
+        '- [[loo]]: Warning: no note has the name "loo".',
         "</note>",
       ].join("\n"),
       {
         root: expect.any(String),
         status: "unresolved",
-        text: 'Warning: zambil cannot show "nope", because no note has the name "nope".',
+        text: 'Warning: zambil cannot show "loo", because no note has the name "loo" (did you mean "loop"?).',
       },
     ]);
   });

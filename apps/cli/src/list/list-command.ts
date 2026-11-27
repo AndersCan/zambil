@@ -36,7 +36,8 @@ function runList(options: CommandRunOptions): ExitCode {
     return 2;
   }
   const repoFlag = parsed.value.values.repo;
-  if (repo.value.notes.length === 0) {
+  const isEmpty = repo.value.notes.length === 0 && repo.value.problems.length === 0;
+  if (isEmpty) {
     output.write(`${firstNoteHint({ root: repo.value.root, repoFlag })}\n`);
     return 0;
   }

@@ -54,7 +54,8 @@ function runCheck(options: CommandRunOptions): ExitCode {
     output.write(`${problem.path}: ${problem.severity}: ${problem.message}\n`);
   }
   output.write(`${summarize(problems, { noteCount: repo.value.notes.length })}\n`);
-  if (repo.value.notes.length === 0) {
+  const isEmpty = repo.value.notes.length === 0 && problems.length === 0;
+  if (isEmpty) {
     const hint = firstNoteHint({ root: repo.value.root, repoFlag: parsed.value.values.repo });
     output.write(`${hint}\n`);
   }
