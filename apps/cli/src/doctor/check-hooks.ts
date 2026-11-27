@@ -121,10 +121,10 @@ export async function checkHooks(options: CheckHooksOptions): Promise<CheckResul
       fixes: [install],
     };
   }
-  if (repo === undefined) {
+  if (repo === undefined || options.zambilPath === undefined) {
     return {
       level: "skip",
-      text: `zambil runs at ${eventText}. zambil cannot compare the hooks without the notes folder.`,
+      text: `The zambil hooks in ${path} run at ${eventText}. zambil cannot compare them with what install writes until the problems above are fixed.`,
     };
   }
   return { level: "ok", text: `The zambil hooks in ${path} are up to date: ${eventText}.` };

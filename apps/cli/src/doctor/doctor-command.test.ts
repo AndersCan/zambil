@@ -8,6 +8,7 @@ import { mainPath } from "../install/link-hint.ts";
 import { runChecks } from "./doctor-command.ts";
 import { tmpdir } from "node:os";
 import { writeTestRepo } from "@zambil/core/write-test-repo";
+import { writeTestSearchFiles } from "@zambil/embed/write-test-search-files";
 
 interface Setup {
   config: CliConfig;
@@ -55,13 +56,15 @@ async function doctor(config: CliConfig) {
   return { code, ...printed };
 }
 
+/** The lines about similar notes, and the lines under a failed check. */
+function similarLines(stdout: string): string[] {
+  return stdout.split("\n").filter((line) => line.includes("index") || line.startsWith("      "));
+}
+
 describe("zambil doctor", () => {
   test("finds nothing to fix right after zambil install, and exits with 0", async () => {
     const setup = await installedSetup();
-    const results = await runChecks(
-      { args: [], config: setup.config, input, output: silent, now },
-      { repoFlag: undefined, nodeVersion: "24.1.0" },
-    );
+    const results = await runChecks(setup.config, { repoFlag: undefined, nodeVersion: "24.1.0" });
     const { code, stdout } = await doctor(setup.config);
     expect({
       levels: results.map((result) => result.level),
@@ -79,10 +82,7 @@ describe("zambil doctor", () => {
     await rename(setup.repo, `${setup.repo}-moved`);
     await rm(setup.link);
     await symlink("/gone/zambil/apps/cli/src/main.ts", setup.link);
-    const results = await runChecks(
-      { args: [], config: setup.config, input, output: silent, now },
-      { repoFlag: undefined, nodeVersion: "22.1.0" },
-    );
+    const results = await runChecks(setup.config, { repoFlag: undefined, nodeVersion: "22.1.0" });
     const configPath = join(setup.home, ".config", "zambil", "config.json");
     expect(results.filter((result) => result.level !== "ok")).toEqual([
       {
@@ -152,9 +152,42 @@ describe("zambil doctor", () => {
         ),
         "      Fix: zambil index   # downloads about 23 MB",
         "",
-        "3 problems to fix. Run each Fix command above, then run zambil doctor again.",
+        "3 problems to fix. Fix them from the top down, because a later problem can come from an earlier one. Then run zambil doctor again.",
         "",
       ],
+    });
+  });
+
+  test("reports the descriptions that the index lacks, and says ok once they are all in it", async () => {
+    const setup = await installedSetup();
+    await writeFile(
+      join(setup.repo, "card.md"),
+      "---\ndescription: Pay with a card.\n---\nCard.\n",
+    );
+    const written = await writeTestSearchFiles(setup.config.environment, {
+      root: setup.repo,
+      descriptions: ["Pay with a card."],
+    });
+    if (!written.ok) throw new Error(written.error);
+    const indexed = await doctor(setup.config);
+    await writeFile(join(setup.repo, "ship.md"), "---\ndescription: Ship an order.\n---\nShip.\n");
+    const stale = await doctor(setup.config);
+    expect({
+      indexed: { code: indexed.code, lines: similarLines(indexed.stdout) },
+      stale: { code: stale.code, lines: similarLines(stale.stdout) },
+    }).toEqual({
+      indexed: {
+        code: 0,
+        lines: ["ok    The model and the index for similar notes are ready: 1 description."],
+      },
+      stale: {
+        code: 1,
+        lines: [
+          `fail  1 of 2 descriptions are not in the index ${written.value}.`,
+          "      The hook embeds them on each prompt, which makes it slower.",
+          "      Fix: zambil index",
+        ],
+      },
     });
   });
 });

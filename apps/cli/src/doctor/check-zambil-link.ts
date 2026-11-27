@@ -15,14 +15,12 @@ export interface CheckZambilLinkOptions {
   config: CliConfig;
 }
 
-function linkFixes(config: CliConfig): string[] {
-  const fixes = [linkCommand()];
-  if (!hasLocalBinOnPath(config)) {
-    fixes.push(
-      `Then add this line to ~/.zshrc or ~/.bashrc and open a new terminal: ${localBinPathLine}`,
-    );
-  }
-  return fixes;
+/** How to put `~/.local/bin` on the `PATH`, when it is not there. */
+function pathAdvice(config: CliConfig): string[] {
+  if (hasLocalBinOnPath(config)) return [];
+  return [
+    `~/.local/bin is not on your PATH. After the link, add this line to ~/.zshrc or ~/.bashrc and open a new terminal: ${localBinPathLine}`,
+  ];
 }
 
 /** Why `~/.local/bin/zambil` does not run, when it is a link to a file that is gone. */
@@ -43,8 +41,8 @@ export async function checkZambilLink(
     return {
       level: "fail",
       text: "zambil is not on your PATH. Claude Code and the agent run zambil by name.",
-      details: await brokenLink(config),
-      fixes: linkFixes(config),
+      details: [...(await brokenLink(config)), ...pathAdvice(config)],
+      fixes: [linkCommand()],
     };
   }
   const [onPath, running] = await Promise.all([

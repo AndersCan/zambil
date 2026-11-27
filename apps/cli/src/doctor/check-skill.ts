@@ -33,9 +33,8 @@ export async function checkSkill(options: CheckSkillOptions): Promise<CheckResul
   if (text.value === saveSkillText({ repoRoot: repo.root })) {
     return { level: "ok", text: `The zambil-save skill in ${path} is up to date.` };
   }
-  const why = text.value.includes(repo.root)
-    ? "It comes from an older zambil."
-    : `It names another notes folder than ${repo.root}.`;
+  const why =
+    "An older zambil wrote it, it names another notes folder, or someone edited it. zambil install replaces it.";
   return {
     level: "fail",
     text: `The zambil-save skill in ${path} differs from what zambil install writes now.`,

@@ -9,6 +9,7 @@ import { checkSimilar } from "./check-similar.ts";
 import { checkSkill } from "./check-skill.ts";
 import { checkUserConfig } from "./check-user-config.ts";
 import { checkZambilLink } from "./check-zambil-link.ts";
+import type { CliConfig } from "../config.ts";
 import { findOnPath } from "../install/find-on-path.ts";
 import { loadHookList } from "@zambil/claude-code/load-hook-list";
 
@@ -24,10 +25,9 @@ function needsRepo(name: string): CheckResult {
 
 /** Every check in the order that a setup depends on them. Each later check reuses what an earlier one found. */
 export async function runChecks(
-  run: CommandRunOptions,
+  config: CliConfig,
   options: RunChecksOptions,
 ): Promise<CheckResult[]> {
-  const { config } = run;
   const { repoFlag } = options;
   const zambilPath = findOnPath("zambil", { searchPath: config.searchPath ?? [] });
   const { list } = loadHookList(config.environment);
@@ -80,7 +80,7 @@ function summary(results: CheckResult[]): string {
   const warns = countLevel(results, { level: "warn" });
   if (fails > 0) {
     const problems = fails === 1 ? "1 problem" : `${fails} problems`;
-    return `${problems} to fix. Run each Fix command above, then run zambil doctor again.`;
+    return `${problems} to fix. Fix them from the top down, because a later problem can come from an earlier one. Then run zambil doctor again.`;
   }
   if (warns > 0) {
     const warnings = warns === 1 ? "1 warning" : `${warns} warnings`;
@@ -109,7 +109,7 @@ async function runDoctor(options: CommandRunOptions): Promise<ExitCode> {
     output.error(`--repo needs the path of a folder, but it is empty.\n${doctorCommand.usage}\n`);
     return 2;
   }
-  const results = await runChecks(options, { repoFlag, nodeVersion: process.versions.node });
+  const results = await runChecks(options.config, { repoFlag, nodeVersion: process.versions.node });
   output.write(formatReport(results));
   return results.some((result) => result.level === "fail") ? 1 : 0;
 }
