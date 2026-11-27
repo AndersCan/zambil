@@ -98,15 +98,17 @@ Run `zambil install`. The root `README.md` tells you how to put `zambil` on your
 3. It writes the `zambil-save` skill, `skills/zambil-save/SKILL.md` in the same folder. If the user asks for a note, the skill tells the agent to run `zambil save-guide` and `zambil save`.
 4. It indexes the descriptions with `@zambil/embed`, the same as `zambil index`. The first run downloads the model.
 
-`--offline` skips steps 1 and 4. If step 1 or 4 fails, `zambil install` prints why and does the other steps. If the settings file is not valid JSON, or its `hooks` value has the wrong shape, it changes nothing and exits with 1. If `zambil` is not on the `PATH`, it prints the command that links it and exits with 2.
+`--offline` skips steps 1 and 4. If step 1 or 4 fails, `zambil install` prints why and does the other steps. If the settings file is not valid JSON, or its `hooks` value has the wrong shape, it changes nothing and exits with 1. If `zambil` is not on the `PATH`, it prints the command that links it and exits with 2. With `--repo`, it also saves the repo in the user configuration file. At the end, it prints the problems that `zambil check` finds, and it exits with 1 if one is an error.
 
 Each handler runs this command, with full paths:
 
 ```sh
-NODE_COMPILE_CACHE=/home/ada/.cache/zambil/node-compile-cache /home/ada/.local/bin/zambil hook --repo /home/ada/notes
+PATH=/opt/homebrew/bin:/opt/homebrew/Cellar/node/24.1.0/bin:$PATH NODE_COMPILE_CACHE=/home/ada/.cache/zambil/node-compile-cache /home/ada/.local/bin/zambil hook --repo /home/ada/notes
 ```
 
-`NODE_COMPILE_CACHE` lets Node keep the compiled code between runs. It must be set before Node starts. With the full path of `zambil`, the hook does not depend on the `PATH` of Claude Code to find `zambil`. It still needs `node` on that `PATH`, because `zambil` starts with `#!/usr/bin/env node`. The full path of the repo makes it work from every project folder. `--repo` comes after `hook`, because `zambil --repo <path> hook` is a usage error that exits with 2, and Claude Code then blocks the event. The handler has no `matcher`, because zambil filters by the `tools` of each note. Its `timeout` is 10 seconds.
+`zambil` starts with `#!/usr/bin/env node`, and Claude Code can start without `node` on its `PATH`, for example when a version manager adds `node` only in the profile of your shell. So the command puts two folders first on the `PATH`: the folder of the `node` that your shell finds, and the folder of the file that it links to. The first one stays valid when Homebrew, mise, asdf or Volta changes the version. The second one stays valid when the first is a link that lives only as long as one shell, as with fnm. If a version manager removes both folders, the `PATH` of Claude Code still applies. Run `zambil install` again after you change the version of Node.
+
+`NODE_COMPILE_CACHE` lets Node keep the compiled code between runs. It must be set before Node starts. With the full path of `zambil`, the hook does not depend on the `PATH` of Claude Code to find `zambil`. The full path of the repo makes it work from every project folder. `--repo` comes after `hook`, because `zambil --repo <path> hook` is a usage error that exits with 2, and Claude Code then blocks the event. The handler has no `matcher`, because zambil filters by the `tools` of each note. Its `timeout` is 10 seconds.
 
 zambil knows its handlers by the words `zambil hook` in the command. `zambil uninstall` removes each such handler and the `zambil-save` skill. If zambil emptied an event or the `hooks` object, it removes that too. It keeps an event that was empty before.
 

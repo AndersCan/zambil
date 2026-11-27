@@ -1,4 +1,4 @@
-import { chmod, mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { describe, expect, test } from "vite-plus/test";
 import type { CliConfig } from "../config.ts";
 import type { Command } from "../command.ts";
@@ -29,6 +29,20 @@ interface Machine {
   settings: string;
   skill: string;
   zambil: string;
+  userConfig: string;
+  nodeFolders: string[];
+}
+
+/** A `node` in the folder of one version, and a link to it in a folder that a version manager updates. */
+async function writeNode(home: string): Promise<string[]> {
+  const version = join(home, "versions", "24.1.0", "bin");
+  const shims = join(home, "shims");
+  await mkdir(version, { recursive: true });
+  await mkdir(shims);
+  await writeFile(join(version, "node"), "#!/bin/sh\n");
+  await chmod(join(version, "node"), 0o755);
+  await symlink(join(version, "node"), join(shims, "node"));
+  return [shims, version];
 }
 
 /** A home folder with a Claude Code folder, a `zambil` program on the path and a configuration repo. */
@@ -44,10 +58,13 @@ async function testMachine(): Promise<Machine> {
   const settings = join(claude, "settings.json");
   await writeFile(settings, `${JSON.stringify(userSettings, undefined, 4)}\n`);
   const repo = await writeTestRepo(notes);
+  const nodeFolders = await writeNode(home);
   const environment = { home, workingFolder: home, cacheHome: join(home, "cache") };
-  const config = { environment, claudeConfigFolder: claude, searchPath: ["relative/bin", bin] };
+  const searchPath = ["relative/bin", bin, nodeFolders[0] ?? ""];
+  const config = { environment, claudeConfigFolder: claude, searchPath };
   const skill = join(claude, "skills", "zambil-save", "SKILL.md");
-  return { config, repo, settings, skill, zambil };
+  const userConfig = join(home, ".config", "zambil", "config.json");
+  return { config, repo, settings, skill, zambil, userConfig, nodeFolders };
 }
 
 interface RunResult {
@@ -97,13 +114,14 @@ describe("zambil install and zambil uninstall", () => {
     const again = await run(uninstallCommand, { config, args: [] });
 
     const cache = join(config.environment.cacheHome ?? "", "zambil", "node-compile-cache");
+    const path = machine.nodeFolders.join(":");
     const handler = {
       type: "command",
-      command: `NODE_COMPILE_CACHE=${cache} ${machine.zambil} hook --repo ${repo}`,
+      command: `PATH=${path}:$PATH NODE_COMPILE_CACHE=${cache} ${machine.zambil} hook --repo ${repo}`,
       timeout: 10,
     };
     expect({
-      first,
+      first: { ...first, stderr: first.stderr.split("\n") },
       installed: JSON.parse(installedText),
       skill: skillText.split("\n").slice(0, 3),
       second,
@@ -113,19 +131,26 @@ describe("zambil install and zambil uninstall", () => {
       hasSkill: existsSync(machine.skill),
       again: again.stdout,
       notes: await readNotes(repo),
+      userConfig: JSON.parse(await readFile(machine.userConfig, "utf8")),
     }).toEqual({
       first: {
         code: 0,
         stdout: [
+          "Skipped the hook list and the model, because of --offline.",
           `Installed the zambil hooks (SessionStart, UserPromptSubmit, PreToolUse) in ${settings}.`,
           `The hooks read the configuration repo ${repo}.`,
-          "Skipped Notification, because zambil never answers there. Run zambil check.",
+          "Skipped Notification, because zambil never answers there.",
           `Installed the zambil-save skill in ${machine.skill}.`,
-          "Skipped the hook list and the model, because of --offline.",
-          "Start a new Claude Code session to load the hooks. Run zambil install again after a note names a new hook.",
+          `Saved the configuration repo ${repo} in ${machine.userConfig}.`,
+          "Start a new Claude Code session to load the hooks. Run zambil install again after a note names a new hook, or after you change the version of Node.",
           "",
         ].join("\n"),
-        stderr: "",
+        stderr: [
+          "Checked 2 notes: 0 errors and 1 warning.",
+          expect.stringMatching(/^ {2}shell\.md: warning: `hooks` names "Notification"/),
+          "Run zambil check after a fix to see the problems that are left.",
+          "",
+        ],
       },
       installed: {
         model: "opus",
@@ -145,7 +170,7 @@ describe("zambil install and zambil uninstall", () => {
         stdout: expect.stringContaining(
           `In ${settings}, the zambil hooks (SessionStart, UserPromptSubmit, PreToolUse) are up to date.`,
         ),
-        stderr: "",
+        stderr: expect.stringContaining("Checked 2 notes: 0 errors and 1 warning."),
       },
       isSame: true,
       removed: {
@@ -162,6 +187,7 @@ describe("zambil install and zambil uninstall", () => {
       hasSkill: false,
       again: `${settings} has no zambil hooks.\nzambil changed no note.\n`,
       notes,
+      userConfig: { repo },
     });
   });
 
@@ -180,6 +206,7 @@ describe("zambil install and zambil uninstall", () => {
       broken: { code: broken.code, stderr: broken.stderr },
       settings: await readFile(settings, "utf8"),
       hasSkill: existsSync(machine.skill),
+      hasUserConfig: existsSync(machine.userConfig),
     }).toEqual({
       noPath: {
         code: 2,
@@ -194,6 +221,32 @@ describe("zambil install and zambil uninstall", () => {
       },
       settings: "{ model: opus\n",
       hasSkill: false,
+      hasUserConfig: false,
+    });
+  });
+
+  test("install reports the errors that zambil check finds, installs the hooks and exits with 1", async () => {
+    const machine = await testMachine();
+    const note = "---\ndescription: Deploy.\n---\nShip it.\n";
+    const repo = await writeTestRepo({ "ops/deploy.md": note, "web/deploy.md": note });
+    const result = await run(installCommand, {
+      config: machine.config,
+      args: ["--repo", repo, "--offline"],
+    });
+    const installed = JSON.parse(await readFile(machine.settings, "utf8"));
+    expect({
+      code: result.code,
+      stderr: result.stderr.split("\n"),
+      hooks: Object.keys(installed.hooks),
+    }).toEqual({
+      code: 1,
+      stderr: [
+        "Checked 2 notes: 1 error and 0 warnings.",
+        '  ops/deploy.md: error: the name "deploy" is used by 2 notes: ops/deploy.md, web/deploy.md',
+        "Run zambil check after a fix to see the problems that are left.",
+        "",
+      ],
+      hooks: ["PreToolUse", "UserPromptSubmit"],
     });
   });
 });
