@@ -1,9 +1,13 @@
 import type { Command, CommandRunOptions, ExitCode } from "../command.ts";
 import type { ExpiryChoice, SavedNote, SaveRefusal, SaveRequest } from "@zambil/core/save-note";
 import { left, right } from "@zambil/core/either";
+import type { CliConfig } from "../config.ts";
 import type { Either } from "@zambil/core/either";
 import { findRecalls } from "@zambil/claude-code/find-recalls";
+import { indexHint } from "../index/index-hint.ts";
+import { installHint } from "./install-hint.ts";
 import { isNever } from "@zambil/core/is-never";
+import { loadRepo } from "@zambil/core/load-repo";
 import { nameKey } from "@zambil/core/index-names";
 import { openRepo } from "../open-repo.ts";
 import { parseCommandArgs } from "../parse-command-args.ts";
@@ -11,6 +15,7 @@ import { quoteArgument } from "@zambil/core/quote-argument";
 import { repoOptionHelp } from "../parse-command-args.ts";
 import { saveNote } from "@zambil/core/save-note";
 import { sharedOptions } from "../parse-command-args.ts";
+import { updateIndex } from "./update-index.ts";
 
 const saveOptions = {
   ...sharedOptions,
@@ -187,6 +192,32 @@ function whenExpiredReminder(saved: SavedNote, options: ReminderOptions): string
   ].join("\n");
 }
 
+/** The repo folder, the startup config, and the `--repo` flag as the user typed it. */
+interface FollowUpOptions {
+  root: string;
+  config: CliConfig;
+  repoFlag: string | undefined;
+}
+
+/** What to print after a save: a failed index update, and a hook that needs install. Neither fails the save. */
+async function followUps(saved: SavedNote, options: FollowUpOptions): Promise<string[]> {
+  const repo = loadRepo(options.root);
+  if (!repo.ok) return [];
+  const [indexed, hint] = await Promise.all([
+    updateIndex(repo.value, options),
+    installHint(saved.note, { ...options, repo: repo.value }),
+  ]);
+  const lines: string[] = [];
+  if (!indexed.ok) {
+    const index = indexHint(options.repoFlag);
+    lines.push(
+      `${saved.note.path}: warning: zambil cannot add the note to the index for similar notes: ${indexed.error}. Run ${index}.`,
+    );
+  }
+  if (hint !== undefined) lines.push(hint);
+  return lines;
+}
+
 async function runSave(options: CommandRunOptions): Promise<ExitCode> {
   const { output } = options;
   const parsed = parseCommandArgs({
@@ -226,6 +257,13 @@ async function runSave(options: CommandRunOptions): Promise<ExitCode> {
   }
   const reminder = whenExpiredReminder(saved.value, { repoFlag: values.repo });
   if (reminder !== undefined) output.error(`${reminder}\n`);
+  const root = repo.value.root;
+  const lines = await followUps(saved.value, {
+    root,
+    config: options.config,
+    repoFlag: values.repo,
+  });
+  for (const line of lines) output.error(`${line}\n`);
   return 0;
 }
 
