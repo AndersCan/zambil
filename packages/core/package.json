@@ -21,6 +21,7 @@
     "./parse-link-target": "./src/properties/parse-link-target.ts",
     "./parse-note": "./src/note/parse-note.ts",
     "./resolve-note": "./src/expiry/resolve-note.ts",
+    "./save-note": "./src/write/save-note.ts",
     "./split-frontmatter": "./src/properties/split-frontmatter.ts",
     "./write-test-repo": "./src/repo/write-test-repo.ts"
   },

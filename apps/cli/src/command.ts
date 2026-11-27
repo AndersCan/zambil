@@ -9,7 +9,10 @@ export interface CommandOutput {
   error: (text: string) => void;
 }
 
-/** Standard input. It is read only when a command calls `readAll`, so other commands do not wait for it. */
+/**
+ * Standard input. It is read only when a command calls `readAll`, so other commands do not wait for it. A
+ * terminal reads as empty text, so that a command never waits for typed input.
+ */
 export interface CommandInput {
   readAll: () => Promise<string>;
 }
