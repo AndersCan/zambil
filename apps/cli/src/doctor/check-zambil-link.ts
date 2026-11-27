@@ -1,3 +1,4 @@
+import { dirname, join, resolve } from "node:path";
 import {
   hasLocalBinOnPath,
   linkCommand,
@@ -7,7 +8,8 @@ import {
 import { readlink, realpath } from "node:fs/promises";
 import type { CheckResult } from "./check-result.ts";
 import type { CliConfig } from "../config.ts";
-import { join } from "node:path";
+import { installScriptUrl } from "@zambil/claude-code/install-script-command";
+import { quoteArgument } from "@zambil/core/quote-argument";
 import { wrap } from "@zambil/core/either";
 
 /** The startup config, for the home folder and the `PATH`. */
@@ -25,23 +27,31 @@ async function brokenLink(link: string): Promise<string[]> {
   return [`${link} links to ${target.value}, which does not exist. The clone moved or is gone.`];
 }
 
+/** The install command for the clone that runs now. It links `~/.local/bin/zambil` to it again. */
+function installHereCommand(): string {
+  const root = resolve(dirname(mainPath()), "..", "..", "..");
+  const home = quoteArgument(root);
+  return `curl -fsSL ${installScriptUrl} | ZAMBIL_HOME=${home} sh`;
+}
+
 /** The link is missing or broken: link this clone, and put `~/.local/bin` on the `PATH` if needed. */
 async function notOnPath(config: CliConfig): Promise<CheckResult> {
   const link = join(config.environment.home, ".local", "bin", "zambil");
   const text = "zambil is not on your PATH. Claude Code and the agent run zambil by name.";
-  const isLinked = (await wrap(realpath(link))).ok;
+  const [resolved, broken] = await Promise.all([wrap(realpath(link)), brokenLink(link)]);
+  const linkFix = broken.length > 0 ? installHereCommand() : linkCommand();
   if (hasLocalBinOnPath(config)) {
-    return { level: "fail", text, details: await brokenLink(link), fixes: [linkCommand()] };
+    return { level: "fail", text, details: broken, fixes: [linkFix] };
   }
-  if (isLinked) {
+  if (resolved.ok) {
     const linked = `${link} exists, but ~/.local/bin is not on your PATH.`;
     return { level: "fail", text: linked, details: [profileAdvice], fixes: [localBinPathLine] };
   }
   return {
     level: "fail",
     text,
-    details: [...(await brokenLink(link)), profileAdvice],
-    fixes: [linkCommand(), localBinPathLine],
+    details: [...broken, profileAdvice],
+    fixes: [linkFix, localBinPathLine],
   };
 }
 

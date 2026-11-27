@@ -103,8 +103,10 @@ Run `zambil install`. The root `README.md` tells you how to put `zambil` on your
 Each handler runs this command, with full paths:
 
 ```sh
-PATH=/opt/homebrew/bin:/opt/homebrew/Cellar/node/24.1.0/bin${PATH:+:$PATH} NODE_COMPILE_CACHE=/home/ada/.cache/zambil/node-compile-cache /home/ada/.local/bin/zambil hook --repo /home/ada/notes
+[ -x /home/ada/.local/bin/zambil ] || { echo '{"systemMessage":"zambil cannot start, so no note reaches this session. To install zambil again, run: curl -fsSL https://raw.githubusercontent.com/AndersCan/zambil/main/install.sh | sh"}'; exit 0; }; PATH=/opt/homebrew/bin:/opt/homebrew/Cellar/node/24.1.0/bin${PATH:+:$PATH} NODE_COMPILE_CACHE=/home/ada/.cache/zambil/node-compile-cache /home/ada/.local/bin/zambil hook --repo /home/ada/notes
 ```
+
+The first part runs when `zambil` is gone, for example after the clone moved. Without it, the shell exits with 127 and Claude Code shows only `zambil: not found`. With it, Claude Code shows the warning with the install command, and the session goes on.
 
 `zambil` starts with `#!/usr/bin/env node`, and Claude Code can start without `node` on its `PATH`, for example when a version manager adds `node` only in the profile of your shell. So the command puts two folders first on the `PATH`: the folder of the `node` that your shell finds, and the folder of the file that it links to. The first one stays valid when Homebrew, asdf, Volta or the shims of mise change the version. If the folder itself is a link that lives only as long as one shell, as with fnm, zambil uses only the second one. The folders of nvm and of `mise activate` hold one version, so they go stale when you remove that version. Then the `PATH` of Claude Code still applies. Run `zambil install` again after you change the version of Node.
 

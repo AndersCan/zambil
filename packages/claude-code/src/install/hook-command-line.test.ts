@@ -1,6 +1,7 @@
-import { chmod, mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
 import { describe, expect, test } from "vite-plus/test";
 import { hookCommandLine } from "./hook-command-line.ts";
+import { installScriptCommand } from "./install-script-command.ts";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
@@ -21,6 +22,7 @@ describe("hookCommandLine", () => {
       repoRoot: "/home/ada/my notes",
       compileCache: "/home/ada/.cache/zambil/node-compile-cache",
     };
+    const guard = `[ -x /home/ada/.local/bin/zambil ] || { echo '{"systemMessage":"zambil cannot start, so no note reaches this session. To install zambil again, run: ${installScriptCommand}"}'; exit 0; }; `;
     expect([
       hookCommandLine({
         ...paths,
@@ -28,8 +30,8 @@ describe("hookCommandLine", () => {
       }),
       hookCommandLine({ ...paths, nodeFolders: [] }),
     ]).toEqual([
-      "PATH=/opt/homebrew/bin:/opt/homebrew/Cellar/node/24.1.0/bin${PATH:+:$PATH} NODE_COMPILE_CACHE=/home/ada/.cache/zambil/node-compile-cache /home/ada/.local/bin/zambil hook --repo '/home/ada/my notes'",
-      "NODE_COMPILE_CACHE=/home/ada/.cache/zambil/node-compile-cache /home/ada/.local/bin/zambil hook --repo '/home/ada/my notes'",
+      `${guard}PATH=/opt/homebrew/bin:/opt/homebrew/Cellar/node/24.1.0/bin\${PATH:+:$PATH} NODE_COMPILE_CACHE=/home/ada/.cache/zambil/node-compile-cache /home/ada/.local/bin/zambil hook --repo '/home/ada/my notes'`,
+      `${guard}NODE_COMPILE_CACHE=/home/ada/.cache/zambil/node-compile-cache /home/ada/.local/bin/zambil hook --repo '/home/ada/my notes'`,
     ]);
   });
 
@@ -53,6 +55,34 @@ describe("hookCommandLine", () => {
     expect({ status: result.status, stdout: result.stdout }).toEqual({
       status: 0,
       stdout: `node ${zambilPath} hook --repo ${folder}/notes\n`,
+    });
+  });
+
+  test("tells the user to install zambil again when the zambil link points to a moved clone", async () => {
+    const folder = await mkdtemp(join(tmpdir(), "zambil-moved-"));
+    const zambilPath = join(folder, "bin", "zambil");
+    await mkdir(join(folder, "bin"));
+    await symlink(join(folder, "gone", "main.ts"), zambilPath);
+    const command = hookCommandLine({
+      zambilPath,
+      repoRoot: join(folder, "notes"),
+      compileCache: join(folder, "cache"),
+      nodeFolders: [],
+    });
+    const result = spawnSync("/bin/sh", ["-c", command], {
+      encoding: "utf8",
+      env: { PATH: "/usr/bin:/bin" },
+    });
+    expect({
+      status: result.status,
+      output: JSON.parse(result.stdout),
+      stderr: result.stderr,
+    }).toEqual({
+      status: 0,
+      output: {
+        systemMessage: `zambil cannot start, so no note reaches this session. To install zambil again, run: ${installScriptCommand}`,
+      },
+      stderr: "",
     });
   });
 });

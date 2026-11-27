@@ -1,3 +1,4 @@
+import { installScriptCommand } from "./install-script-command.ts";
 import { quoteArgument } from "@zambil/core/quote-argument";
 
 /**
@@ -20,6 +21,16 @@ function pathPrefix(nodeFolders: string[]): string {
 }
 
 /**
+ * Prints a warning for the user when the `zambil` program is gone, for example after the clone moved.
+ * Claude Code shows a `systemMessage` in full, and exit code 0 keeps the session going.
+ */
+function missingProgramGuard(zambil: string): string {
+  const systemMessage = `zambil cannot start, so no note reaches this session. To install zambil again, run: ${installScriptCommand}`;
+  const warning = quoteArgument(JSON.stringify({ systemMessage }));
+  return `[ -x ${zambil} ] || { echo ${warning}; exit 0; }; `;
+}
+
+/**
  * The shell command that each hook runs. Claude Code can start without `node` on its `PATH`, so the
  * node folders go first. If a version manager removes one, the `PATH` of Claude Code still applies.
  * `NODE_COMPILE_CACHE` saves compile time. `--repo` comes after `hook`, because a flag before the
@@ -29,6 +40,7 @@ export function hookCommandLine(options: HookCommandLineOptions): string {
   const cache = quoteArgument(options.compileCache);
   const zambil = quoteArgument(options.zambilPath);
   const repo = quoteArgument(options.repoRoot);
+  const guard = missingProgramGuard(zambil);
   const prefix = pathPrefix(options.nodeFolders);
-  return `${prefix}NODE_COMPILE_CACHE=${cache} ${zambil} hook --repo ${repo}`;
+  return `${guard}${prefix}NODE_COMPILE_CACHE=${cache} ${zambil} hook --repo ${repo}`;
 }

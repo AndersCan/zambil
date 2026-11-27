@@ -3,6 +3,7 @@ import { describe, expect, test } from "vite-plus/test";
 import type { CliConfig } from "../config.ts";
 import type { Command } from "../command.ts";
 import { existsSync } from "node:fs";
+import { hookCommandLine } from "@zambil/claude-code/hook-command-line";
 import { installCommand } from "./install-command.ts";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -114,12 +115,13 @@ describe("zambil install and zambil uninstall", () => {
     const again = await run(uninstallCommand, { config, args: [] });
 
     const cache = join(config.environment.cacheHome ?? "", "zambil", "node-compile-cache");
-    const path = machine.nodeFolders.join(":");
-    const handler = {
-      type: "command",
-      command: `PATH=${path}\${PATH:+:$PATH} NODE_COMPILE_CACHE=${cache} ${machine.zambil} hook --repo ${repo}`,
-      timeout: 10,
-    };
+    const command = hookCommandLine({
+      zambilPath: machine.zambil,
+      repoRoot: repo,
+      compileCache: cache,
+      nodeFolders: machine.nodeFolders,
+    });
+    const handler = { type: "command", command, timeout: 10 };
     expect({
       first: { ...first, stderr: first.stderr.split("\n") },
       installed: JSON.parse(installedText),
