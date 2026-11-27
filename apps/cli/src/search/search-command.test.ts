@@ -36,7 +36,11 @@ describe("zambil search", () => {
         hook_event_name: "UserPromptSubmit",
         prompt: "iterating",
       });
-      const hookBeforeIndex = zambil(["hook"], { input: iterating });
+      const withRecall = JSON.stringify({
+        hook_event_name: "UserPromptSubmit",
+        prompt: "iterating z:rebase",
+      });
+      const hookBeforeIndex = zambil(["hook"], { input: withRecall });
       const indexed = zambil(["index"]);
       const found = zambil(["search", "help", "me", "with", "my", "branch"]);
       const expired = zambil(["search", "what day is it"]);
@@ -59,7 +63,8 @@ describe("zambil search", () => {
       });
       expect({
         hookBeforeIndex: {
-          ...hookBeforeIndex,
+          code: hookBeforeIndex.code,
+          addsRecall: hookBeforeIndex.stdout.includes('<note name=\\"rebase\\"'),
           stderr: hookBeforeIndex.stderr.replace(freshCache, "<cache>"),
         },
         indexed: indexed.stdout.startsWith("Indexed 20 descriptions, 20 of them new"),
@@ -70,7 +75,7 @@ describe("zambil search", () => {
       }).toEqual({
         hookBeforeIndex: {
           code: 0,
-          stdout: "",
+          addsRecall: true,
           stderr: `zambil hook: no similar notes, because the model Xenova/multi-qa-MiniLM-L6-cos-v1 is missing or incomplete in <cache>/zambil/models/multi-qa-minilm-l6-cos-v1/3c96c1df3fec9a98a5de76e80877c8bec18498f6. Run \`zambil index --repo ${proseRepo}\`.\n`,
         },
         indexed: true,
@@ -83,7 +88,7 @@ describe("zambil search", () => {
             "",
           ].join("\n"),
         },
-        expired: { code: 0, stdout: "No note scores 0.38 or more.\n", stderr: "" },
+        expired: { code: 0, stdout: "No current note scores 0.38 or more.\n", stderr: "" },
         searchIterating: {
           code: 0,
           stderr: "",

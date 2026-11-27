@@ -17,6 +17,15 @@ export interface SimilarNotes {
   skipped: number;
 }
 
+/**
+ * Why there are no similar notes. `no-model`: the model is missing or cannot load, which a run of
+ * `zambil index` downloads or reports. `failed`: the embedder or the search failed.
+ */
+export interface SimilarNotesError {
+  kind: "no-model" | "failed";
+  message: string;
+}
+
 /** What a prompt holds: text to match, a slash command for Claude Code, or no letter at all. */
 export type PromptKind = "text" | "command" | "no-text";
 
@@ -43,6 +52,10 @@ function describe(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
 }
 
+function failed(message: string): Either<SimilarNotesError, never> {
+  return left({ kind: "failed", message });
+}
+
 /**
  * Finds the current notes whose description is similar to the prompt. It never downloads the model,
  * so a missing model is an error. Every failure, a thrown one too, is an error value, so that the hook
@@ -52,23 +65,23 @@ function describe(reason: unknown): string {
 export async function findSimilarNotes(
   repo: ConfigurationRepo,
   options: FindSimilarNotesOptions,
-): Promise<Either<string, SimilarNotes>> {
+): Promise<Either<SimilarNotesError, SimilarNotes>> {
   const none = right({ matches: [], skipped: 0 });
   if (readPrompt(options.prompt) !== "text") return none;
   const hasDescription = repo.notes.some((note) => note.description !== undefined);
   if (!hasDescription) return none;
   const loaded = await wrap(import("@zambil/embed/open-note-search"));
-  if (!loaded.ok) return left(`cannot load the embedder: ${describe(loaded.error)}`);
+  if (!loaded.ok) return failed(`cannot load the embedder: ${describe(loaded.error)}`);
   const opened = await wrap(
     loaded.value.openNoteSearch(options.environment, { report: () => {}, download: "never" }),
   );
-  if (!opened.ok) return left(`the embedder failed: ${describe(opened.error)}`);
+  if (!opened.ok) return failed(`the embedder failed: ${describe(opened.error)}`);
   const noteSearch = opened.value;
-  if (!noteSearch.ok) return noteSearch;
+  if (!noteSearch.ok) return left({ kind: "no-model", message: noteSearch.error });
   const { prompt, now } = options;
   const searched = await wrap(noteSearch.value.search(repo, { text: prompt, now, unindexedLimit }));
-  if (!searched.ok) return left(`the search failed: ${describe(searched.error)}`);
+  if (!searched.ok) return failed(`the search failed: ${describe(searched.error)}`);
   const result = searched.value;
-  if (!result.ok) return result;
+  if (!result.ok) return failed(result.error);
   return right({ matches: result.value.matches, skipped: result.value.skipped });
 }

@@ -28,14 +28,16 @@ async function similarTo(repo: ConfigurationRepo, options: SimilarToOptions): Pr
   });
   const hint = indexHint(options.repoFlag);
   if (!similar.ok) {
-    output.error(`zambil hook: no similar notes, because ${similar.error}. Run \`${hint}\`.\n`);
+    const { kind, message } = similar.error;
+    const next = kind === "no-model" ? ` Run \`${hint}\`.` : "";
+    output.error(`zambil hook: no similar notes, because ${message}.${next}\n`);
     return [];
   }
   const { matches, skipped } = similar.value;
   if (skipped > 0) {
-    const count = skipped === 1 ? "1 description is" : `${skipped} descriptions are`;
+    const count = skipped === 1 ? "1 description" : `${skipped} descriptions`;
     output.error(
-      `zambil hook: ${count} not in the index, so no similarity match can find their notes. Run \`${hint}\`.\n`,
+      `zambil hook: the similarity match left out the notes of ${count} that are not in the index. Run \`${hint}\`.\n`,
     );
   }
   return matches.map((match) => match.note);

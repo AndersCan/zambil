@@ -53,7 +53,7 @@ async function runSearch(options: CommandRunOptions): Promise<ExitCode> {
     return 1;
   }
   const { matches, unindexed } = result.value;
-  const noMatch = `No note scores ${minimumScore} or more.\n`;
+  const noMatch = `No current note scores ${minimumScore} or more.\n`;
   output.write(matches.length === 0 ? noMatch : `${formatMatches(matches)}\n`);
   if (unindexed > 0) {
     const hint = indexHint(flag);

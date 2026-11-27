@@ -39,7 +39,7 @@ async function runIndex(options: CommandRunOptions): Promise<ExitCode> {
 export const indexCommand: Command = {
   summary: "Embed the note descriptions ahead of time, so that search is fast.",
   details:
-    "The index and the model are in $XDG_CACHE_HOME/zambil, or ~/.cache/zambil. The first run downloads the model, about 23 MB. zambil never changes a note.",
+    "The index and the model are in $XDG_CACHE_HOME/zambil, or ~/.cache/zambil. The first run downloads the model, about 23 MB. zambil hook finds similar notes only after that run, because it never downloads the model. zambil never changes a note.",
   usage: "Usage: zambil index [--repo <path>]",
   run: runIndex,
 };

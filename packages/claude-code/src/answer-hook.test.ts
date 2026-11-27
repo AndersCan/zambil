@@ -252,11 +252,11 @@ describe("answerHook", () => {
     expect(stdout.includes("SCRIPT-SOURCE")).toBe(false);
   });
 
-  test("adds a similar note once: not again after its hook, nor after z:<name> names it or a part of it", async () => {
+  test("adds a similar note once: not after its hook, a SessionStart hook, or a z:<name> of it or a part of it", async () => {
     const prompt = "z:deploy#Steps and z:[[check deploy]]";
     const similar = ["language", "deploy", "check deploy", "welcome"];
     const names = await namesAt(hookPayload("UserPromptSubmit", { prompt }), { similar });
-    expect(names).toEqual(["deploy", "check deploy", "deploy", "language", "welcome"]);
+    expect(names).toEqual(["deploy", "check deploy", "deploy", "language"]);
   });
 
   test("leaves out a similar note that the prompt names in part, though no hook adds it", async () => {

@@ -48,12 +48,12 @@ At `UserPromptSubmit`, the hook finds the notes whose `description` is similar t
 
 Run `zambil index` once before you use the hook. It downloads the model, about 23 MB, and embeds the descriptions ahead of time. Run it again after you change many descriptions.
 
-The similar notes come after the notes that the prompt names and the notes of the hook. A note comes only once. A note that the prompt names with `z:<name>`, also in part, is not added again as a similar note. Neither is a note that the hook already added.
+The similar notes come after the notes that the prompt names and the notes of the hook. A note comes only once. A note that the prompt names with `z:<name>`, also in part, is not added again as a similar note. Neither is a note that the hook already added, nor a note that names `SessionStart`, because that note is in the context for the whole session.
 
 The hook never blocks or slows a prompt for long:
 
 - If the model is not in the cache, the hook adds no similar notes. It does not download the model. It prints a message on standard error that tells you to run `zambil index`. With the model in the cache, the hook needs no network.
-- If the index is missing or stale, the hook embeds at most 10 of the descriptions that are not in the index. It leaves out the other notes. It prints on standard error how many notes it left out. The hook never writes the index or a note.
+- If the index is missing or stale, the hook embeds at most 10 of the descriptions that are not in the index. It leaves out the other notes. It prints on standard error how many descriptions it left out. The hook never writes the index or a note.
 - If the embedder cannot load or fails, the hook prints a message on standard error and still adds the other notes.
 - A slash command, such as `/compact`, and a prompt with no letter get no search. The hook does not load the model for them.
 - A very long prompt is cut: the model reads its first 256 tokens. A short reply such as "yes" or "continue" scores under the threshold.

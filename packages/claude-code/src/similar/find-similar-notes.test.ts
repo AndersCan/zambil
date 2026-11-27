@@ -48,9 +48,9 @@ describe("findSimilarNotes", () => {
       findSimilarNotes(repo.value, { prompt: "iterating", now, environment }),
     ]);
     await chmod(locked, 0o755);
-    expect({ command, text: text.ok ? "matched" : text.error.split(":")[0] }).toEqual({
+    expect({ command, text: text.ok ? "matched" : text.error.kind }).toEqual({
       command: { ok: true, value: { matches: [], skipped: 0 } },
-      text: "the embedder failed",
+      text: "failed",
     });
   });
 });

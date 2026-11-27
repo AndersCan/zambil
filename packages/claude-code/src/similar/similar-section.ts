@@ -19,6 +19,9 @@ export interface SimilarSectionOptions {
 
 type SectionRepo = Pick<ConfigurationRepo, "root" | "names">;
 
+/** A note of this hook is in the context for the whole session, so a match does not add it again. */
+const sessionHook = "SessionStart";
+
 const heading =
   "zambil reads notes from the user's configuration repo. The description of each of these notes is similar to the prompt. The user did not name them, so use one only if it fits the task:";
 
@@ -51,8 +54,8 @@ function introduce(note: Note): string {
 
 /**
  * The notes whose description is similar to the prompt, as blocks for the context. A skill is offered
- * as a match, not as an opt-in, and a script is offered, never run. A note that the prompt names is
- * left out, and `fitContext` leaves out a note that a hook already added.
+ * as a match, not as an opt-in, and a script is offered, never run. A note that the prompt names, or
+ * that `SessionStart` adds, is left out, and `fitContext` leaves out a note that this hook added.
  */
 export function similarSection(repo: SectionRepo, options: SimilarSectionOptions): ContextSection {
   const { now, wording } = options;
@@ -60,7 +63,8 @@ export function similarSection(repo: SectionRepo, options: SimilarSectionOptions
   const blocks: ContextBlock[] = [];
   for (const note of options.notes) {
     const key = nameKey(note.name);
-    if (recalled.has(key)) continue;
+    const isInSession = note.hooks.includes(sessionHook);
+    if (recalled.has(key) || isInSession) continue;
     const rendered = renderNote(repo, { target: note.name, now, wording });
     if (rendered.status !== "shown") continue;
     const description = note.description?.replaceAll(/\s*\n\s*/g, " ") ?? "";
